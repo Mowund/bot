@@ -7,17 +7,21 @@ import {
   GuildTextBasedChannel,
   PermissionFlagsBits,
   MessageCreateOptions,
+  ApplicationIntegrationType,
+  InteractionContextType,
 } from 'discord.js';
 import tc from 'tinycolor2';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
-import { botOwners, imgOpts } from '../defaults.js';
+import { botOwners, imageOptions } from '../defaults.js';
 import { isValidImage } from '../utils.js';
 
 export default class Echo extends Command {
   constructor() {
     super([
       {
+        contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
         description: 'ECHO.DESCRIPTION',
+        integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
         name: 'ECHO.NAME',
         options: [
           {
@@ -82,12 +86,13 @@ export default class Echo extends Command {
           },
           {
             channelTypes: [
-              ChannelType.GuildText,
-              ChannelType.GuildAnnouncement,
               ChannelType.AnnouncementThread,
-              ChannelType.PublicThread,
-              ChannelType.PrivateThread,
+              ChannelType.GuildAnnouncement,
+              ChannelType.GuildText,
               ChannelType.GuildVoice,
+              ChannelType.GuildStageVoice,
+              ChannelType.PrivateThread,
+              ChannelType.PublicThread,
             ],
             description: 'ECHO.OPTIONS.CHANNEL.DESCRIPTION',
             name: 'ECHO.OPTIONS.CHANNEL.NAME',
@@ -99,34 +104,31 @@ export default class Echo extends Command {
   }
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
-    if (!interaction.isChatInputCommand()) return;
-
-    const { client, embed, isEphemeral, localize } = args,
-      { member, memberPermissions, options, user } = interaction,
-      contentO = options.getString('content')?.replaceAll('\\n', '\n').trim(),
-      descriptionO = options.getString('description')?.replaceAll('\\n', '\n').trim(),
-      titleO = options.getString('title'),
-      urlO = options.getString('url'),
-      authorO = options.getUser('author'),
-      memberO = options.getMember('author'),
-      footerO = options.getString('footer'),
-      timestampO = options.getBoolean('timestamp'),
-      attachmentO = options.getAttachment('attachment'),
-      imageO = options.getAttachment('image'),
-      thumbnailO = options.getAttachment('thumbnail'),
-      colorO = tc(options.getString('color')).isValid()
-        ? tc(options.getString('color')).toHex()
-        : (memberO ?? member)?.displayColor ?? Colors.Blurple,
-      ttsO = options.getBoolean('tts'),
-      channelO = options.getChannel('channel') as GuildTextBasedChannel;
-
     if (interaction.isChatInputCommand()) {
-      const enableEmbed = descriptionO || titleO || authorO || footerO || imageO || thumbnailO;
+      const { client, embed, isEphemeral, localize } = args,
+        { member, memberPermissions, options, user } = interaction,
+        contentO = options.getString('content')?.replaceAll('\\n', '\n').trim(),
+        descriptionO = options.getString('description')?.replaceAll('\\n', '\n').trim(),
+        titleO = options.getString('title'),
+        urlO = options.getString('url'),
+        authorO = options.getUser('author'),
+        memberO = options.getMember('author'),
+        footerO = options.getString('footer'),
+        timestampO = options.getBoolean('timestamp'),
+        attachmentO = options.getAttachment('attachment'),
+        imageO = options.getAttachment('image'),
+        thumbnailO = options.getAttachment('thumbnail'),
+        colorO = tc(options.getString('color')).isValid()
+          ? +tc(options.getString('color')).toHex()
+          : (memberO ?? member)?.displayColor ?? Colors.Blurple,
+        ttsO = options.getBoolean('tts'),
+        channelO = options.getChannel('channel') as GuildTextBasedChannel,
+        enableEmbed = descriptionO || titleO || authorO || footerO || imageO || thumbnailO;
 
       if (
         !memberPermissions?.has(PermissionFlagsBits.ManageMessages) &&
         !botOwners.includes(user.id) &&
-        (isEphemeral === false || channelO) &&
+        (!isEphemeral || channelO) &&
         interaction.guild
       ) {
         return interaction.reply({
@@ -173,7 +175,7 @@ export default class Echo extends Command {
       if (enableEmbed) {
         if (authorO) {
           eEmb.setAuthor({
-            iconURL: (memberO ?? authorO).displayAvatarURL(imgOpts),
+            iconURL: (memberO ?? authorO).displayAvatarURL(imageOptions),
             name: memberO?.displayName ?? authorO.username,
           });
         }

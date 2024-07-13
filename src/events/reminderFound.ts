@@ -7,7 +7,7 @@ import {
   ButtonStyle,
   Snowflake,
 } from 'discord.js';
-import { emojis } from '../defaults.js';
+import { AppEmoji } from '../defaults.js';
 import { toUTS } from '../utils.js';
 import { AppEvents, Event } from '../../lib/structures/Event.js';
 import { App } from '../../lib/App.js';
@@ -23,17 +23,19 @@ export default class ReminderFoundEvent extends Event {
       channel = client.channels.cache.get(channelId) as GuildTextBasedChannel;
 
     if (
-      !channel &&
-      (await client.shard.broadcastEval((c, { cI }) => c.channels.cache.get(cI), { context: { cI: channelId } })).find(
-        c => c,
-      )
+      !client.isMainShard ||
+      (!channel &&
+        client.allShardsReady &&
+        (
+          await client.shard.broadcastEval((c, { cI }) => c.channels.cache.get(cI), { context: { cI: channelId } })
+        ).find(c => c))
     )
       return;
 
-    const userSettings = await client.database.users.fetch(userId);
-    await userSettings.reminders.delete(id);
+    const userData = await client.database.users.fetch(userId);
+    await userData.reminders.delete(id);
 
-    const locale = userSettings?.locale || 'en-US',
+    const locale = userData?.locale || 'en-US',
       localize = (phrase: string, replace?: Record<string, any>) => client.localize({ locale, phrase }, replace),
       member = channel?.guild.members.cache.get(userId),
       user = await client.users.fetch(userId),
@@ -57,7 +59,7 @@ export default class ReminderFoundEvent extends Event {
         },
         {
           inline: true,
-          name: `📅 ${localize('GENERIC.CREATION_DATE')}`,
+          name: `📅 ${localize('GENERIC.CREATED')}`,
           value: toUTS(idTimestamp),
         },
       ],
@@ -65,7 +67,7 @@ export default class ReminderFoundEvent extends Event {
 
     if (isRecursive) {
       const recReminderId = SnowflakeUtil.generate().toString(),
-        recReminder = await userSettings.reminders.set(recReminderId, {
+        recReminder = await userData.reminders.set(recReminderId, {
           channelId: channelId,
           content: content,
           isRecursive,
@@ -96,13 +98,13 @@ export default class ReminderFoundEvent extends Event {
         localizer: localize,
         member,
         timestamp,
-        title: `${emojis.bellRinging} ${localize('REMINDER.NEW')}`,
+        title: `${AppEmoji.bellRinging} ${localize('REMINDER.NEW')}`,
         user,
       })
       .addFields(fields);
 
     if (channelId) {
-      if (!channel && client.shard.ids.includes(0)) {
+      if (!channel) {
         return user.send({
           components: [row],
           embeds: [
@@ -120,11 +122,9 @@ export default class ReminderFoundEvent extends Event {
       });
     }
 
-    if (client.shard.ids.includes(0)) {
-      return user.send({
-        components: [row],
-        embeds: [emb.setDescription(`You asked me to remind you here`)],
-      });
-    }
+    return user.send({
+      components: [row],
+      embeds: [emb.setDescription(`You asked me to remind you here`)],
+    });
   }
 }

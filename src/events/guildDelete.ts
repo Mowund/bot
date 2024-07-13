@@ -8,16 +8,14 @@ export default class GuildDeleteEvent extends Event {
     super(Events.GuildDelete);
   }
 
-  async run(client: App, guild: Guild): Promise<any> {
-    const { chalk } = client,
-      settings = (await client.database.guilds.delete(guild, { leaveCached: true })).get(guild.id);
+  run(client: App, guild: Guild): any {
+    const { chalk } = client;
     client.updateMowundDescription();
 
     if (debugLevel) {
       console.log(
         chalk.red('Left ') + chalk.blue(guild.name) + chalk.gray(' (') + chalk.blue(guild.id) + chalk.gray('):'),
       );
-      console.log(settings);
     }
   }
 }

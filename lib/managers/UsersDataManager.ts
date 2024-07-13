@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars */
 
 import { firestore } from 'firebase-admin';
-import { CachedManager, Collection, DiscordjsErrorCodes, DiscordjsTypeError, Snowflake, User } from 'discord.js';
+import { CachedManager, Collection, Snowflake, User } from 'discord.js';
 import { App } from '../App.js';
 import { removeEmpty, SearchOptions, testConditions } from '../../src/utils.js';
 import { UserData, UserDataSetOptions } from '../structures/UserData.js';
@@ -13,31 +13,20 @@ export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDa
     super(client, UserData);
   }
 
-  async set(user: UsersDatabaseResolvable, data: UserDataSetOptions, { merge = true, setFromCache = false } = {}) {
+  async set(user: UsersDatabaseResolvable, data: UserDataSetOptions, { merge = true } = {}) {
     const id = this.resolveId(user);
-    if (!id) throw new DiscordjsTypeError(DiscordjsErrorCodes.InvalidType, 'user', 'UsersDatabaseResolvable', true);
+    if (!id) throw new Error('Invalid user type: UsersDatabaseResolvable');
 
     const db = this.client.firestore.collection('users').doc(id),
-      existing = this.cache.get(id);
-    let cachedData =
-        (existing ||
+      oldData =
+        (this.cache.get(id) ||
           (((await db.get()) as firestore.DocumentSnapshot<firestore.DocumentData>)?.data() as UserData | undefined)) ??
         null,
-      newData = existing ? data : Object.assign(data, { id });
+      newData = oldData ? data : Object.assign(data, { id });
 
-    if (!existing) {
-      cachedData = new UserData(this.client, Object.assign(Object.create(cachedData), newData));
-      this.cache.set(id, cachedData);
-    } else {
-      cachedData._patch(newData);
-    }
-
-    if (setFromCache) newData = cachedData;
-    await (db as firestore.DocumentReference<firestore.DocumentData>).set(removeEmpty(newData), {
-      merge: merge,
-    });
-
-    return cachedData;
+    await db.set(removeEmpty(newData), { merge });
+    await this.client.database.cacheDelete('users', id);
+    return this.cache.set(id, new UserData(this.client, Object.assign(Object.create(oldData || {}), newData))).get(id);
   }
 
   async fetch(id: Snowflake, { cache = true, force = false } = {}) {
@@ -49,8 +38,8 @@ export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDa
 
     data = new UserData(this.client, Object.assign(Object.create(data), data));
     if (cache) {
-      if (existing) existing._patch(data);
-      else this.cache.set(id, data);
+      await this.client.database.cacheDelete('users', id);
+      this.cache.set(id, data);
     }
     return data;
   }
@@ -71,23 +60,21 @@ export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDa
     }
 
     if (cache) {
-      data.forEach(d => {
-        const cachedData = this.cache.get(d.id);
-        if (cachedData) cachedData._patch(d);
-        else this.cache.set(d.id, d);
+      data.forEach(async d => {
+        await this.client.database.cacheDelete('users', d.id);
+        this.cache.set(d.id, d);
       });
     }
 
     return data;
   }
 
-  async delete(user: UsersDatabaseResolvable, { leaveCached = false } = {}) {
+  async delete(user: UsersDatabaseResolvable) {
     const id = this.resolveId(user);
-    if (!id) throw new DiscordjsTypeError(DiscordjsErrorCodes.InvalidType, 'user', 'UsersDatabaseResolvable', true);
+    if (!id) throw new Error('Invalid user type: UsersDatabaseResolvable');
 
     await this.client.firestore.collection('users').doc(id).delete();
-    if (!leaveCached) this.cache.delete(id);
-    return this.cache;
+    return this.client.database.cacheDelete('users', id);
   }
 }
 

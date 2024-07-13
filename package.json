@@ -1,7 +1,7 @@
 {
   "name": "mowund-bot",
   "displayName": "Mowund Bot",
-  "description": "A moderation and utils discord bot.",
+  "description": "A moderation and utils Discord bot.",
   "keywords": [
     "bot",
     "discord",
@@ -20,49 +20,49 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "build": "yarn clean && yarn compile && yarn cpr",
+    "build": "pnpm run clean && pnpm run compile && pnpm run cpr",
     "clean": "rimraf dist/",
     "compile": "tsc",
     "cpr": "copyfiles -u 1 src/**/*.json dist/",
     "lint": "eslint ./",
-    "start": "yarn build && node dist/src/index.js"
+    "start": "pnpm run build && node dist/src/index.js"
   },
   "dependencies": {
-    "@octokit/core": "^4.0.4",
-    "chalk": "^5.0.0",
+    "@octokit/core": "^6.1.2",
+    "chalk": "^5.3.0",
     "copyfiles": "^2.4.1",
-    "discord.js": "^14.7.0-dev.1667390678-5152abf.0",
     "dotenv-extended": "^2.9.0",
-    "fast-fuzzy": "^1.11.2",
-    "firebase-admin": "^11.0.1",
+    "eslint": "^8.57.0",
+    "fast-fuzzy": "^1.12.0",
+    "firebase-admin": "^12.2.0",
     "git": "^0.1.5",
-    "i18n": "^0.15.0",
+    "i18n": "^0.15.1",
     "log-timestamp": "^0.3.0",
     "math.js": "^1.1.46",
-    "murmurhash": "^2.0.0",
-    "parse-duration": "^1.0.2",
-    "rimraf": "^3.0.2",
-    "tinycolor2": "^1.4.2",
+    "murmurhash": "^2.0.1",
+    "parse-duration": "^1.1.0",
+    "rimraf": "^6.0.1",
+    "tinycolor2": "^1.6.0",
     "twemoji-parser": "^14.0.0",
-    "typescript": "^4.7.3"
+    "typescript": "^5.5.3",
+    "zipson": "^0.2.12"
   },
   "devDependencies": {
-    "@types/i18n": "^0.13.5",
-    "@typescript-eslint/eslint-plugin": "^5.41.0",
-    "@typescript-eslint/parser": "^5.41.0",
-    "eslint": "^8.26.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-import": "^2.25.4",
+    "@stylistic/eslint-plugin": "^2.3.0",
+    "@types/i18n": "^0.13.12",
+    "@types/node": "^20.14.10",
+    "@types/tinycolor2": "^1.4.6",
+    "@typescript-eslint/eslint-plugin": "^7.16.0",
+    "@typescript-eslint/parser": "^7.16.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-json": "^3.1.0",
     "eslint-plugin-json-format": "^2.0.1",
-    "eslint-plugin-prettier": "^4.0.0",
-    "eslint-plugin-sort-destructure-keys": "^1.4.0",
-    "prettier": "^2.5.1"
+    "eslint-plugin-prettier": "^5.1.3",
+    "eslint-plugin-sort-destructure-keys": "^2.0.0",
+    "prettier": "^3.3.2"
   },
   "engines": {
-    "node": "19.x"
-  },
-  "resolutions": {
-    "@discordjs/builders": "1.4.0-dev.1667347887-5152abf.0"
+    "node": "20"
   }
 }

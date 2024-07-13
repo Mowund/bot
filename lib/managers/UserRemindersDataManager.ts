@@ -22,30 +22,25 @@ export class UserRemindersDataManager extends DataManager<Snowflake, ReminderDat
     return this.client.database.reminders.cache.filter(r => r.userId === this.userData.id);
   }
 
-  async set(
-    reminder: RemindersDatabaseResolvable,
-    data: ReminderDataSetOptions,
-    { merge = true, setFromCache = false } = {},
-  ) {
+  async set(reminder: RemindersDatabaseResolvable, data: ReminderDataSetOptions, { merge = true } = {}) {
     if (!this.cache.size) await this.fetch({ force: true });
-    return this.client.database.reminders.set(reminder, this.userData.id, data, { merge, setFromCache });
+    return this.client.database.reminders.set(reminder, this.userData.id, data, { merge });
   }
 
   async fetch(options?: { cache?: boolean; force?: boolean }): Promise<Collection<string, ReminderData>>;
   async fetch(options: { cache?: boolean; force?: boolean; reminderId: Snowflake }): Promise<ReminderData>;
   async fetch(options: { cache?: boolean; force?: boolean; reminderId?: Snowflake } = {}) {
     const noSize = !this.cache.size,
-      { cache = true, force = noSize, reminderId } = options,
-      existing = reminderId ? this.cache.get(reminderId) : this.cache,
+      { cache = true, force, reminderId } = options,
+      existing = this.cache.get(reminderId),
       collection = this.client.firestore.collection('users').doc(this.userData.id).collection('reminders');
 
-    if (!force && existing) return existing;
+    if (!force && (existing || this.cache.size)) return existing || this.cache;
 
-    let data: Collection<Snowflake, ReminderData> | ReminderData,
-      rawData: ReminderData | firestore.QueryDocumentSnapshot<firestore.DocumentData>[];
+    let data: Collection<Snowflake, ReminderData> | ReminderData;
 
-    if (force || Array.isArray(rawData)) {
-      rawData = (await collection.get()).docs;
+    if (force || noSize) {
+      const rawData = (await collection.get()).docs as firestore.QueryDocumentSnapshot<firestore.DocumentData>[];
       if (!rawData.length) return;
 
       data = new Collection();
@@ -55,9 +50,10 @@ export class UserRemindersDataManager extends DataManager<Snowflake, ReminderDat
       }
 
       if (cache) data.forEach(d => this.client.database.reminders.cache.set(d.id, d));
-      if (noSize) data = data.get(reminderId);
+
+      if (reminderId) data = data.get(reminderId);
     } else {
-      rawData = (await collection.doc(reminderId).get()).data() as ReminderData | undefined;
+      const rawData = (await collection.doc(reminderId).get()).data() as ReminderData | undefined;
       if (!rawData) return;
 
       data = new ReminderData(this.client, Object.assign(Object.create(rawData), rawData));
@@ -88,11 +84,10 @@ export class UserRemindersDataManager extends DataManager<Snowflake, ReminderDat
     }
 
     if (cache) data.forEach(d => this.client.database.reminders.cache.set(d.id, d));
-
     return data;
   }
 
-  delete(reminder: RemindersDatabaseResolvable, { leaveCached = false } = {}) {
-    return this.client.database.reminders.delete(reminder, this.userData.id, { leaveCached });
+  delete(reminder: RemindersDatabaseResolvable) {
+    return this.client.database.reminders.delete(reminder, this.userData.id);
   }
 }

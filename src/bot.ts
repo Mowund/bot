@@ -4,7 +4,6 @@ import { setTimeout } from 'node:timers';
 import { fileURLToPath } from 'node:url';
 import path, { dirname } from 'node:path';
 import {
-  RESTJSONErrorCodes,
   GatewayIntentBits,
   Partials,
   disableValidators,
@@ -12,6 +11,9 @@ import {
   ActivityType,
   PresenceUpdateStatus,
   ChatInputApplicationCommandData,
+  Collection,
+  Snowflake,
+  ApplicationCommand,
 } from 'discord.js';
 import { App } from '../lib/App.js';
 import { Command } from '../lib/structures/Command.js';
@@ -28,14 +30,18 @@ const __filename = fileURLToPath(import.meta.url),
       GatewayIntentBits.GuildEmojisAndStickers,
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.GuildMembers,
+      GatewayIntentBits.GuildPresences,
       GatewayIntentBits.MessageContent,
     ],
     partials: [Partials.Channel, Partials.Message, Partials.Reaction],
   });
 
-process.on('uncaughtException', (err: DiscordAPIError) => {
-  if (!(err instanceof DiscordAPIError) || err.code !== RESTJSONErrorCodes.UnknownInteraction) {
-    console.error(err);
+process.on('uncaughtException', async (err: DiscordAPIError) => {
+  if (
+    !(['UND_ERR_CONNECT_TIMEOUT', 'ENOTFOUND'] as (number | string)[]).includes(err.code) ||
+    !(err instanceof DiscordAPIError)
+  ) {
+    await client.reportError(err);
     process.exit();
   }
 });
@@ -46,30 +52,56 @@ if (debugLevel > 1) client.on('debug', console.log).on('warn', console.warn).res
 client.on('ready', async () => {
   try {
     client.user.setPresence({
-      activities: [{ name: 'starting...', type: ActivityType.Watching }],
+      activities: [{ name: '🕑 Starting...', type: ActivityType.Custom }],
       status: PresenceUpdateStatus.Idle,
     });
 
-    client.globalCommandCount = client.countCommands(await client.application.commands.fetch());
-    client.updateMowundDescription();
-
+    await client.application.fetch();
     const appCmds = await client.application.commands.fetch({ withLocalizations: true });
-    let delCmds = [];
+    let delCmds = new Collection<Snowflake, ApplicationCommand>(appCmds);
+    client.globalCommandCount = client.countCommands(appCmds);
 
-    appCmds.each(c => (delCmds = delCmds.concat(c)));
+    if (client.isMainShard) {
+      await (async function updateData() {
+        await client.updateExperiments();
+        setTimeout(updateData, 300000);
+      })();
+
+      const metadata = [
+        {
+          description: 'ROLE_CONNECTION.LEVEL.DESCRIPTION',
+          key: 'level',
+          name: 'ROLE_CONNECTION.LEVEL.NAME',
+          type: 2,
+        },
+        {
+          description: 'ROLE_CONNECTION.MOWANS.DESCRIPTION',
+          key: 'mowans',
+          name: 'ROLE_CONNECTION.MOWANS.NAME',
+          type: 2,
+        },
+        {
+          description: 'ROLE_CONNECTION.PLAYING_SINCE.DESCRIPTION',
+          key: 'playingsince',
+          name: 'ROLE_CONNECTION.PLAYING_SINCE.NAME',
+          type: 6,
+        },
+      ];
+      for (const d of metadata) client.localizeData(d);
+      await client.application.editRoleConnectionMetadataRecords(metadata);
+    }
 
     for (const file of readdirSync(path.join(__dirname, '/interactions')).filter(f => f.endsWith('.js'))) {
-      const event = new (await import(`./interactions/${file}`)).default() as Command;
+      const command = new (await import(`./interactions/${file}`)).default() as Command;
 
-      for (const dt of event.structure as ChatInputApplicationCommandData[]) {
-        client.localizeCommand(dt);
+      for (const dt of command.structure as ChatInputApplicationCommandData[]) {
+        client.localizeData(dt);
 
-        const searchCmd = appCmds.find(c => c.name === dt.name),
-          dataEquals = searchCmd?.equals(dt, true);
-
-        if (!event.options?.guildOnly) {
-          const found = delCmds.find(c => c.name === dt.name);
-          delCmds = found ? delCmds.filter(c => c.name !== dt.name || c.guildId) : delCmds;
+        if (client.isMainShard && !command.options?.guildOnly) {
+          const searchCmd = appCmds.find(c => c.name === dt.name),
+            dataEquals = searchCmd?.equals(dt, true),
+            found = delCmds.find(c => c.name === dt.name);
+          if (found) delCmds = delCmds.filter(c => c.name !== dt.name || c.guildId);
 
           if (!dataEquals) {
             const cmd = await client.application.commands.create(dt);
@@ -78,13 +110,15 @@ client.on('ready', async () => {
         }
       }
 
-      client.commands.set(file.match(/.+?(?=\.js)/g)?.[0], event);
+      client.commands.set(file.match(/.+?(?=\.js)/g)?.[0], command);
     }
 
-    delCmds.forEach(c => {
-      client.application.commands.delete(c.id);
-      console.log(client.chalk.red(`Deleted global command: ${c.name} (${c.id})`));
-    });
+    if (client.isMainShard) {
+      delCmds.forEach(async ({ name }, id) => {
+        await client.application.commands.delete(id);
+        console.log(client.chalk.red(`Deleted global command: ${name} (${id})`));
+      });
+    }
 
     for (const file of readdirSync(path.join(__dirname, '/events')).filter(f => f.endsWith('.js'))) {
       const event = new (await import(`./events/${file}`)).default();
@@ -92,27 +126,30 @@ client.on('ready', async () => {
       else client.on(event.name, (...args) => event.run(client, ...args));
     }
 
-    console.log(client.chalk.green('Bot started'));
+    console.log(client.chalk.green(`Started shard ${client.shard.ids[0] + 1}`));
+
     client.user.setPresence({
-      activities: [{ name: '/ping', type: ActivityType.Watching }],
+      activities: [{ name: `🏓 /ping | ${client.shard.ids[0] + 1}/${client.shard.count}`, type: ActivityType.Custom }],
       status: PresenceUpdateStatus.Online,
     });
 
-    (async function findReminders() {
-      for (const r of await client.database.reminders.find([
-        [{ field: 'timestamp', operator: '<=', target: Date.now() }],
-      ]))
-        client.emit('reminderFound', r[1]);
+    if (client.isMainShard) {
+      (async function findReminders() {
+        for (const r of await client.database.reminders.find([
+          [{ field: 'timestamp', operator: '<=', target: Date.now() }],
+        ]))
+          client.emit('reminderFound', r[1]);
 
-      setTimeout(findReminders, 5000);
-    })();
+        setTimeout(findReminders, 5000);
+      })();
+    }
   } catch (err) {
+    await client.reportError(err);
     client.user.setPresence({
-      activities: [{ name: 'an error occurred', type: ActivityType.Watching }],
+      activities: [{ name: '⛔ An error occurred', type: ActivityType.Custom }],
       status: PresenceUpdateStatus.DoNotDisturb,
     });
-    console.error(err);
   }
 });
 
-client.login(process.env.TOKEN);
+client.login();

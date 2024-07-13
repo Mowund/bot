@@ -5,7 +5,6 @@ import { App } from '../App.js';
 import { Base } from './Base.js';
 
 export class ReminderData extends Base {
-  id: Snowflake;
   channelId: Snowflake;
   content: string;
   isRecursive?: boolean;
@@ -25,12 +24,12 @@ export class ReminderData extends Base {
     this.userId = data.userId;
   }
 
-  async set(data: ReminderDataSetOptions, { merge = true, setFromCache = false } = {}) {
-    return (await this.client.database.users.fetch(this.userId)).reminders.set(this.id, data, { merge, setFromCache });
+  async set(data: ReminderDataSetOptions, { merge = true } = {}) {
+    return (await this.client.database.users.fetch(this.userId)).reminders.set(this.id, data, { merge });
   }
 
-  async delete({ leaveCached = false } = {}) {
-    return (await this.client.database.users.fetch(this.userId)).reminders.delete(this.id, { leaveCached });
+  async delete() {
+    return (await this.client.database.users.fetch(this.userId)).reminders.delete(this.id);
   }
 
   _patch(data: any) {

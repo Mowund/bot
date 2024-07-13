@@ -1,10 +1,17 @@
-import { ApplicationCommandType, BaseInteraction } from 'discord.js';
+import {
+  ApplicationCommandType,
+  BaseInteraction,
+  ApplicationIntegrationType,
+  InteractionContextType,
+} from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 
 export default class DeleteResponse extends Command {
   constructor() {
     super([
       {
+        contexts: [InteractionContextType.Guild, InteractionContextType.BotDM],
+        integration_types: [ApplicationIntegrationType.GuildInstall],
         name: 'DELETE_RESPONSE',
         type: ApplicationCommandType.Message,
       },
@@ -20,10 +27,14 @@ export default class DeleteResponse extends Command {
 
     if (
       messageO.author.id !== client.user.id ||
-      !(
-        messageO.interaction?.user.id === user.id ||
-        new URLSearchParams(messageO.embeds.at(-1)?.footer?.iconURL).get('messageOwners')?.split('-').includes(user.id)
-      )
+      (messageO.inGuild() &&
+        !(
+          messageO.interactionMetadata?.user.id === user.id ||
+          new URLSearchParams(messageO.embeds.at(-1)?.footer?.iconURL)
+            .get('messageOwners')
+            ?.split('-')
+            .includes(user.id)
+        ))
     ) {
       return interaction.reply({
         embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.DELETE_RESPONSE'))],

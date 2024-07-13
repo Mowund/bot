@@ -1,4 +1,11 @@
-import { ApplicationCommandOptionType, BaseInteraction, PermissionFlagsBits, Snowflake } from 'discord.js';
+import {
+  ApplicationCommandOptionType,
+  BaseInteraction,
+  PermissionFlagsBits,
+  Snowflake,
+  ApplicationIntegrationType,
+  InteractionContextType,
+} from 'discord.js';
 import parseDur from 'parse-duration';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { msToTime } from '../utils.js';
@@ -7,9 +14,10 @@ export default class Timeout extends Command {
   constructor() {
     super([
       {
+        contexts: [InteractionContextType.Guild],
         defaultMemberPermissions: PermissionFlagsBits.ModerateMembers,
         description: 'TIMEOUT.DESCRIPTION',
-        dmPermission: false,
+        integration_types: [ApplicationIntegrationType.GuildInstall],
         name: 'TIMEOUT.NAME',
         options: [
           {
@@ -82,7 +90,7 @@ export default class Timeout extends Command {
         return interaction.reply({
           embeds: [
             embed({ type: 'error' }).setDescription(
-              localize('ECHO.INSUFFICIENT.PERMS', { perm: localize('PERM.MODERATE_MEMBERS') }),
+              localize('ERROR.PERM.USER.SINGLE.REQUIRES', { perm: localize('PERM.MODERATE_MEMBERS') }),
             ),
           ],
           ephemeral: true,

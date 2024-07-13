@@ -13,19 +13,27 @@ import {
   ChannelSelectMenuBuilder,
   ChannelType,
   PermissionFlagsBits,
+  PresenceUpdateStatus,
+  StickerFormatType,
+  ActivityType,
+  PresenceStatus,
+  GuildFeature,
+  GuildSystemChannelFlags,
+  ApplicationIntegrationType,
+  InteractionContextType,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { GuildData } from '../../lib/structures/GuildData.js';
-import { imgOpts } from '../defaults.js';
-import { toUTS } from '../utils.js';
+import { AppEmoji, imageOptions, premiumLimits } from '../defaults.js';
+import { arrayMap, toUTS } from '../utils.js';
 
-// TODO
 export default class Server extends Command {
   constructor() {
     super([
       {
+        contexts: [InteractionContextType.Guild],
         description: 'SERVER.DESCRIPTION',
-        dmPermission: false,
+        integration_types: [ApplicationIntegrationType.GuildInstall],
         name: 'SERVER.NAME',
         options: [
           {
@@ -44,7 +52,7 @@ export default class Server extends Command {
   }
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
-    let { guildSettings } = args;
+    let { guildData } = args;
     const { embed, isEphemeral } = args,
       { guild, guildId, memberPermissions, user } = interaction,
       { client, localize } = args,
@@ -60,24 +68,17 @@ export default class Server extends Command {
         ),
       ],
       settingsFields = (data: GuildData) => {
-        const channelIds =
-            data?.allowNonEphemeral?.channelIds
-              ?.sort((a, b) => +a - +b)
-              .map(cI => `<#${cI}>`)
-              .reverse() ?? [],
-          roleIds =
-            data?.allowNonEphemeral?.roleIds
-              ?.sort((a, b) => +a - +b)
-              .map(cI => `<#${cI}>`)
-              .reverse() ?? [];
+        const channels =
+            arrayMap(data?.allowNonEphemeral?.channelIds, { mapFunction: cI => `<#${cI}>`, maxValues: 20 }) ?? [],
+          roles = arrayMap(data?.allowNonEphemeral?.roleIds, { mapFunction: rI => `<@&${rI}>`, maxValues: 20 }) ?? [];
 
         return [
           {
             inline: true,
             name: `👁️ ${localize('SERVER.OPTIONS.SETTINGS.ALLOW_NON_EPHEMERAL.NAME')}`,
             value: `**${localize('GENERIC.CHANNELS.CHANNELS')}:** ${
-              channelIds.length ? channelIds : localize('GENERIC.NONE')
-            }\n**${localize('GENERIC.ROLES.ROLES')}:** ${roleIds.length ? roleIds : localize('GENERIC.NONE')}`,
+              channels.length ? channels : localize('GENERIC.ALL')
+            }\n**${localize('GENERIC.ROLES.ROLES')}:** ${roles.length ? roles : localize('GENERIC.ALL')}`,
           },
         ];
       };
@@ -88,24 +89,279 @@ export default class Server extends Command {
 
       switch (options.getSubcommand()) {
         case 'info': {
-          const embs = [
-            embed({ title: localize('SERVER.OPTIONS.INFO.TITLE') })
-              .setThumbnail(guild.iconURL(imgOpts))
-              .addFields(
-                { inline: true, name: `🪪 ${localize('GENERIC.ID')}`, value: `\`${guild.id}\`` },
-                { inline: true, name: `📅 ${localize('GENERIC.CREATION_DATE')}`, value: toUTS(guild.createdTimestamp) },
-              ),
-          ];
+          const premiumLimit = premiumLimits[guild.premiumTier],
+            emojiLimit =
+              (guild.features as `${GuildFeature}`[] & string[]).includes('MORE_EMOJIS') && guild.premiumTier < 3
+                ? 200
+                : premiumLimit.emojis,
+            roles = guild.roles.cache.filter(r => r.id !== guildId),
+            webhooks = await guild.fetchWebhooks(),
+            emb = embed({ title: `${AppEmoji.info} ${localize('SERVER.OPTIONS.INFO.TITLE')}` }).addFields(
+              { inline: true, name: `🪪 ${localize('GENERIC.ID')}`, value: `\`${guild.id}\`` },
+              {
+                inline: true,
+                name: `${AppEmoji.serverOwner} ${localize('GENERIC.OWNER')}`,
+                value: `<@${guild.ownerId}>`,
+              },
+              {
+                inline: true,
+                name: `📅 ${localize('GENERIC.CREATED')}`,
+                value: toUTS(guild.createdTimestamp),
+              },
+              {
+                inline: true,
+                name: `${AppEmoji.role} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
+                  count: roles.size,
+                })} / ${localize('GENERIC.COUNT', { count: 250 })}]`,
+                value: `${AppEmoji.members} ${localize('GENERIC.COUNTER.COMMON', {
+                  count: roles.filter(r => !r.tags?.botId && !r.tags?.integrationId).size,
+                })}\n${AppEmoji.integration} ${localize('GENERIC.COUNTER.BOT', {
+                  count: roles.filter(r => r.tags?.botId).size,
+                })}\n⚙️ ${localize('GENERIC.COUNTER.INTEGRATED', {
+                  count: roles.filter(r => r.tags?.integrationId).size,
+                })}`,
+              },
+              {
+                inline: true,
+                name: `${AppEmoji.emojiGhost} ${localize('GENERIC.EMOJIS')} [${localize('GENERIC.COUNT', {
+                  count: guild.emojis.cache.size,
+                })} / ${emojiLimit * 2}]`,
+                value: `• **${localize('GENERIC.COUNT', {
+                  count: guild.emojis.cache.filter(e => !e.animated && !e.managed).size,
+                })} / ** ${localize('GENERIC.COUNTER.STATIC', {
+                  count: emojiLimit,
+                })}\n• **${localize('GENERIC.COUNT', {
+                  count: guild.emojis.cache.filter(e => e.animated && !e.managed).size,
+                })} / ** ${localize('GENERIC.COUNTER.ANIMATED', {
+                  count: emojiLimit,
+                })}\n• ${localize('GENERIC.COUNTER.INTEGRATED', {
+                  count: guild.emojis.cache.filter(e => e.managed).size,
+                })}`,
+              },
+              {
+                inline: true,
+                name: `${AppEmoji.sticker} ${localize('GENERIC.STICKERS')} [${guild.stickers.cache.size} / ${
+                  premiumLimit.stickers
+                }]`,
+                value: `• **${localize('GENERIC.COUNT', {
+                  count: guild.stickers.cache.filter(e => e.format === StickerFormatType.PNG).size,
+                })}** PNG\n• **${localize('GENERIC.COUNT', {
+                  count: guild.stickers.cache.filter(e => e.format === StickerFormatType.APNG).size,
+                })}** APNG\n• **${localize('GENERIC.COUNT', {
+                  count: guild.stickers.cache.filter(e => e.format === StickerFormatType.Lottie).size,
+                })}** Lottie\n• **${localize('GENERIC.COUNT', {
+                  count: guild.stickers.cache.filter(e => e.format === StickerFormatType.GIF).size,
+                })}** GIF`,
+              },
+              {
+                inline: true,
+                name: `${AppEmoji.members} ${localize('GENERIC.MEMBERS')} [${localize('GENERIC.COUNT', {
+                  count: guild.memberCount,
+                })}]`,
+                value: `**${AppEmoji.statusOnline} ${localize('GENERIC.COUNT', {
+                  count: guild.members.cache.filter(
+                    m =>
+                      m.presence &&
+                      !([PresenceUpdateStatus.Idle, PresenceUpdateStatus.DoNotDisturb] as PresenceStatus[]).includes(
+                        m.presence.status,
+                      ) &&
+                      !m.presence.activities.some(a => a.type === ActivityType.Streaming),
+                  ).size,
+                })}** ${localize('GENERIC.ONLINE')}\n${AppEmoji.statusIdle} **${localize('GENERIC.COUNT', {
+                  count: guild.members.cache.filter(m => m.presence?.status === PresenceUpdateStatus.Idle).size,
+                })}** ${localize('GENERIC.IDLE')}\n${AppEmoji.statusDND} **${localize('GENERIC.COUNT', {
+                  count: guild.members.cache.filter(m => m.presence?.status === PresenceUpdateStatus.DoNotDisturb).size,
+                })}** ${localize('GENERIC.DO_NOT_DISTURB')}\n${AppEmoji.statusStreaming} **${localize('GENERIC.COUNT', {
+                  count: guild.members.cache.filter(m =>
+                    m.presence?.activities.some(a => a.type === ActivityType.Streaming),
+                  ).size,
+                })}** ${localize('GENERIC.STREAMING')}\n${AppEmoji.statusOffline} **${localize('GENERIC.COUNT', {
+                  count: guild.memberCount - guild.members.cache.filter(m => m.presence).size,
+                })}** ${localize('GENERIC.OFFLINE')}\n• **${localize('GENERIC.COUNT', {
+                  count: guild.maximumMembers,
+                })}** ${localize('GENERIC.MAXIMUM')}`,
+              },
+              {
+                inline: true,
+                name: `${AppEmoji.systemMessage} ${localize('GENERIC.SYSTEM_MESSAGES')}`,
+                value: `${
+                  guild.systemChannelFlags.has(GuildSystemChannelFlags.SuppressJoinNotifications)
+                    ? AppEmoji.no
+                    : AppEmoji.check
+                } ${localize('GENERIC.JOIN_MESSAGES')}\n${
+                  guild.systemChannelFlags.has(GuildSystemChannelFlags.SuppressJoinNotificationReplies)
+                    ? AppEmoji.no
+                    : AppEmoji.check
+                } ${localize('GENERIC.WAVE_BUTTON')}\n${
+                  guild.systemChannelFlags.has(GuildSystemChannelFlags.SuppressPremiumSubscriptions)
+                    ? AppEmoji.no
+                    : AppEmoji.check
+                } ${localize('GENERIC.BOOST_MESSAGES')}\n${
+                  guild.systemChannelFlags.has(GuildSystemChannelFlags.SuppressGuildReminderNotifications)
+                    ? AppEmoji.no
+                    : AppEmoji.check
+                } ${localize('GENERIC.SETUP_TIPS')}\n• **${localize('GENERIC.CHANNEL.CHANNEL')}:** ${
+                  guild.systemChannel || localize('GENERIC.NONE')
+                }`,
+              },
+              {
+                inline: true,
+                name: `${AppEmoji.webhook} ${localize('GENERIC.WEBHOOKS')} [${localize('GENERIC.COUNT', {
+                  count: webhooks.size,
+                })}]`,
+                value: `• ${localize('GENERIC.COUNTER.CHANNEL_FOLLOWER', {
+                  count: webhooks.filter(e => e.isIncoming()).size,
+                })}\n• **${localize('GENERIC.COUNT', {
+                  count: webhooks.filter(e => e.isChannelFollower()).size,
+                })}** ${localize('GENERIC.INCOMING')}`,
+              },
+              {
+                inline: true,
+                name: `${AppEmoji.moderatorProgramsAlumni} ${localize('GENERIC.SECURITY')}`,
+                value: `${`${AppEmoji.banHammer} ${localize('GENERIC.COUNTER.BAN', {
+                  count: guild.bans.cache.size,
+                })}`}`,
+              },
+              {
+                name: `${AppEmoji.channelText} ${localize('GENERIC.CHANNELS.CHANNELS')} [${localize('GENERIC.COUNT', {
+                  count: guild.channels.cache.size,
+                })} / ${localize('GENERIC.COUNT', {
+                  count: 1500,
+                })}]`,
+                value: `• **${localize('GENERIC.COUNT', {
+                  count: guild.channels.cache.filter(
+                    c =>
+                      ![ChannelType.AnnouncementThread, ChannelType.PrivateThread, ChannelType.PublicThread].includes(
+                        c.type,
+                      ),
+                  ).size,
+                })} / ${localize('GENERIC.COUNT', {
+                  count: 500,
+                })}** | ${AppEmoji.channelCategory} ${localize('GENERIC.COUNT', {
+                  count: guild.channels.cache.filter(c => c.type === ChannelType.GuildCategory).size,
+                })} | ${AppEmoji.channelText} ${localize('GENERIC.COUNT', {
+                  count: guild.channels.cache.filter(c => c.type === ChannelType.GuildText).size,
+                })} | ${AppEmoji.channelAnnouncement} ${localize('GENERIC.COUNT', {
+                  count: guild.channels.cache.filter(c => c.type === ChannelType.GuildAnnouncement).size,
+                })} | ${AppEmoji.channelVoice} ${localize('GENERIC.COUNT', {
+                  count: guild.channels.cache.filter(c => c.type === ChannelType.GuildVoice).size,
+                })} | ${AppEmoji.channelStage} ${localize('GENERIC.COUNT', {
+                  count: guild.channels.cache.filter(c => c.type === ChannelType.GuildStageVoice).size,
+                })} | ${AppEmoji.channelForum} ${localize('GENERIC.COUNT', {
+                  count: guild.channels.cache.filter(c => c.type === ChannelType.GuildForum).size,
+                })}\n• **${localize('GENERIC.COUNT', {
+                  count: guild.channels.cache.filter(c =>
+                    [ChannelType.AnnouncementThread, ChannelType.PrivateThread, ChannelType.PublicThread].includes(
+                      c.type,
+                    ),
+                  ).size,
+                })} / ${localize('GENERIC.COUNT', {
+                  count: 1000,
+                })}** | ${AppEmoji.channelThreadPublic} ${localize('GENERIC.COUNT', {
+                  count: guild.channels.cache.filter(c => c.type === ChannelType.PublicThread).size,
+                })} | ${AppEmoji.channelThreadPrivate} ${localize('GENERIC.COUNT', {
+                  count: guild.channels.cache.filter(c => c.type === ChannelType.PrivateThread).size,
+                })} | ${AppEmoji.channelAnnouncementThread} ${localize('GENERIC.COUNT', {
+                  count: guild.channels.cache.filter(c => c.type === ChannelType.AnnouncementThread).size,
+                })}`,
+              },
+              {
+                inline: true,
+                name: `⭐ ${localize('GENERIC.FEATURES')}`,
+                value: arrayMap(guild.features, { mapFunction: a => `\`${a}\``, maxLength: 934, reverse: true }),
+              },
+            ),
+            rows = [new ActionRowBuilder<ButtonBuilder>()];
 
-          return interaction.editReply({ embeds: embs });
+          if (guild.icon) {
+            emb
+              .setThumbnail(guild.iconURL(imageOptions))
+              .setAuthor({ iconURL: guild.iconURL(imageOptions), name: guild.name });
+            rows[0].addComponents(
+              new ButtonBuilder()
+                .setLabel(localize('GENERIC.ICON'))
+                .setEmoji('🖼️')
+                .setStyle(ButtonStyle.Link)
+                .setURL(guild.iconURL(imageOptions)),
+            );
+          } else {
+            emb.setAuthor({ name: guild.name });
+          }
+
+          if (guild.rulesChannel || guild.publicUpdatesChannel) {
+            emb.spliceFields(10, 0, {
+              name: `${AppEmoji.public} ${localize('GENERIC.CHANNELS.COMMUNITY')}`,
+              value: `${guild.rulesChannel ? `• **${localize('GENERIC.RULES')}:** ${guild.rulesChannel}\n` : ''}${
+                guild.publicUpdatesChannel
+                  ? `• **${localize('GENERIC.PUBLIC_UPDATES')}:** ${guild.publicUpdatesChannel}\n`
+                  : ''
+              }`,
+            });
+          }
+          if (guild.features.includes(GuildFeature.VanityURL)) {
+            await guild.fetchVanityData();
+            emb.spliceFields(9, 0, {
+              inline: true,
+              name: `🔗 ${localize('GENERIC.VANITY_URL')}`,
+              value: `${`• **${localize('GENERIC.INVITE')}:** [\`${guild.vanityURLCode}\`](https://discord.gg/${
+                guild.vanityURLCode
+              })\n• ${localize('GENERIC.COUNTER.USES', { count: guild.vanityURLUses })}`}`,
+            });
+          }
+
+          const badges = [];
+          let description = '';
+
+          if (guild.verified) badges.push(AppEmoji.verified);
+          if (guild.partnered) badges.push(AppEmoji.partnered);
+          if (badges.length) description += `${badges.join(' ')}${guild.description ? '\n' : ''}`;
+          if (guild.description) description += guild.description;
+
+          if (description.length) emb.setDescription(description);
+
+          if (guild.icon && guild.banner && (guild.splash || guild.discoverySplash))
+            rows.push(new ActionRowBuilder<ButtonBuilder>());
+          if (guild.banner) {
+            rows[0].addComponents(
+              new ButtonBuilder()
+                .setLabel(localize('GENERIC.BANNER'))
+                .setEmoji('🖼️')
+                .setStyle(ButtonStyle.Link)
+                .setURL(guild.bannerURL(imageOptions)),
+            );
+          }
+          if (guild.splash) {
+            rows
+              .at(-1)
+              .addComponents(
+                new ButtonBuilder()
+                  .setLabel(localize('GENERIC.SPLASH'))
+                  .setEmoji('🖼️')
+                  .setStyle(ButtonStyle.Link)
+                  .setURL(guild.splashURL(imageOptions)),
+              );
+          }
+          if (guild.discoverySplash) {
+            rows
+              .at(-1)
+              .addComponents(
+                new ButtonBuilder()
+                  .setLabel(localize('GENERIC.DISCOVERY_SPLASH'))
+                  .setEmoji('🖼️')
+                  .setStyle(ButtonStyle.Link)
+                  .setURL(guild.discoverySplashURL(imageOptions)),
+              );
+          }
+
+          if (!rows[0].components.length) rows.shift();
+
+          return interaction.editReply({ components: rows, embeds: [emb] });
         }
         case 'settings': {
           return interaction.editReply({
             components: memberPermissions.has(PermissionFlagsBits.ManageGuild) ? settingsComponents() : [],
             embeds: [
-              embed({ title: `⚙️ ${localize('SERVER.OPTIONS.SETTINGS.TITLE')}` }).addFields(
-                settingsFields(guildSettings),
-              ),
+              embed({ title: `⚙️ ${localize('SERVER.OPTIONS.SETTINGS.TITLE')}` }).addFields(settingsFields(guildData)),
             ],
           });
         }
@@ -116,7 +372,7 @@ export default class Server extends Command {
       const { message } = interaction,
         { customId } = interaction;
 
-      if (message.interaction.user.id !== user.id) {
+      if (message.interactionMetadata.user.id !== user.id) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
           ephemeral: true,
@@ -127,15 +383,13 @@ export default class Server extends Command {
         await interaction.update({
           components: settingsComponents(),
           embeds: [
-            embed({ title: `⚙️ ${localize('SERVER.OPTIONS.SETTINGS.TITLE')}` }).addFields(
-              settingsFields(guildSettings),
-            ),
+            embed({ title: `⚙️ ${localize('SERVER.OPTIONS.SETTINGS.TITLE')}` }).addFields(settingsFields(guildData)),
           ],
         });
         return interaction.followUp({
           embeds: [
             embed({ type: 'error' }).setDescription(
-              localize('PERM.NO_LONGER', { perm: localize('PERM.MANAGE_GUILD') }),
+              localize('ERROR.PERM.USER.SINGLE.NO_LONGER', { perm: localize('PERM.MANAGE_GUILD') }),
             ),
           ],
           ephemeral: true,
@@ -147,9 +401,7 @@ export default class Server extends Command {
           return interaction.update({
             components: settingsComponents(),
             embeds: [
-              embed({ title: `⚙️ ${localize('SERVER.OPTIONS.SETTINGS.TITLE')}` }).addFields(
-                settingsFields(guildSettings),
-              ),
+              embed({ title: `⚙️ ${localize('SERVER.OPTIONS.SETTINGS.TITLE')}` }).addFields(settingsFields(guildData)),
             ],
           });
         }
@@ -172,8 +424,8 @@ export default class Server extends Command {
           let color: ColorResolvable,
             count: number,
             title: string,
-            channelIds = guildSettings?.allowNonEphemeral?.channelIds || [],
-            roleIds = guildSettings?.allowNonEphemeral?.roleIds || [];
+            channelIds = guildData?.allowNonEphemeral?.channelIds || [],
+            roleIds = guildData?.allowNonEphemeral?.roleIds || [];
 
           if (customId.endsWith('_submit')) {
             const { values } = interaction as
@@ -185,7 +437,7 @@ export default class Server extends Command {
             if (isRemove) {
               if (isChannel) {
                 channelIds = channelIds.filter(r => !values.includes(r));
-                guildSettings = await database.guilds.set(guildId, {
+                guildData = await database.guilds.set(guildId, {
                   allowNonEphemeral: {
                     channelIds,
                     roleIds,
@@ -197,7 +449,7 @@ export default class Server extends Command {
                   : localize('GENERIC.CHANNELS_AND_ROLES.REMOVING');
               } else {
                 roleIds = roleIds.filter(r => !values.includes(r));
-                guildSettings = await database.guilds.set(guildId, {
+                guildData = await database.guilds.set(guildId, {
                   allowNonEphemeral: {
                     channelIds,
                     roleIds,
@@ -215,7 +467,7 @@ export default class Server extends Command {
                 channelIds = channelIds.filter(r => !values.includes(r));
                 values.forEach(v => channelIds.push(v));
 
-                guildSettings = await database.guilds.set(guildId, {
+                guildData = await database.guilds.set(guildId, {
                   allowNonEphemeral: {
                     channelIds,
                     roleIds,
@@ -229,7 +481,7 @@ export default class Server extends Command {
                 roleIds = roleIds.filter(r => !values.includes(r));
                 values.forEach(v => roleIds.push(v));
 
-                guildSettings = await database.guilds.set(guildId, {
+                guildData = await database.guilds.set(guildId, {
                   allowNonEphemeral: {
                     channelIds,
                     roleIds,
@@ -245,7 +497,7 @@ export default class Server extends Command {
           } else if (customId.endsWith('_reset')) {
             if (isChannel) channelIds = [];
             else roleIds = [];
-            guildSettings = await database.guilds.set(guildId, {
+            guildData = await database.guilds.set(guildId, {
               allowNonEphemeral: { channelIds, roleIds },
             });
             title = localize(`GENERIC.${isChannel ? 'CHANNELS' : 'ROLES'}.RESET`);
@@ -305,8 +557,8 @@ export default class Server extends Command {
                       isEdit
                         ? 'GENERIC.CHANNELS.SELECT.DEFAULT'
                         : isRemove
-                        ? 'GENERIC.CHANNELS.SELECT.REMOVE'
-                        : 'GENERIC.CHANNELS.SELECT.ADD',
+                          ? 'GENERIC.CHANNELS.SELECT.REMOVE'
+                          : 'GENERIC.CHANNELS.SELECT.ADD',
                     ),
                   )
                   .setChannelTypes(
@@ -314,6 +566,7 @@ export default class Server extends Command {
                     ChannelType.GuildAnnouncement,
                     ChannelType.GuildText,
                     ChannelType.GuildVoice,
+                    ChannelType.GuildStageVoice,
                     ChannelType.PrivateThread,
                     ChannelType.PublicThread,
                   )
@@ -333,8 +586,8 @@ export default class Server extends Command {
                       isEdit
                         ? 'GENERIC.ROLES.SELECT.DEFAULT'
                         : isRemove
-                        ? 'GENERIC.ROLES.SELECT.REMOVE'
-                        : 'GENERIC.ROLES.SELECT.ADD',
+                          ? 'GENERIC.ROLES.SELECT.REMOVE'
+                          : 'GENERIC.ROLES.SELECT.ADD',
                     ),
                   )
                   .setMinValues(1)
@@ -347,7 +600,7 @@ export default class Server extends Command {
                   .setDisabled(isEdit || (isRemove && !roleIds.length)),
               ),
             ],
-            embeds: [embed({ color, title }).addFields(settingsFields(guildSettings))],
+            embeds: [embed({ color, title }).addFields(settingsFields(guildData))],
           });
         }
       }

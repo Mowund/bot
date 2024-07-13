@@ -1,12 +1,20 @@
-import { ApplicationCommandOptionType, BaseInteraction, Colors } from 'discord.js';
+import {
+  ApplicationCommandOptionType,
+  BaseInteraction,
+  Colors,
+  ApplicationIntegrationType,
+  InteractionContextType,
+} from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
-import { imgOpts } from '../defaults.js';
+import { imageOptions } from '../defaults.js';
 
 export default class Kill extends Command {
   constructor() {
     super([
       {
+        contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
         description: 'KILL.DESCRIPTION',
+        integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
         name: 'KILL.NAME',
         options: [
           {
@@ -29,10 +37,9 @@ export default class Kill extends Command {
 
     return interaction.reply({
       embeds: [
-        embed()
-          .setColor(Colors.Red)
+        embed({ color: Colors.Red })
           .setAuthor({
-            iconURL: (memberO ?? userO).displayAvatarURL(imgOpts),
+            iconURL: (memberO ?? userO).displayAvatarURL(imageOptions),
             name: memberO?.displayName ?? userO.username,
           })
           .setDescription(localize('KILL.DIED')),

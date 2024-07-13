@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars */
 
+import { flatten, Snowflake } from 'discord.js';
 import { App } from '../App.js';
 
 export class Base {
-  public declare readonly client: App;
+  readonly client: App;
+  id: Snowflake;
 
   constructor(client: App) {
     Object.defineProperty(this, 'client', { value: client });
@@ -21,5 +23,13 @@ export class Base {
     const clone = this._clone();
     this._patch(data);
     return clone;
+  }
+
+  toJSON(...props) {
+    return flatten(this, ...props);
+  }
+
+  valueOf() {
+    return this.id;
   }
 }

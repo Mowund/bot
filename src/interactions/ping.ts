@@ -1,11 +1,13 @@
-import { ShardClientUtil, BaseInteraction } from 'discord.js';
+import { ShardClientUtil, BaseInteraction, InteractionContextType, ApplicationIntegrationType } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 
 export default class Ping extends Command {
   constructor() {
     super([
       {
+        contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
         description: 'PING.DESCRIPTION',
+        integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
         name: 'PING.NAME',
       },
     ]);
@@ -32,11 +34,10 @@ export default class Ping extends Command {
 
     if (interaction.inGuild()) {
       emb.addFields({
-        name: `💎 ${localize('PING.SHARD')}`,
-        value: `**${localize('GENERIC.CURRENT')}:** \`${ShardClientUtil.shardIdForGuildId(
-          guildId,
-          client.shard.count,
-        )}\`\n**${localize('GENERIC.TOTAL')}:** \`${client.shard.count}\``,
+        name: `💎 ${localize('GENERIC.SHARD')}`,
+        value: `**${localize('GENERIC.CURRENT')}:** \`${
+          ShardClientUtil.shardIdForGuildId(guildId, client.shard.count) + 1
+        }\`\n**${localize('GENERIC.TOTAL')}:** \`${client.shard.count}\``,
       });
     }
 

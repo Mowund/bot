@@ -1,18 +1,20 @@
 import { readdirSync } from 'node:fs';
-import { inspect } from 'node:util';
+import nodeUtil from 'node:util';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import {
+  ApplicationCommand,
   ApplicationCommandOptionType,
   ApplicationCommandType,
   BaseInteraction,
+  Collection,
   Colors,
-  Guild,
   PermissionFlagsBits,
+  Snowflake,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
-import { botOwners } from '../defaults.js';
-import { truncate } from '../utils.js';
+import * as defaults from '../defaults.js';
+import * as utils from '../utils.js';
 
 export default class Owner extends Command {
   constructor() {
@@ -125,7 +127,7 @@ export default class Owner extends Command {
 
     const { client, embed, isEphemeral, localize } = args,
       { chalk } = client,
-      { options, user } = interaction,
+      { member, options, user } = interaction,
       idO = options.getString('id'),
       guildO = options.getString('guild'),
       __filename = fileURLToPath(import.meta.url),
@@ -133,19 +135,13 @@ export default class Owner extends Command {
 
     await interaction.deferReply({ ephemeral: isEphemeral });
 
-    if (!botOwners.includes(user.id)) {
+    if (!defaults.botOwners.includes(user.id)) {
       return interaction.editReply({
         embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.DEVELOPERS_ONLY'))],
       });
     }
 
-    const guild = (await client.shard
-      .broadcastEval((c, { id }) => c.guilds.cache.get(id), {
-        context: {
-          id: guildO,
-        },
-      })
-      .then(gA => gA.find(g => g))) as Guild;
+    const guild = await client.fetchGuild(guildO);
 
     if (guildO && !guild) {
       return interaction.editReply({
@@ -164,18 +160,17 @@ export default class Owner extends Command {
           let evaled = awaitO ? await eval(script) : eval(script);
           const evaledType = typeof evaled;
 
-          if (evaledType !== 'string') evaled = inspect(evaled);
+          if (evaledType !== 'string') evaled = nodeUtil.inspect(evaled);
 
           return interaction.editReply({
             embeds: [
-              embed({ type: 'success' }).addFields(
-                { name: localize('GENERIC.OUTPUT'), value: `\`\`\`js\n${truncate(evaled, 1012)}\`\`\`` },
-                { name: localize('GENERIC.TYPE'), value: `\`\`\`js\n${evaledType}\`\`\`` },
-              ),
+              embed({ type: 'success' })
+                .setDescription(`\`\`\`ts\n${utils.truncate(evaled, 4087)}\`\`\``)
+                .addFields({ name: localize('GENERIC.TYPE'), value: `\`\`\`ts\n${evaledType}\`\`\`` }),
             ],
           });
         } catch (err) {
-          console.log(err);
+          console.error(err);
           return interaction.editReply({
             embeds: [
               embed({ type: 'error' }).addFields({
@@ -192,25 +187,24 @@ export default class Owner extends Command {
       case 'command': {
         switch (options.getSubcommand()) {
           case 'update': {
-            let updCmds = [],
-              delCmds = [];
             const embs = [],
               appCmds = client.application.commands,
               fAppCmds = await appCmds.fetch({ withLocalizations: true }),
               fGdCmds =
                 (guild ?? interaction.guild) &&
-                (await appCmds.fetch({ guildId: (guild ?? interaction.guild).id, withLocalizations: true }));
+                (await appCmds.fetch({ guildId: (guild ?? interaction.guild).id, withLocalizations: true })),
+              updCmds = new Collection<Snowflake, ApplicationCommand>();
 
-            fAppCmds.each(c => (delCmds = delCmds.concat(c)));
-            if (fGdCmds) fGdCmds.each(c => (delCmds = delCmds.concat(c)));
+            let delCmds = new Collection<Snowflake, ApplicationCommand>(fAppCmds);
+            if (fGdCmds) delCmds = delCmds.concat(fGdCmds);
 
             try {
               for (const file of readdirSync(__dirname).filter(f => f.endsWith('.js'))) {
-                const event = new (await import(`./${file}`)).default() as Command;
-                for (const dt of event.structure) {
-                  client.localizeCommand(dt);
+                const command = new (await import(`./${file}`)).default() as Command;
+                for (const dt of command.structure) {
+                  client.localizeData(dt);
 
-                  const gOnly = event.options?.guildOnly?.find(i => i === (guild ?? interaction.guild)?.id),
+                  const gOnly = command.options?.guildOnly?.find(i => i === (guild ?? interaction.guild)?.id),
                     findCmd = idO
                       ? (await appCmds.fetch(idO, {
                           guildId: (guild ?? interaction.guild).id,
@@ -222,23 +216,23 @@ export default class Owner extends Command {
                     dataEquals = searchCmd?.equals(dt, true);
 
                   if (dt.name === findCmd.name) {
-                    if (interaction.inGuild() && event.options?.guildOnly) {
+                    if (interaction.inGuild() && command.options?.guildOnly) {
                       if (idO) delCmds = delCmds.filter(c => c.name === dt.name);
 
                       const found = delCmds.find(c => c.name === dt.name);
                       delCmds =
-                        found && event.options?.guildOnly?.includes(found?.guildId)
+                        found && command.options?.guildOnly?.includes(found?.guildId)
                           ? delCmds.filter(c => c.name !== dt.name)
                           : delCmds;
 
                       if ((!dataEquals || idO) && gOnly) {
                         const cmd = await appCmds.create(dt, guild?.id || gOnly);
-                        updCmds = updCmds.concat(cmd);
+                        updCmds.set(cmd.id, cmd);
                         console.log(
                           chalk.green(`Updated guild (${guild?.id || gOnly}) command: ${cmd.name} (${cmd.id})`),
                         );
                       }
-                    } else if (!event.options?.guildOnly) {
+                    } else if (!command.options?.guildOnly) {
                       if (idO) delCmds = delCmds.filter(c => c.name === dt.name);
 
                       const found = delCmds.find(c => c.name === dt.name);
@@ -246,7 +240,7 @@ export default class Owner extends Command {
 
                       if ((!dataEquals || idO) && !guild) {
                         const cmd = await appCmds.create(dt);
-                        updCmds = updCmds.concat(cmd);
+                        updCmds.set(cmd.id, cmd);
                         console.log(chalk.yellow(`Updated global command: ${cmd.name} (${cmd.id})`));
                       }
                     }
@@ -254,7 +248,11 @@ export default class Owner extends Command {
                 }
               }
             } catch (err) {
-              console.error(chalk.red('An error occured while reloading an application command:\n'), err);
+              await client.reportError(err, {
+                embed: { footer: 'requested', member, user },
+                message: 'An error occured while reloading an application command',
+              });
+
               return interaction.editReply({
                 embeds: [
                   embed({ type: 'error' }).setDescription(
@@ -264,21 +262,19 @@ export default class Owner extends Command {
               });
             }
 
-            delCmds.forEach(c => {
-              if (c.guildId) {
-                (guild ?? interaction.guild).commands.delete(c.id);
-                console.log(
-                  chalk.red(`Deleted guild (${(guild ?? interaction.guild).id}) command: ${c.name} (${c.id})`),
-                );
+            delCmds.forEach(async ({ guildId, name }, id) => {
+              if (guildId) {
+                await (guild ?? interaction.guild).commands.delete(id);
+                console.log(chalk.red(`Deleted guild (${(guild ?? interaction.guild).id}) command: ${name} (${id})`));
               } else {
-                appCmds.delete(c.id);
-                console.log(chalk.red(`Deleted global command: ${c.name} (${c.id})`));
+                await appCmds.delete(id);
+                console.log(chalk.red(`Deleted global command: ${name} (${id})`));
               }
             });
 
             client.globalCommandCount = client.countCommands(await appCmds.fetch());
 
-            const cmdMap = (cmds, gOnly = false) =>
+            const cmdMap = (cmds: Collection<string, ApplicationCommand>, gOnly = false) =>
                 cmds
                   .filter(o => (gOnly ? o.guildId : !o.guildId))
                   .map(o =>
@@ -287,8 +283,8 @@ export default class Owner extends Command {
                           o.type === ApplicationCommandType.Message
                             ? localize('GENERIC.MESSAGE')
                             : o.type === ApplicationCommandType.User
-                            ? localize('GENERIC.USER')
-                            : localize('GENERIC.CHAT')
+                              ? localize('GENERIC.USER')
+                              : localize('GENERIC.CHAT')
                         }**: \`${o.name}\``
                       : '',
                   )
@@ -298,7 +294,7 @@ export default class Owner extends Command {
               delCmdGlobal = cmdMap(delCmds),
               delCmdGuild = cmdMap(delCmds, true);
 
-            if (updCmds.length) {
+            if (updCmds.size) {
               const e = embed({ title: localize('OWNER.OPTIONS.COMMAND.COMMANDS.UPDATED'), type: 'success' });
               if (updCmdGlobal) {
                 e.addFields({
@@ -319,10 +315,8 @@ export default class Owner extends Command {
               }
               embs.push(e);
             }
-            if (delCmds.length) {
-              const e = embed({ title: `🗑️ ${localize('OWNER.OPTIONS.COMMAND.COMMANDS.DELETED')}` }).setColor(
-                Colors.Red,
-              );
+            if (delCmds.size) {
+              const e = embed({ color: Colors.Red, title: `🗑️ ${localize('OWNER.OPTIONS.COMMAND.COMMANDS.DELETED')}` });
               if (delCmdGlobal) {
                 e.addFields({
                   inline: true,
@@ -358,7 +352,32 @@ export default class Owner extends Command {
             await interaction.editReply({
               embeds: [embed({ type: 'loading' }).setDescription(localize('OWNER.OPTIONS.LOCALIZATION.UPDATING'))],
             });
+
             await client.updateLocalizations();
+
+            const metadata = [
+              {
+                description: 'ROLE_CONNECTION.LEVEL.DESCRIPTION',
+                key: 'level',
+                name: 'ROLE_CONNECTION.LEVEL.NAME',
+                type: 2,
+              },
+              {
+                description: 'ROLE_CONNECTION.MOWANS.DESCRIPTION',
+                key: 'mowans',
+                name: 'ROLE_CONNECTION.MOWANS.NAME',
+                type: 2,
+              },
+              {
+                description: 'ROLE_CONNECTION.PLAYING_SINCE.DESCRIPTION',
+                key: 'playingsince',
+                name: 'ROLE_CONNECTION.PLAYING_SINCE.NAME',
+                type: 6,
+              },
+            ];
+            for (const d of metadata) client.localizeData(d);
+            await client.application.editRoleConnectionMetadataRecords(metadata);
+
             return interaction.editReply({
               embeds: [embed({ type: 'success' }).setDescription(localize('OWNER.OPTIONS.LOCALIZATION.UPDATED'))],
             });

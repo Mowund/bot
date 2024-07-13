@@ -1,3 +1,4 @@
+import util from 'node:util';
 import {
   ActionRowBuilder,
   ApplicationCommandOptionType,
@@ -12,23 +13,28 @@ import {
   StringSelectMenuInteraction,
   ChannelSelectMenuBuilder,
   ChannelSelectMenuInteraction,
-  ChannelType,
   ButtonInteraction,
   ModalBuilder,
   ModalMessageModalSubmitInteraction,
   TextInputBuilder,
   TextInputStyle,
+  ChannelType,
+  ApplicationIntegrationType,
+  InteractionContextType,
 } from 'discord.js';
 import parseDur from 'parse-duration';
+import chalk from 'chalk';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
-import { emojis } from '../defaults.js';
+import { AppEmoji } from '../defaults.js';
 import { disableComponents, getFieldValue, msToTime, toUTS, truncate } from '../utils.js';
 
 export default class Reminder extends Command {
   constructor() {
     super([
       {
+        contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
         description: 'REMINDER.DESCRIPTION',
+        integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
         name: 'REMINDER.NAME',
         options: [
           {
@@ -63,7 +69,7 @@ export default class Reminder extends Command {
   }
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
-    const { client, embed, isEphemeral, localize, userSettings } = args,
+    const { client, embed, isEphemeral, localize, userData } = args,
       { channel, user } = interaction,
       minTime = 1000 * 60 * 3,
       maxTime = 1000 * 60 * 60 * 24 * 365.25 * 100,
@@ -133,7 +139,7 @@ export default class Reminder extends Command {
 
           await interaction.deferReply({ ephemeral: isEphemeral });
 
-          const reminder = await userSettings.reminders.set(reminderId, {
+          const reminder = await userData.reminders.set(reminderId, {
               channelId: interaction.guild ? channel.id : null,
               content: contentO,
               msTime,
@@ -152,7 +158,7 @@ export default class Reminder extends Command {
               },
               {
                 inline: true,
-                name: `${emojis.channelText} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
+                name: `${AppEmoji.channelText} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
                 value: reminder.channelId
                   ? `<#${reminder.channelId}> - \`${reminder.channelId}\``
                   : `**${localize('GENERIC.DIRECT_MESSAGE')}**`,
@@ -211,7 +217,7 @@ export default class Reminder extends Command {
               .forEach((r: Record<string, any>) => {
                 selectMenu.addOptions({
                   description: truncate(r.content, 100),
-                  label: new Date(r.timestamp).toLocaleString(userSettings.locale),
+                  label: new Date(r.timestamp).toLocaleString(userData.locale),
                   value: r.id,
                 });
                 emb.addFields({
@@ -222,9 +228,9 @@ export default class Reminder extends Command {
 
             rows.push(new ActionRowBuilder().addComponents(selectMenu));
           } else {
-            emb = embed({ title: `🔕 ${localize('REMINDER.LIST')}` })
-              .setColor(Colors.Red)
-              .setDescription(localize('ERROR.REMINDER.EMPTY'));
+            emb = embed({ color: Colors.Red, title: `🔕 ${localize('REMINDER.LIST')}` }).setDescription(
+              localize('ERROR.REMINDER.EMPTY'),
+            );
           }
 
           return interaction.editReply({
@@ -245,8 +251,8 @@ export default class Reminder extends Command {
         urlArgs = new URLSearchParams(message.embeds.at(-1)?.footer?.iconURL);
 
       if (
-        !(message.interaction?.user.id === user.id || urlArgs.get('messageOwners') === user.id) &&
-        !(!message.interaction && isList)
+        !(message.interactionMetadata?.user.id === user.id || urlArgs.get('messageOwners') === user.id) &&
+        !(!message.interactionMetadata && isList)
       ) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
@@ -259,9 +265,9 @@ export default class Reminder extends Command {
           ? interaction.values[0]
           : urlArgs.get('reminderId') || getFieldValue(message.embeds[0], localize('GENERIC.ID'))?.replaceAll('`', '');
 
-      let reminder = reminderId ? await userSettings.reminders.fetch({ reminderId }) : null,
+      let reminder = reminderId ? await userData.reminders.fetch({ reminderId }) : null,
         emb = embed(
-          message.interaction?.user.id === client.user.id || !message.interaction
+          message.interactionMetadata?.user.id === client.user.id || !message.interactionMetadata
             ? { addParams: { messageOwners: user.id }, footer: 'interacted' }
             : { footer: 'interacted' },
         );
@@ -280,7 +286,7 @@ export default class Reminder extends Command {
             },
             {
               inline: true,
-              name: `${emojis.channelText} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
+              name: `${AppEmoji.channelText} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
               value: reminder.channelId
                 ? `<#${reminder.channelId}> - \`${reminder.channelId}\``
                 : `**${localize('GENERIC.DIRECT_MESSAGE')}**`,
@@ -325,7 +331,7 @@ export default class Reminder extends Command {
           if (message.webhookId) {
             await interaction.editReply({
               components: disableComponents(message.components, {
-                defaultValues: [{ customId: 'reminder_select', value: reminderId }],
+                defaultValues: [{ customId: 'reminder_select', values: [reminderId] }],
               }),
             });
           }
@@ -347,7 +353,7 @@ export default class Reminder extends Command {
               ),
             );
           } else {
-            const reminders = await userSettings.reminders.fetch(),
+            const reminders = await userData.reminders.fetch(),
               selectMenu = new StringSelectMenuBuilder()
                 .setPlaceholder(localize('REMINDER.SELECT_LIST'))
                 .setCustomId('reminder_select');
@@ -359,7 +365,7 @@ export default class Reminder extends Command {
                 .forEach((r: Record<string, any>) => {
                   selectMenu.addOptions({
                     description: truncate(r.content, 100),
-                    label: new Date(r.timestamp).toLocaleString(userSettings.locale),
+                    label: new Date(r.timestamp).toLocaleString(userData.locale),
                     value: r.id,
                   });
                   emb.addFields({
@@ -377,23 +383,25 @@ export default class Reminder extends Command {
             }
           }
 
+          console.log(util.inspect(rows, { depth: null }));
           if ((!isList || customId === 'reminder_select') && !reminder) {
+            console.log(chalk.red('1'));
             await interaction.followUp({
-              embeds: [
-                embed({ type: 'error' }).setDescription(
-                  localize('ERROR.REMINDER.NOT_FOUND', { reminderId: reminderId }),
-                ),
-              ],
+              embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.REMINDER.NOT_FOUND', { reminderId }))],
               ephemeral: true,
             });
             if (!message.webhookId) {
+              console.log(chalk.green('2'));
               return interaction.editReply({
                 components: disableComponents(message.components, { enabledComponents: ['reminder_list'] }),
               });
             }
           }
 
+          console.log(chalk.yellow('3'));
           if (!message.webhookId) return interaction.followUp({ components: rows, embeds: [emb], ephemeral: true });
+
+          console.log(chalk.blue('4'));
           return interaction.editReply({
             components: rows,
             embeds: [emb],
@@ -402,7 +410,7 @@ export default class Reminder extends Command {
         case 'reminder_edit':
         case 'reminder_recursive': {
           if (customId === 'reminder_recursive') {
-            reminder = await userSettings.reminders.set(reminderId, {
+            reminder = await userData.reminders.set(reminderId, {
               isRecursive: !reminder.isRecursive,
             });
 
@@ -449,7 +457,7 @@ export default class Reminder extends Command {
                 .setCustomId('reminder_edit_content'),
               new ButtonBuilder()
                 .setLabel(localize('GENERIC.CHANNEL.EDIT'))
-                .setEmoji(emojis.channelText)
+                .setEmoji(AppEmoji.channelText)
                 .setStyle(ButtonStyle.Secondary)
                 .setCustomId('reminder_edit_channel'),
               new ButtonBuilder()
@@ -492,7 +500,7 @@ export default class Reminder extends Command {
           });
         }
         case 'reminder_delete_confirm': {
-          await userSettings.reminders.delete(reminderId);
+          await userData.reminders.delete(reminderId);
           rows.push(
             new ActionRowBuilder().addComponents(
               new ButtonBuilder()
@@ -539,11 +547,11 @@ export default class Reminder extends Command {
             });
           }
 
-          reminder = await userSettings.reminders.set(reminderId, {
+          reminder = await userData.reminders.set(reminderId, {
             content: inputF,
           });
 
-          return (interaction as ButtonInteraction).update({
+          return (interaction as ModalMessageModalSubmitInteraction).update({
             embeds: [
               emb
                 .setTitle(`🔔 ${localize('GENERIC.CONTENT.EDITED')}`)
@@ -557,9 +565,10 @@ export default class Reminder extends Command {
         }
         case 'reminder_dm':
         case 'reminder_edit_channel_submit':
-          reminder = await userSettings.reminders.set(reminderId, {
+          reminder = await userData.reminders.set(reminderId, {
             channelId:
-              customId === 'reminder_dm' ? null : (interaction as ChannelSelectMenuInteraction).channels.first().id,
+              (customId !== 'reminder_dm' && (interaction as ChannelSelectMenuInteraction).channels.first()?.id) ||
+              null,
           });
         // eslint-disable-next-line no-fallthrough
         case 'reminder_edit_channel': {
@@ -574,19 +583,22 @@ export default class Reminder extends Command {
                   .setCustomId('reminder_edit'),
                 new ButtonBuilder()
                   .setLabel(localize(`GENERIC.${reminder.channelId ? 'NOT_DIRECT_MESSAGE' : 'DIRECT_MESSAGE'}`))
-                  .setEmoji(emojis.user)
+                  .setEmoji(AppEmoji.user)
                   .setStyle(reminder.channelId ? ButtonStyle.Secondary : ButtonStyle.Success)
                   .setCustomId('reminder_dm')
                   .setDisabled(!reminder.channelId),
               ),
               new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
                 new ChannelSelectMenuBuilder()
+                  .setMinValues(0)
+                  .setDefaultChannels([reminder.channelId].filter(Boolean))
                   .setPlaceholder(localize('GENERIC.CHANNEL.SELECT_PLACEHOLDER'))
                   .setChannelTypes(
                     ChannelType.AnnouncementThread,
                     ChannelType.GuildAnnouncement,
                     ChannelType.GuildText,
                     ChannelType.GuildVoice,
+                    ChannelType.GuildStageVoice,
                     ChannelType.PrivateThread,
                     ChannelType.PublicThread,
                   )
@@ -598,7 +610,7 @@ export default class Reminder extends Command {
                 .setTitle(`🔔 ${localize(`GENERIC.CHANNEL.${isEdit ? 'EDITING' : 'EDITED'}`)}`)
                 .spliceFields(2, 1, {
                   inline: true,
-                  name: `${emojis.channelText} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
+                  name: `${AppEmoji.channelText} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
                   value: reminder.channelId
                     ? `<#${reminder.channelId}> - \`${reminder.channelId}\``
                     : `**${localize('GENERIC.DIRECT_MESSAGE')}**`,

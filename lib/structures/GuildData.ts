@@ -5,8 +5,8 @@ import { App } from '../App.js';
 import { Base } from './Base.js';
 
 export class GuildData extends Base {
-  id: Snowflake;
   allowNonEphemeral?: { channelIds?: Snowflake[]; roleIds?: Snowflake[] };
+  autorole?: { allowBots?: boolean; enabled?: boolean; roleId?: Snowflake };
 
   constructor(client: App, data: GuildData) {
     super(client);
@@ -16,14 +16,15 @@ export class GuildData extends Base {
       channelIds: data.allowNonEphemeral?.channelIds && Object.values(data.allowNonEphemeral.channelIds),
       roleIds: data.allowNonEphemeral?.roleIds && Object.values(data.allowNonEphemeral.roleIds),
     };
+    this.autorole = data.autorole;
   }
 
-  set(data: GuildDataSetOptions, { merge = true, setFromCache = false } = {}) {
-    return this.client.database.guilds.set(this.id, data, { merge, setFromCache });
+  set(data: GuildDataSetOptions, { merge = true } = {}) {
+    return this.client.database.guilds.set(this.id, data, { merge });
   }
 
-  delete({ leaveCached = false } = {}) {
-    return this.client.database.guilds.delete(this.id, { leaveCached });
+  delete() {
+    return this.client.database.guilds.delete(this.id);
   }
 
   _patch(data: any) {
@@ -33,6 +34,8 @@ export class GuildData extends Base {
         roleIds: Object.values(data.allowNonEphemeral?.roleIds),
       };
     }
+    if ('autorole' in data) this.autorole = data.autoRole;
+
     return data;
   }
 }

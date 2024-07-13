@@ -13,33 +13,22 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
     super(client, GuildData);
   }
 
-  async set(guild: GuildsDatabaseResolvable, data: GuildDataSetOptions, { merge = true, setFromCache = false } = {}) {
+  async set(guild: GuildsDatabaseResolvable, data: GuildDataSetOptions, { merge = true } = {}) {
     const id = this.resolveId(guild);
-    if (!id) throw new DiscordjsTypeError(DiscordjsErrorCodes.InvalidType, 'guild', 'GuildsDatabaseResolvable', true);
+    if (!id) throw new Error('Invalid guild type: GuildsDatabaseResolvable');
 
     const db = this.client.firestore.collection('guilds').doc(id),
-      existing = this.cache.get(id);
-    let cachedData =
-        (existing ||
+      oldData =
+        (this.cache.get(id) ||
           (((await db.get()) as firestore.DocumentSnapshot<firestore.DocumentData>)?.data() as
             | GuildData
             | undefined)) ??
         null,
-      newData = existing ? data : Object.assign(data, { id });
+      newData = oldData ? data : Object.assign(data, { id });
 
-    if (!existing) {
-      cachedData = new GuildData(this.client, Object.assign(Object.create(cachedData), newData));
-      this.cache.set(id, cachedData);
-    } else {
-      cachedData._patch(newData);
-    }
-
-    if (setFromCache) newData = cachedData;
-    await (db as firestore.DocumentReference<firestore.DocumentData>).set(removeEmpty(newData), {
-      merge: merge,
-    });
-
-    return cachedData;
+    await db.set(removeEmpty(newData), { merge });
+    await this.client.database.cacheDelete('guilds', id);
+    return this.cache.set(id, new GuildData(this.client, Object.assign(Object.create(oldData || {}), newData))).get(id);
   }
 
   async fetch(id: Snowflake, { cache = true, force = false } = {}) {
@@ -51,9 +40,10 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
 
     data = new GuildData(this.client, Object.assign(Object.create(data), data));
     if (cache) {
-      if (existing) existing._patch(data);
-      else this.cache.set(id, data);
+      await this.client.database.cacheDelete('guilds', id);
+      this.cache.set(id, data);
     }
+
     return data;
   }
 
@@ -71,25 +61,22 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
         data.set(z.id, new GuildData(this.client, Object.assign(Object.create(d), d)));
       }
     }
-
     if (cache) {
-      data.forEach(d => {
-        const cachedData = this.cache.get(d.id);
-        if (cachedData) cachedData._patch(d);
-        else this.cache.set(d.id, d);
+      data.forEach(async d => {
+        await this.client.database.cacheDelete('guilds', d.id);
+        this.cache.set(d.id, d);
       });
     }
 
     return data;
   }
 
-  async delete(guild: GuildsDatabaseResolvable, { leaveCached = false } = {}) {
+  async delete(guild: GuildsDatabaseResolvable) {
     const id = this.resolveId(guild);
-    if (!id) throw new DiscordjsTypeError(DiscordjsErrorCodes.InvalidType, 'guild', 'GuildsDatabaseResolvable', true);
+    if (!id) throw new Error('Invalid guild type: GuildsDatabaseResolvable');
 
     await this.client.firestore.collection('guilds').doc(id).delete();
-    if (!leaveCached) this.cache.delete(id);
-    return this.cache;
+    return this.client.database.cacheDelete('guilds', id);
   }
 }
 

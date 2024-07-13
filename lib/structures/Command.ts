@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars */
 
-import { ApplicationCommandData, BaseInteraction, ColorResolvable, EmbedBuilder } from 'discord.js';
+import { ApplicationCommandData, BaseInteraction, EmbedBuilder } from 'discord.js';
+import { I18n } from 'i18n';
 import { App, EmbedBuilderOptions } from '../App.js';
 import { GuildData } from './GuildData.js';
 import { UserData } from './UserData.js';
@@ -8,7 +9,6 @@ import { UserData } from './UserData.js';
 export class Command {
   structure: ApplicationCommandData[];
   options?: CommandOptions;
-
   constructor(structure: ApplicationCommandData[], options?: CommandOptions) {
     this.structure = structure;
     this.options = options;
@@ -18,6 +18,7 @@ export class Command {
 }
 
 export interface CommandOptions {
+  redirectIds?: string[];
   guildOnly?: string[];
 }
 
@@ -34,7 +35,7 @@ export interface CommandArgs {
    */
   embed(options?: Omit<EmbedBuilderOptions, 'member' | 'user'>): EmbedBuilder;
   isEphemeral: boolean;
-  guildSettings: GuildData | undefined;
+  guildData: GuildData | undefined;
   localize: (phrase: string, replace?: Record<string, any>) => string;
-  userSettings: UserData | undefined;
+  userData: UserData | undefined;
 }

@@ -13,23 +13,29 @@ import {
   parseEmoji,
   BaseInteraction,
   GuildEmoji,
-  Collection,
   ModalMessageModalSubmitInteraction,
   ButtonInteraction,
   Colors,
   RoleSelectMenuBuilder,
   RoleSelectMenuInteraction,
+  Integration,
+  GuildFeature,
+  Snowflake,
+  ApplicationIntegrationType,
+  InteractionContextType,
 } from 'discord.js';
-import { RawGuildData, RawGuildEmojiData } from 'discord.js/typings/rawDataTypes.js';
-import { collMap, toUTS, getFieldValue, decreaseSizeCDN, disableComponents } from '../utils.js';
-import { emojis, imgOpts, premiumLimits } from '../defaults.js';
+import { collMap, toUTS, getFieldValue, decreaseSizeCDN, disableComponents, beforeMatch, arrayMap } from '../utils.js';
+import { AppEmoji, imageOptions, premiumLimits } from '../defaults.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
+import { App } from '../../lib/App.js';
 
 export default class Emoji extends Command {
   constructor() {
     super([
       {
+        contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
         description: 'EMOJI.DESCRIPTION',
+        integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
         name: 'EMOJI.NAME',
         options: [
           {
@@ -74,21 +80,24 @@ export default class Emoji extends Command {
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { client, embed, isEphemeral, localize } = args,
       { appPermissions, guild, memberPermissions, user } = interaction,
-      emojiLimit = premiumLimits[guild.premiumTier].emojis;
+      emojiLimit = guild
+        ? (guild.features as GuildFeature | string[]).includes('MORE_STICKERS') && guild.premiumTier < 3
+          ? 200
+          : premiumLimits[guild.premiumTier].emojis
+        : 0;
 
     let addBtnVsby = 0,
       editBtnVsby = 2;
 
     if (interaction.isChatInputCommand()) {
-      const { options } = interaction;
-
-      await interaction.deferReply({ ephemeral: isEphemeral });
-
-      const isInfo = options.getSubcommand() === 'info',
+      const { options } = interaction,
+        isInfo = options.getSubcommand() === 'info',
+        imageO = options.getAttachment('image'),
         inputO = isInfo ? options.getString('emoji') : options.getString('name'),
         parsedEmoji = isInfo ? parseEmoji(inputO) : { animated: false, id: null, name: null };
 
-      let emj: GuildEmoji | [RawGuildEmojiData, RawGuildData, string, number],
+      let emj: GuildEmoji,
+        shardEmj: [GuildEmoji & { guildId: Snowflake }, Snowflake[], Integration],
         emjId = parsedEmoji.id || inputO.match(/\d+/g)?.[0],
         emjName = parsedEmoji.name;
 
@@ -97,64 +106,70 @@ export default class Emoji extends Command {
           client.emojis.cache.get(emjId) ||
           (!parsedEmoji.id &&
             (guild?.emojis.cache.find(({ name }) => name === emjName) ||
-              guild?.emojis.cache.find(({ name }) => name.toLowerCase() === emjName.toLowerCase()))) ||
-          ((await client.shard
-            .broadcastEval(
-              async (c, { d, g }) => {
-                const cM = async (w: Collection<string, any>) => {
-                    const y = (await import('discord.js'))
-                      .discordSort(w)
-                      .map(x => (bE.guild.id !== g?.id ? `\`${x.id}\`` : `${x}`))
-                      .reverse();
-                    let z = y;
-                    if (z.length > 40) (z = z.slice(0, 40)).push(`\`+${y.length - z.length}\``);
+              guild?.emojis.cache.find(({ name }) => name.toLowerCase() === emjName.toLowerCase())));
+        shardEmj =
+          (client.allShardsReady &&
+            !emj &&
+            ((await client.shard
+              .broadcastEval(
+                async (c: App, { d }) => {
+                  const bE = c.emojis.cache.get(d);
 
-                    return z.join(', ');
-                  },
-                  bE = c.emojis.cache.get(d) as GuildEmoji;
-
-                return bE && [bE, bE.guild, await cM(bE.roles.cache), bE.roles.cache.size];
-              },
-              {
-                context: {
-                  d: emjId,
-                  g: guild as unknown as RawGuildData,
+                  if (bE) {
+                    if (!bE.managed) await bE.fetchAuthor();
+                    return [
+                      bE,
+                      (await import('discord.js'))
+                        .discordSort(bE.roles.cache)
+                        .map(({ id }) => id)
+                        .reverse(),
+                      bE.managed &&
+                        (await bE.guild.fetchIntegrations()).get(bE.roles.cache.first()?.tags.integrationId),
+                    ];
+                  }
                 },
-              },
-            )
-            .then(eA => eA.find(e => e))) as [RawGuildEmojiData, RawGuildData, string, number]);
+                {
+                  context: {
+                    d: emjId,
+                  },
+                },
+              )
+              .then(eA => eA.find(e => e))) as typeof shardEmj)) ||
+          null;
       } else {
-        const imageO = options.getAttachment('image'),
-          alphanumI = /[^\w]/g.test(inputO) && (inputO.length < 2 || inputO.length > 32 ? 'also' : 'only'),
+        const alphanumI = /[^\w]/g.test(inputO) && (inputO.length < 2 || inputO.length > 32 ? 'also' : 'only'),
           lengthI = inputO.length < 2 ? 'shorter' : inputO.length > 32 && 'longer';
 
-        if (!interaction.channel) {
-          return interaction.editReply({
+        if (!interaction.channel?.fetch || !interaction.inGuild()) {
+          return interaction.reply({
             embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.DM'))],
+            ephemeral: true,
           });
         }
 
-        if (!memberPermissions?.has(PermissionFlagsBits.ManageEmojisAndStickers)) {
-          return interaction.editReply({
+        if (!memberPermissions?.has(PermissionFlagsBits.ManageGuildExpressions)) {
+          return interaction.reply({
             embeds: [
               embed({ type: 'error' }).setDescription(
-                localize('PERM.REQUIRES', { perm: localize('PERM.MANAGE_EMOJIS_AND_STICKERS') }),
+                localize('ERROR.PERM.USER.SINGLE.REQUIRES', { perm: localize('PERM.MANAGE_EXPRESSIONS') }),
               ),
             ],
+            ephemeral: true,
           });
         }
 
         if (imageO.size > 256000) {
-          return interaction.editReply({
+          return interaction.reply({
             embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.INVALID.IMAGE.SIZE', { maxSize: 256 }))],
+            ephemeral: true,
           });
         }
 
         if (alphanumI || lengthI) {
-          return interaction.editReply({
+          return interaction.reply({
             embeds: [
               embed({ type: 'error' }).setDescription(
-                localize('ERROR.INVALID.NAME.EMOJI', {
+                localize('ERROR.INVALID.NAME', {
                   alphanum: alphanumI,
                   condition: lengthI,
                   input: inputO,
@@ -163,9 +178,13 @@ export default class Emoji extends Command {
                 }),
               ),
             ],
+            ephemeral: true,
           });
         }
+      }
+      await interaction.deferReply({ ephemeral: isEphemeral });
 
+      if (!isInfo) {
         emj = await guild.emojis
           .create({
             attachment: imageO.url,
@@ -199,25 +218,19 @@ export default class Emoji extends Command {
         if (!emj) return;
       }
 
-      const emjUnicodeURL = `https://twemoji.maxcdn.com/v/latest/72x72/`;
+      const anyEmj = shardEmj?.[0] || emj,
+        emjUnicodeURL = `https://twemoji.maxcdn.com/v/latest/72x72/`;
 
-      if (emj) {
-        emjId = (emj[0] ?? emj).id;
-        emjName = (emj[0] ?? emj).name;
+      if (anyEmj) {
+        emjId = anyEmj.id;
+        emjName = anyEmj.name;
       }
-
-      if (((emj as GuildEmoji)?.guild || emj?.[1])?.id !== guild?.id) {
-        addBtnVsby = 2;
-        editBtnVsby = 0;
-      }
-
-      if (!memberPermissions?.has(PermissionFlagsBits.ManageEmojisAndStickers)) addBtnVsby = editBtnVsby = 0;
 
       let emjDisplay =
-          (!interaction.guild || appPermissions.has(PermissionFlagsBits.UseExternalEmojis)) && emj
-            ? (emj[0] ?? emj).animated
-              ? `<${(emj[0] ?? emj).identifier}> `
-              : `<:${(emj[0] ?? emj).identifier}> `
+          (!interaction.guild || appPermissions.has(PermissionFlagsBits.UseExternalEmojis)) && anyEmj
+            ? anyEmj.animated
+              ? `<${anyEmj.identifier}> `
+              : `<:${anyEmj.identifier}> `
             : '',
         emjCodePoint: string,
         emjURL = `https://cdn.discordapp.com/emojis/${parsedEmoji.id || emjId}`;
@@ -226,13 +239,13 @@ export default class Emoji extends Command {
         imageType = parsedTwemoji
           ? 'twemoji'
           : (await fetch(`${emjURL}.gif`)).ok
-          ? 'gif'
-          : (await fetch(emjURL)).ok && 'png';
+            ? 'gif'
+            : (await fetch(emjURL)).ok && 'png';
 
       switch (imageType) {
         case 'gif':
         case 'png':
-          emjURL += `.${imageType}?size=${imgOpts.size}`;
+          emjURL += `.${imageType}?size=${imageOptions.size}`;
           break;
         case 'twemoji':
           emjDisplay = `${parsedTwemoji.text} `;
@@ -246,11 +259,24 @@ export default class Emoji extends Command {
       }
 
       const emb = embed();
-      if (parsedEmoji.id || emj)
+      if (parsedEmoji.id || anyEmj)
         emb.addFields({ inline: true, name: `📛 ${localize('GENERIC.NAME')}`, value: `\`${emjName}\`` });
 
       emb
-        .setTitle(emjDisplay + localize(`EMOJI.${isInfo ? (emjCodePoint ? 'VIEWING_UNICODE' : 'VIEWING') : 'ADDED'}`))
+        .setTitle(
+          emjDisplay +
+            localize(
+              `EMOJI.${
+                isInfo
+                  ? emjCodePoint
+                    ? 'VIEWING_UNICODE'
+                    : anyEmj?.managed
+                      ? 'VIEWING_INTEGRATION'
+                      : 'VIEWING'
+                  : 'ADDED'
+              }`,
+            ),
+        )
         .addFields({
           inline: true,
           name: `🪪 ${localize(`GENERIC.${emjCodePoint ? 'CODEPOINT' : 'ID'}`)}`,
@@ -260,10 +286,10 @@ export default class Emoji extends Command {
         .setColor(Colors.Green)
         .setTimestamp(Date.now());
 
-      if (emjCodePoint || parsedEmoji.id || emj) {
+      if (emjCodePoint || parsedEmoji.id || anyEmj) {
         emb.addFields({
           inline: true,
-          name: `${emojis.mention} ${localize('GENERIC.MENTION')}`,
+          name: `${AppEmoji.mention} ${localize('GENERIC.MENTION')}`,
           value: `\`${emjDisplay.trim() || `<${imageType === 'gif' ? 'a' : ''}:${emjName}:${emjId}>`}\``,
         });
       }
@@ -271,25 +297,49 @@ export default class Emoji extends Command {
       if (!emjCodePoint) {
         emb.addFields({
           inline: true,
-          name: `📅 ${localize('GENERIC.CREATION_DATE')}`,
+          name: `📅 ${localize('GENERIC.CREATED')}`,
           value: toUTS(SnowflakeUtil.timestampFrom(emjId)),
         });
       }
 
-      if (emj) {
+      if (anyEmj) {
+        if (anyEmj.managed) {
+          const integration = (shardEmj?.[2] ||
+            (await emj.guild.fetchIntegrations()).get(emj.roles.cache.first()?.tags.integrationId)) as Integration & {
+            userId: Snowflake;
+          };
+
+          emb.addFields({
+            inline: true,
+            name: `${AppEmoji[integration.type]} ${localize('GENERIC.MANAGED_BY')}`,
+            value: `<@${integration.userId || integration.user.id}>`,
+          });
+          editBtnVsby = 1;
+        } else {
+          emb.addFields({
+            inline: true,
+            name: `${AppEmoji.user} ${localize('GENERIC.AUTHOR')}`,
+            value: `<@${shardEmj?.[0]?.author || (await emj.fetchAuthor()).id}>`,
+          });
+        }
+
         emb.addFields({
-          name: `${emojis.role} ${localize('GENERIC.ROLES.ROLES')} [${
-            emj[3] ?? (emj as GuildEmoji).roles?.cache.size
-          }]`,
+          name: `${AppEmoji.role} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
+            count: shardEmj?.[1]?.length ?? emj.roles?.cache.size,
+          })}]`,
           value:
-            (emj[2] ??
-              collMap(
-                (emj as GuildEmoji).roles.cache,
-                (emj as GuildEmoji).guild?.id !== guild?.id ? { mapValue: 'id' } : {},
-              )) ||
+            (shardEmj?.[1]
+              ? arrayMap(shardEmj?.[1], { mapFunction: r => `\`${r}\`` })
+              : collMap(emj.roles.cache, emj.guild?.id !== guild?.id ? { mapFunction: c => `\`${c.id}\`` } : {})) ||
             '@everyone',
         });
       }
+
+      if (emj?.guild?.id !== guild?.id) {
+        addBtnVsby = 2;
+        editBtnVsby = 0;
+      }
+      if (!memberPermissions?.has(PermissionFlagsBits.ManageEmojisAndStickers)) addBtnVsby = editBtnVsby = 0;
 
       const rows = [new ActionRowBuilder<ButtonBuilder>()];
       rows[0].addComponents(
@@ -297,7 +347,7 @@ export default class Emoji extends Command {
           .setLabel(localize('EMOJI.COMPONENT.LINK'))
           .setEmoji('🖼️')
           .setStyle(ButtonStyle.Link)
-          .setURL(emjCodePoint ? emjURL : `${emjURL.split('?')[0]}?size=${imgOpts.size}`),
+          .setURL(emjCodePoint ? emjURL : `${beforeMatch(emjURL, '?')}?size=${imageOptions.size}`),
       );
 
       if (addBtnVsby) {
@@ -326,14 +376,11 @@ export default class Emoji extends Command {
         embeds: [emb],
       });
 
-      if (
-        !isInfo &&
-        guild.emojis.cache.filter(({ animated }) => animated === (emj as GuildEmoji).animated).size === emojiLimit
-      ) {
+      if (!isInfo && guild.emojis.cache.filter(({ animated }) => animated === emj.animated).size === emojiLimit) {
         return interaction.followUp({
           embeds: [
             embed({ type: 'warning' }).setDescription(
-              localize(`ERROR.EMOJI.MAXIMUM_NOW.${(emj as GuildEmoji).animated ? 'ANIMATED' : 'STATIC'}`, {
+              localize(`ERROR.EMOJI.MAXIMUM_NOW.${emj.animated ? 'ANIMATED' : 'STATIC'}`, {
                 limit: emojiLimit,
               }),
             ),
@@ -346,7 +393,7 @@ export default class Emoji extends Command {
     if (interaction.isButton() || interaction.isModalSubmit() || interaction.isRoleSelectMenu()) {
       const { message } = interaction;
 
-      if (message.interaction.user.id !== user.id) {
+      if (message.interactionMetadata.user.id !== user.id) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
           ephemeral: true,
@@ -386,7 +433,7 @@ export default class Emoji extends Command {
             .setLabel(localize('EMOJI.COMPONENT.LINK'))
             .setEmoji('🖼️')
             .setStyle(ButtonStyle.Link)
-            .setURL(`${emjURL.split('?')[0]}?size=${imgOpts.size}`),
+            .setURL(`${beforeMatch(emjURL, '?')}?size=${imageOptions.size}`),
         ),
       ];
 
@@ -404,18 +451,27 @@ export default class Emoji extends Command {
         .setTimestamp(Date.now());
 
       if (emjMention)
-        emb.addFields({ inline: true, name: `${emojis.mention} ${localize('GENERIC.MENTION')}`, value: emjMention });
+        emb.addFields({ inline: true, name: `${AppEmoji.mention} ${localize('GENERIC.MENTION')}`, value: emjMention });
       if (!emjCodePoint) {
         emb.addFields({
           inline: true,
-          name: `📅 ${localize('GENERIC.CREATION_DATE')}`,
+          name: `📅 ${localize('GENERIC.CREATED')}`,
           value: toUTS(SnowflakeUtil.timestampFrom(emjId)),
         });
       }
       if (emj) {
         emb.addFields({
-          name: `${emojis.role} ${localize('GENERIC.ROLES.ROLES')} [${emj.roles.cache.size}]`,
-          value: collMap(emj.roles.cache, emj.guild?.id !== guild?.id ? { mapValue: 'id' } : {}) || '@everyone',
+          inline: true,
+          name: `${AppEmoji.user} ${localize('GENERIC.AUTHOR')}`,
+          value: `${await emj.fetchAuthor()}`,
+        });
+        emb.addFields({
+          name: `${AppEmoji.role} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
+            count: emj.roles.cache.size,
+          })}]`,
+          value:
+            collMap(emj.roles.cache, emj.guild?.id !== guild?.id ? { mapFunction: c => `\`${c.id}\`` } : {}) ||
+            '@everyone',
         });
       }
 
@@ -432,7 +488,7 @@ export default class Emoji extends Command {
               embeds: [
                 emb
                   .setTitle(
-                    `${emojis.loading} ${localize(
+                    `${AppEmoji.loading} ${localize(
                       `EMOJI.${isAddId ? (emjCodePoint ? 'ADDING_UNICODE' : 'ADDING') : 'READDING'}`,
                     )}`,
                   )
@@ -484,10 +540,10 @@ export default class Emoji extends Command {
             if (!emj) return;
 
             emb = embed({
+              color: Colors.Green,
               footer: 'interacted',
               title: `${emj} ${localize(`EMOJI.${isAddId ? (emjCodePoint ? 'ADDED_UNICODE' : 'ADDED') : 'READDED'}`)}`,
             })
-              .setColor(Colors.Green)
               .setThumbnail(emj.url)
               .addFields(
                 {
@@ -502,16 +558,21 @@ export default class Emoji extends Command {
                 },
                 {
                   inline: true,
-                  name: `${emojis.mention} ${localize('GENERIC.MENTION')}`,
+                  name: `${AppEmoji.mention} ${localize('GENERIC.MENTION')}`,
                   value: `\`${emj}\``,
                 },
                 {
                   inline: true,
-                  name: `📅 ${localize('GENERIC.CREATION_DATE')}`,
+                  name: `📅 ${localize('GENERIC.CREATED')}`,
                   value: toUTS(emj.createdTimestamp),
                 },
                 {
-                  name: `${emojis.role} ${localize('GENERIC.ROLES.ROLES')} [0]`,
+                  inline: true,
+                  name: `${AppEmoji.user} ${localize('GENERIC.AUTHOR')}`,
+                  value: `${await emj.fetchAuthor()}`,
+                },
+                {
+                  name: `${AppEmoji.role} ${localize('GENERIC.ROLES.ROLES')} [0]`,
                   value: '@everyone',
                 },
               );
@@ -548,7 +609,7 @@ export default class Emoji extends Command {
 
           await (interaction.replied ? interaction.editReply(opts) : (interaction as ButtonInteraction).update(opts));
           if (isAdd && guild.emojis.cache.filter(({ animated }) => animated === emj.animated).size === emojiLimit) {
-            return interaction.followUp({
+            await interaction.followUp({
               embeds: [
                 embed({ type: 'warning' }).setDescription(
                   localize(`ERROR.EMOJI.MAXIMUM_NOW.${emj.animated ? 'ANIMATED' : 'STATIC'}`, {
@@ -564,7 +625,7 @@ export default class Emoji extends Command {
         case 'emoji_nonexistent':
         case 'emoji_noperm':
         case 'emoji_view': {
-          if (addBtnVsby && (emj?.guild || emj?.[1])?.id !== guild?.id) {
+          if (addBtnVsby && emj?.guild?.id !== guild?.id) {
             rows[0].addComponents(
               new ButtonBuilder()
                 .setLabel(localize('EMOJI.COMPONENT.ADD'))
@@ -590,12 +651,14 @@ export default class Emoji extends Command {
             embeds: [emb.setTitle(emjDisplay + localize('EMOJI.VIEWING')).setColor(Colors.Green)],
           });
           if (['emoji_nonexistent', 'emoji_noperm'].includes(customId)) {
-            return interaction.followUp({
+            await interaction.followUp({
               embeds: [
                 embed({ type: 'warning' }).setDescription(
                   customId === 'emoji_nonexistent'
                     ? localize('ERROR.EMOJI.NONEXISTENT')
-                    : localize('PERM.NO_LONGER', { perm: localize('PERM.MANAGE_EMOJIS_AND_STICKERS') }),
+                    : localize('ERROR.PERM.USER.SINGLE.NO_LONGER', {
+                        perm: localize('PERM.MANAGE_EMOJIS_AND_STICKERS'),
+                      }),
                 ),
               ],
               ephemeral: true,
@@ -685,7 +748,7 @@ export default class Emoji extends Command {
             });
           }
 
-          emj = await emj.edit({ name: inputF, reason: `${user.tag} | ${localize('EMOJI.REASON.RENAMED')}` });
+          emj = await emj.setName(inputF, `${user.tag} | ${localize('EMOJI.REASON.RENAMED')}`);
 
           emb.spliceFields(0, 1, {
             inline: true,
@@ -694,7 +757,7 @@ export default class Emoji extends Command {
           });
           emb.spliceFields(2, 1, {
             inline: true,
-            name: `${emojis.mention} ${localize('GENERIC.MENTION')}`,
+            name: `${AppEmoji.mention} ${localize('GENERIC.MENTION')}`,
             value: `\`${emj}\``,
           });
 
@@ -734,15 +797,17 @@ export default class Emoji extends Command {
               emb.setColor(Colors.Green);
             }
 
-            emb.spliceFields(4, 1, {
-              name: `${emojis.role} ${localize('GENERIC.ROLES.ROLES')} [${emj.roles.cache.size}]`,
+            emb.spliceFields(5, 1, {
+              name: `${AppEmoji.role} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
+                count: emj.roles.cache.size,
+              })}]`,
               value: collMap(emj.roles.cache) || '@everyone',
             });
           } else if (customId === 'emoji_reset_roles') {
             emj = await emj.roles.set([]);
             title = localize('GENERIC.ROLES.RESET');
-            emb.setColor(Colors.Red).spliceFields(4, 1, {
-              name: `${emojis.role} ${localize('GENERIC.ROLES.ROLES')} [0]`,
+            emb.setColor(Colors.Red).spliceFields(5, 1, {
+              name: `${AppEmoji.role} ${localize('GENERIC.ROLES.ROLES')} [0]`,
               value: '@everyone',
             });
           } else if (isEdit) {
@@ -792,8 +857,8 @@ export default class Emoji extends Command {
                       isEdit
                         ? 'GENERIC.ROLES.SELECT.DEFAULT'
                         : isRemove
-                        ? 'GENERIC.ROLES.SELECT.REMOVE'
-                        : 'GENERIC.ROLES.SELECT.ADD',
+                          ? 'GENERIC.ROLES.SELECT.REMOVE'
+                          : 'GENERIC.ROLES.SELECT.ADD',
                     ),
                   )
                   .setMinValues(1)

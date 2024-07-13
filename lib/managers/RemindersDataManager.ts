@@ -17,32 +17,21 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
     reminder: RemindersDatabaseResolvable,
     userId: Snowflake,
     data: ReminderDataSetOptions,
-    { merge = true, setFromCache = false } = {},
+    { merge = true } = {},
   ) {
     const id = this.resolveId(reminder);
-    if (!id) throw new DiscordjsTypeError(DiscordjsErrorCodes.InvalidType, 'reminder', 'ReminderData', true);
+    if (!id) throw new Error('Invalid reminder type.');
 
     const db = this.client.firestore.collection('users').doc(userId).collection('reminders').doc(id),
-      existing = this.cache.get(id);
-    let cachedData =
-        (existing ||
+      oldData =
+        (this.cache.get(id) ||
           (((await db.get()) as firestore.DocumentSnapshot<firestore.DocumentData>)?.data() as ReminderData)) ??
         null,
-      newData = existing ? data : Object.assign(data, { id });
+      newData = oldData ? data : Object.assign(data, { id });
 
-    if (!existing) {
-      cachedData = new ReminderData(this.client, Object.assign(Object.create(cachedData), newData));
-      this.cache.set(id, cachedData);
-    } else {
-      cachedData._patch(newData);
-    }
-
-    if (setFromCache) newData = cachedData;
-    await db.set(removeEmpty(newData), {
-      merge: merge,
-    });
-
-    return cachedData;
+    await db.set(removeEmpty(newData), { merge });
+    await this.client.database.cacheDelete('reminders', id);
+    return this.cache.set(id, new ReminderData(this.client, Object.assign(Object.create(oldData), newData))).get(id);
   }
 
   async fetch(id: Snowflake, userId: Snowflake, { cache = true, force = false } = {}) {
@@ -57,8 +46,8 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
     data = new ReminderData(this.client, Object.assign(Object.create(data), data));
 
     if (cache) {
-      if (existing) existing._patch(data);
-      else this.cache.set(id, data);
+      await this.client.database.cacheDelete('reminders', id);
+      this.cache.set(id, data);
     }
 
     return data;
@@ -78,24 +67,22 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
         data.set(z.id, new ReminderData(this.client, Object.assign(Object.create(d), d)));
       }
     }
-
     if (cache) {
-      data.forEach(d => {
-        const cachedData = this.cache.get(d.id);
-        if (cachedData) cachedData._patch(d);
-        else this.cache.set(d.id, d);
+      data.forEach(async d => {
+        await this.client.database.cacheDelete('reminders', d.id);
+        this.cache.set(d.id, d);
       });
     }
 
     return data;
   }
 
-  async delete(reminder: RemindersDatabaseResolvable, userId: Snowflake, { leaveCached = false } = {}) {
+  async delete(reminder: RemindersDatabaseResolvable, userId: Snowflake) {
     const id = this.resolveId(reminder);
-    if (!id) throw new DiscordjsTypeError(DiscordjsErrorCodes.InvalidType, 'reminder', 'ReminderData', true);
+    if (!id) throw new Error('Invalid reminder type.');
 
     await this.client.firestore.collection('users').doc(userId).collection('reminders').doc(id).delete();
-    if (!leaveCached) this.cache.delete(id);
+    this.cache.delete(id);
 
     return this.cache;
   }

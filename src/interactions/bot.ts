@@ -9,16 +9,20 @@ import {
   Colors,
   ShardClientUtil,
   version,
+  ApplicationIntegrationType,
+  InteractionContextType,
 } from 'discord.js';
-import { emojis, supportServer } from '../defaults.js';
-import { toUTS, botInvite, msToTime } from '../utils.js';
+import { AppEmoji, imageOptions, supportServer } from '../defaults.js';
+import { toUTS, appInvite, msToTime } from '../utils.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 
 export default class Bot extends Command {
   constructor() {
     super([
       {
+        contexts: [InteractionContextType.Guild],
         description: 'BOT.DESCRIPTION',
+        integration_types: [ApplicationIntegrationType.GuildInstall],
         name: 'BOT.NAME',
         options: [
           {
@@ -32,119 +36,153 @@ export default class Bot extends Command {
   }
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
-    if (!interaction.isChatInputCommand()) return;
-
     const { client, embed, isEphemeral, localize } = args,
       { globalCommandCount } = client,
-      { guild, guildId, options } = interaction,
+      { installParams } = client.application,
+      { guild, guildId } = interaction,
       botMember = guild?.members.cache.get(client.user.id),
       pkg = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url)).toString());
 
-    switch (options.getSubcommand()) {
-      case 'info': {
-        await interaction.deferReply({ ephemeral: isEphemeral });
+    if (interaction.isChatInputCommand()) {
+      const { options } = interaction;
+      await interaction.deferReply({ ephemeral: isEphemeral });
 
-        const guildCommandCount =
-            guildId && client.countCommands(await client.application.commands.fetch({ guildId: guildId })),
-          embs = [
-            embed({ title: localize('BOT.OPTIONS.INFO.TITLE', { botName: client.user.username }) })
-              .setColor(botMember?.displayColor || Colors.Blurple)
-              .addFields(
-                {
-                  inline: true,
-                  name: `${emojis.serverDiscovery} ${localize('GENERIC.SERVERS')}`,
-                  value: `\`${((await client.shard.fetchClientValues('guilds.cache.size')) as number[]).reduce(
-                    (acc, c) => acc + c,
-                    0,
-                  )}\``,
-                },
-                {
-                  inline: true,
-                  name: `${emojis.members} ${localize('GENERIC.MEMBERS')}`,
-                  value: `\`${(
-                    await client.shard.broadcastEval(c => c.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0))
-                  ).reduce((acc, c) => acc + c, 0)}\``,
-                },
-                {
-                  inline: true,
-                  name: `${emojis.commands} ${localize('GENERIC.COMMANDS')} [${globalCommandCount.sum.all}${
-                    guildCommandCount.sum.all ? ` + ${guildCommandCount.sum.all}` : ''
-                  }]`,
-                  value: `${emojis.slashCommand} \`${globalCommandCount.chatInput}\`${
-                    guildCommandCount.chatInput ? ` + \`${guildCommandCount.chatInput}\`` : ''
-                  }\n${emojis.contextMenuCommand} \`${globalCommandCount.sum.contextMenu}\`${
-                    guildCommandCount.sum.contextMenu ? ` + \`${guildCommandCount.sum.contextMenu}\`` : ''
-                  }`,
-                },
-                {
-                  inline: true,
-                  name: `${emojis.ramMemory} ${localize('BOT.OPTIONS.INFO.MEMORY_USAGE')}`,
-                  value: `\`${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB\`/\`${(
-                    process.memoryUsage().heapTotal /
-                    1024 /
-                    1024
-                  ).toFixed(2)} MB\``,
-                },
-                {
-                  inline: true,
-                  name: `${emojis.discordJS} ${localize('BOT.OPTIONS.INFO.DISCORDJS_VERSION')}`,
-                  value: `[\`${version}\`](https://discord.js.org)`,
-                },
-                {
-                  inline: true,
-                  name: `${emojis.nodeJS} ${localize('BOT.OPTIONS.INFO.NODEJS_VERSION')}`,
-                  value: `[\`${process.versions.node}\`](https://nodejs.org)`,
-                },
+      switch (options.getSubcommand()) {
+        case 'info': {
+          const guildCommandCount =
+              guildId && client.countCommands(await client.application.commands.fetch({ guildId })),
+            embs = [
+              embed({
+                color: botMember?.displayColor || Colors.Blurple,
+                title: `${AppEmoji.info} ${localize('BOT.OPTIONS.INFO.TITLE')}`,
+              })
+                .setAuthor({ iconURL: client.user.displayAvatarURL(imageOptions), name: client.user.displayName })
+                .addFields(
+                  {
+                    inline: true,
+                    name: `${AppEmoji.serverDiscovery} ${localize('GENERIC.SERVERS')}`,
+                    value: client.allShardsReady
+                      ? `\`${localize('GENERIC.COUNT', {
+                          count: ((await client.shard.fetchClientValues('guilds.cache.size')) as number[]).reduce(
+                            (acc, c) => acc + c,
+                            0,
+                          ),
+                        })}\``
+                      : `${AppEmoji.loading} ${localize('GENERIC.LOADING')}`,
+                  },
+                  {
+                    inline: true,
+                    name: `${AppEmoji.members} ${localize('GENERIC.MEMBERS')}`,
+                    value: client.allShardsReady
+                      ? `\`${localize('GENERIC.COUNT', {
+                          count: (
+                            await client.shard.broadcastEval(c =>
+                              c.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0),
+                            )
+                          ).reduce((acc, c) => acc + c, 0),
+                        })}\``
+                      : `${AppEmoji.loading} ${localize('GENERIC.LOADING')}`,
+                  },
+                  {
+                    inline: true,
+                    name: `${AppEmoji.commands} ${localize('GENERIC.COMMANDS')} [${localize('GENERIC.COUNT', {
+                      count: globalCommandCount.sum.all,
+                    })}${
+                      guildCommandCount.sum.all
+                        ? ` + ${localize('GENERIC.COUNT', {
+                            count: guildCommandCount.sum.all,
+                          })}`
+                        : ''
+                    }]`,
+                    value: `${AppEmoji.slashCommand} \`${localize('GENERIC.COUNT', {
+                      count: globalCommandCount.chatInput,
+                    })}\`${
+                      guildCommandCount.chatInput
+                        ? ` + \`${localize('GENERIC.COUNT', {
+                            count: guildCommandCount.chatInput,
+                          })}\``
+                        : ''
+                    }\n${AppEmoji.contextMenuCommand} \`${localize('GENERIC.COUNT', {
+                      count: globalCommandCount.sum.contextMenu,
+                    })}\`${
+                      guildCommandCount.sum.contextMenu
+                        ? ` + \`${localize('GENERIC.COUNT', {
+                            count: guildCommandCount.sum.contextMenu,
+                          })}\``
+                        : ''
+                    }`,
+                  },
+                  {
+                    inline: true,
+                    name: `${AppEmoji.ramMemory} ${localize('BOT.OPTIONS.INFO.MEMORY_USAGE')}`,
+                    value: `\`${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB\`/\`${(
+                      process.memoryUsage().heapTotal /
+                      1024 /
+                      1024
+                    ).toFixed(2)} MB\``,
+                  },
+                  {
+                    inline: true,
+                    name: `${AppEmoji.discordJS} ${localize('BOT.OPTIONS.INFO.DISCORDJS_VERSION')}`,
+                    value: `[\`${version}\`](https://discord.js.org)`,
+                  },
+                  {
+                    inline: true,
+                    name: `${AppEmoji.nodeJS} ${localize('BOT.OPTIONS.INFO.NODEJS_VERSION')}`,
+                    value: `[\`${process.versions.node}\`](https://nodejs.org)`,
+                  },
+                ),
+            ],
+            rows = [
+              new ActionRowBuilder<ButtonBuilder>().addComponents(
+                new ButtonBuilder()
+                  .setLabel('GitHub')
+                  .setEmoji(AppEmoji.github)
+                  .setStyle(ButtonStyle.Link)
+                  .setURL(pkg.repository.url),
+                new ButtonBuilder()
+                  .setLabel(localize('GENERIC.ADD_TO_SERVER'))
+                  .setEmoji('🔗')
+                  .setStyle(ButtonStyle.Link)
+                  .setURL(
+                    appInvite(client.user.id, { permissions: installParams.permissions, scopes: installParams.scopes }),
+                  ),
+                new ButtonBuilder()
+                  .setLabel(localize('GENERIC.SUPPORT_SERVER'))
+                  .setEmoji('📖')
+                  .setStyle(ButtonStyle.Link)
+                  .setURL(supportServer.invite),
               ),
-          ],
-          rows = [
-            new ActionRowBuilder<ButtonBuilder>().addComponents(
-              new ButtonBuilder()
-                .setLabel('GitHub')
-                .setEmoji(emojis.github)
-                .setStyle(ButtonStyle.Link)
-                .setURL(pkg.repository.url),
-              new ButtonBuilder()
-                .setLabel(localize('BOT.OPTIONS.INFO.COMPONENT.INVITE_BOT'))
-                .setEmoji('📖')
-                .setStyle(ButtonStyle.Link)
-                .setURL(botInvite(client.user.id)),
-              new ButtonBuilder()
-                .setLabel(localize('BOT.OPTIONS.INFO.COMPONENT.SUPPORT_SERVER'))
-                .setEmoji('📖')
-                .setStyle(ButtonStyle.Link)
-                .setURL(supportServer.invite),
-            ),
-          ];
+            ];
 
-        if (guild) {
-          embs[0].addFields({
-            inline: true,
-            name: `💎 ${localize('PING.SHARD')}`,
-            value: `**${localize('GENERIC.CURRENT')}:** \`${ShardClientUtil.shardIdForGuildId(
-              guildId,
-              client.shard.count,
-            )}\`\n**${localize('GENERIC.TOTAL')}:** \`${client.shard.count}\` `,
+          if (guild) {
+            embs[0].addFields({
+              inline: true,
+              name: `💎 ${localize('GENERIC.SHARD')}`,
+              value: `**${localize('GENERIC.CURRENT')}:** \`${
+                ShardClientUtil.shardIdForGuildId(guildId, client.shard.count) + 1
+              }\`\n**${localize('GENERIC.TOTAL')}:** \`${client.shard.count}\` `,
+            });
+          }
+
+          embs[0].addFields(
+            {
+              inline: true,
+              name: `🕑 ${localize('GENERIC.UPTIME')}`,
+              value: `\`${msToTime(client.uptime)}\` | ${toUTS(Date.now() - client.uptime)}`,
+            },
+            {
+              inline: true,
+              name: `📅 ${localize('GENERIC.CREATED')}`,
+              value: toUTS(client.user.createdTimestamp),
+            },
+          );
+
+          return interaction.editReply({
+            components: rows,
+            embeds: embs,
           });
         }
-
-        embs[0].addFields(
-          {
-            inline: true,
-            name: `🕑 ${localize('GENERIC.UPTIME')}`,
-            value: `\`${msToTime(client.uptime)}\` | ${toUTS(Date.now() - client.uptime)}`,
-          },
-          {
-            inline: true,
-            name: `📅 ${localize('GENERIC.CREATION_DATE')}`,
-            value: toUTS(client.user.createdTimestamp),
-          },
-        );
-
-        return interaction.editReply({
-          components: rows,
-          embeds: embs,
-        });
       }
     }
   }

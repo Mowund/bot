@@ -13,55 +13,88 @@ import {
   ActionRow,
   MessageActionRowComponent,
   ButtonComponent,
-  SelectMenuComponent,
   MessageActionRowComponentBuilder,
+  PermissionsBitField,
+  PermissionResolvable,
+  StringSelectMenuComponent,
+  OAuth2Scopes,
+  ApplicationIntegrationType,
 } from 'discord.js';
 import { firestore } from 'firebase-admin';
+
+export type MergeTypes<A, B> = {
+  [key in keyof A]: key extends keyof B ? B[key] : A[key];
+} & B;
+
+export const afterMatch = (str: string, match: string) => {
+  const i = str.indexOf(match);
+  return (i > 0 && str?.substring(i + 1)) || '';
+};
+export const beforeMatch = (str: string, match: string) => str?.substring(0, str.indexOf(match)) || str;
+
+export const toUpperSnakeCase = (str: string) =>
+  str
+    .replace(/([A-Z]+(?![a-z])|[A-Z])/g, g => `_${g}`)
+    .replace(/^_/, '')
+    .toUpperCase();
 
 export const isValidImage = (contentType: string) => ['image/jpeg', 'image/png', 'image/gif'].includes(contentType);
 
 /**
- * @returns Array of action rows with their components disabled (Note: Already updates the array defined)
- * @param rows Array of action rows that will get their components disabled
- * @param options The function's options
- * @param options.defaultValues Array of objects with component custom ids with a respective default value
- * @param options.disableLinkButtons Whether to disable link buttons (Default: False)
- * @param options.disabledComponents Array of component custom ids that will get disabled
- * @param options.enabledComponents Array of component custom ids that will get enabled (Is prioritized | Default: None of component
- * @param options.defaultValues.customId The component's custom id
- * @param options.defaultValues.value The component's default value
+ * Modifies components of action rows based on specified options.
+ * @param rows Array of action rows to modify.
+ * @param options The function's options.
+ * @param options.disableLinkButtons Whether to disable link buttons. Default is `false`.
+ * @param options.enabledComponents Array of component custom IDs that will remain enabled.
+ * @param options.disabledComponents Array of component custom IDs that will be disabled.
+ * @param options.defaultValues Array of objects with component custom IDs and their respective default values.
+ * @returns Modified array of action rows with components disabled or set to default values.
  */
 export const disableComponents = (
-  rows: ActionRow<MessageActionRowComponent>[],
+  rows: ActionRow<MessageActionRowComponent>[] = [],
   options: {
     disableLinkButtons?: boolean;
     enabledComponents?: string[];
     disabledComponents?: string[];
-    defaultValues?: { customId: string; value: string }[];
+    defaultValues?: { customId: string; values: string[] }[];
   } = {},
-) => {
-  const rowsBuilder = rows.map(row => ActionRowBuilder.from(row) as ActionRowBuilder<MessageActionRowComponentBuilder>);
-  rows?.forEach((row, rI) => {
-    row.components?.forEach((c, cI) => {
-      if (!options.disableLinkButtons && (c as ButtonComponent).style !== ButtonStyle.Link) {
-        (rowsBuilder[rI].components[cI] as ButtonBuilder).setDisabled(
-          !options.enabledComponents?.includes(c.customId) &&
-            (options.disabledComponents?.length ? options.disabledComponents.includes(c.customId) : true),
-        );
+): ActionRowBuilder<MessageActionRowComponentBuilder>[] => {
+  const { defaultValues = [], disableLinkButtons = false, disabledComponents, enabledComponents = [] } = options,
+    enabledSet = new Set(enabledComponents),
+    disabledSet = disabledComponents ? new Set(disabledComponents) : null;
 
-        options.defaultValues?.forEach(
-          v =>
-            c.customId === v.customId &&
-            (c as SelectMenuComponent).options.forEach(
-              (o, oI) =>
-                o.value === v.value &&
-                (rowsBuilder[rI].components[cI].data as StringSelectMenuBuilder).options?.[oI].setDefault(true),
-            ),
-        );
+  return rows.map(row => {
+    const rowBuilder = ActionRowBuilder.from(row) as ActionRowBuilder<MessageActionRowComponentBuilder>;
+
+    row.components.forEach((component, index) => {
+      const { customId, style } = component as ButtonComponent,
+        isLinkButton = style === ButtonStyle.Link,
+        isComponentEnabled = enabledSet.has(customId),
+        isComponentDisabled = disabledSet?.has(customId);
+
+      (rowBuilder.components[index] as ButtonBuilder).setDisabled(
+        isComponentEnabled
+          ? false
+          : disableLinkButtons && isLinkButton
+            ? true
+            : disabledSet
+              ? isComponentDisabled ?? false
+              : !isLinkButton,
+      );
+
+      if (defaultValues.length && customId) {
+        const defaultValue = defaultValues.find(dv => dv.customId === customId);
+        if (defaultValue) {
+          (component as StringSelectMenuComponent).options.forEach((option, optionIndex) => {
+            const isDefault = defaultValue.values.includes(option.value);
+            (rowBuilder.components[index] as StringSelectMenuBuilder).options[optionIndex].setDefault(isDefault);
+          });
+        }
       }
     });
+
+    return rowBuilder;
   });
-  return rowsBuilder;
 };
 
 export const testConditions = (search: SearchOptions[][], destructure: { [x: string]: any }) => {
@@ -96,17 +129,22 @@ export interface SearchOptions {
 
 export const decreaseSizeCDN = async (url: string, options: { initialSize?: number; maxSize?: number } = {}) => {
   const { initialSize, maxSize } = options,
-    fileSize = (await fetchURL(url))?.data.length;
+    fileSize = (await appFetch(url))?.data.length;
 
   let sizes = [4096, 2048, 1024, 600, 512, 300, 256, 128, 96, 64, 56, 32, 16],
     otherFileSize = fileSize;
 
   if (initialSize) sizes = sizes.filter(i => i < initialSize);
   while (maxSize ? maxSize < otherFileSize : fileSize === otherFileSize) {
-    url = `${url.split('?')[0]}?size=${sizes.shift()}`;
-    otherFileSize = (await fetchURL(url))?.data.length;
+    url = `${beforeMatch(url, '?')}?size=${sizes.shift()}`;
+    otherFileSize = (await appFetch(url))?.data.length;
   }
   return url;
+};
+
+export const isEmpty = (obj: Record<any, any>) => {
+  for (const prop in obj) if (Object.hasOwn(obj, prop)) return false;
+  return true;
 };
 
 /**
@@ -124,17 +162,22 @@ export const removeEmpty = (
   Object.fromEntries(
     Object.entries(object)
       .filter(([, v]) => (!options.removeNull && v === null) || (options.removeFalsy ? !!v : v != null))
-      .map(([k, v]) => [k, v === ((options.recursion ?? true) && Object(v)) ? removeEmpty(v) : v]),
+      .map(([k, v]) => [k, (options.recursion ?? true) && v?.constructor === Object ? removeEmpty(v, options) : v]),
   );
 
 export const toUTS = (time = Date.now(), style: TimestampStylesString = TimestampStyles.RelativeTime) =>
   `<t:${new Date(time).getTime().toString().slice(0, -3)}:${style}>`;
 
-export const fetchURL = async (input: RequestInfo, init?: RequestInit) => {
+export const appFetch = async (input: RequestInfo, init?: RequestInit) => {
   try {
-    const res = await fetch(input, init);
-    if (res.ok) return res.json();
+    const res = await (await fetch(input, init)).text();
+    try {
+      return JSON.parse(res);
+    } catch {
+      return res;
+    }
   } catch (e) {
+    console.error(e);
     return null;
   }
 };
@@ -170,8 +213,11 @@ export const addSearchParams = (url: URL, params: Record<string, string> = {}) =
  * @param dateFrom The first date
  * @param dateTo The second date (Default: Current date)
  */
-export const monthDiff = (dateFrom: Date, dateTo = new Date()) =>
-  dateTo.getMonth() - dateFrom.getMonth() + 12 * (dateTo.getFullYear() - dateFrom.getFullYear());
+export const monthDiff = (dateFrom: Date | string, dateTo: Date | string = new Date()) =>
+  (typeof dateFrom === 'string' ? (dateFrom = new Date(dateFrom)) : dateFrom) &&
+  (typeof dateTo === 'string' ? (dateTo = new Date(dateTo)) : dateTo)
+    ? dateTo.getMonth() - dateFrom.getMonth() + 12 * (dateTo.getFullYear() - dateFrom.getFullYear())
+    : null;
 
 /**
  * Truncates a string with ellipsis
@@ -183,23 +229,75 @@ export const truncate = (input: string, limit = 1024) =>
   input?.length > limit ? `${input.substring(0, limit - 3)}...` : input;
 
 /**
+ * Truncates an array
+ * @returns The truncated array
+ * @param array The array to truncate
+ * @param limit The limit of total characters to be included inside of an array
+ */
+export const truncateArray = (array: string[], limit: number) => {
+  const copy = [...array],
+    lengths = copy.map(v => v.length);
+  let index = 0,
+    length = 0;
+
+  while (limit > length) {
+    index++;
+    length += lengths.shift();
+  }
+
+  return limit ? copy.splice(1 - index) : copy;
+};
+
+/**
  * @returns The mapped collections
  * @param collections The collections to map
  * @param options The function's options
  * @param options.mapValue Map something else instead of the mention
+ * @param options.maxLength The limit of total characters to be included inside of the mapped collections
  * @param options.maxValues The maximum amount of mapped collections to return (Default: 40)
+ * @param options.reverse Whether to reverse the mapping (Default: True)
  */
 export const collMap = (
   collections: Collection<string, any>,
-  options: { mapValue?: string; maxValues?: number } = {},
+  options: {
+    mapFunction?: (value: any, key: string, collection: Collection<string, any>) => string;
+    maxLength?: number;
+    maxValues?: number;
+    reverse?: boolean;
+  } = {},
 ) => {
-  const cM = discordSort(collections)
-    .map(c => (options.mapValue ? `\`${c[options.mapValue]}\`` : `${c}`))
-    .reverse();
+  const { mapFunction = c => `${c}`, maxLength, maxValues = 40, reverse = true } = options,
+    cM = discordSort(collections).map(mapFunction);
   let tCM = cM;
-  if (tCM.length > options.maxValues) (tCM = tCM.slice(0, options.maxValues)).push(`\`+${cM.length - tCM.length}\``);
+
+  if (reverse) tCM.reverse();
+  if (cM.length > maxValues) tCM = tCM.slice(0, maxValues);
+  if (maxLength) tCM = truncateArray(tCM, maxLength);
+  if (cM.length > tCM.length) tCM.push(`\`+${cM.length - tCM.length}\``);
 
   return tCM.join(', ');
+};
+
+export const arrayMap = (
+  array: string[],
+  options: {
+    autoSort?: boolean;
+    mapFunction?: (value: string, index: number, array: string[]) => string;
+    maxLength?: number;
+    maxValues?: number | null;
+    reverse?: boolean;
+  } = {},
+) => {
+  const { autoSort = true, mapFunction = a => a, maxLength, maxValues = 40, reverse } = options,
+    aM = array ? (autoSort ? array.sort((a, b) => a.localeCompare(b)).map(mapFunction) : array) : [];
+  let tAM = aM;
+
+  if (reverse) tAM.reverse();
+  if (maxValues !== null && aM.length > maxValues) tAM = tAM.slice(0, maxValues);
+  if (maxLength) tAM = truncateArray(tAM, maxLength);
+  if (aM.length > tAM.length) tAM.push(`\`+${aM.length - tAM.length}\``);
+
+  return tAM.join(', ');
 };
 
 /**
@@ -213,11 +311,33 @@ export const simplify = (string: string) =>
     .toLowerCase();
 
 /**
- * @returns The bot invite
- * @param id The bot id
+ * @returns The app invite
+ * @param id The app id
  */
-export const botInvite = (id: Snowflake) =>
-  `https://discord.com/api/oauth2/authorize?client_id=${id}&permissions=1644971949559&scope=bot%20applications.commands`;
+export const appInvite = (
+  id: Snowflake,
+  options: {
+    disableGuildSelect?: boolean;
+    guildId?: Snowflake;
+    integrationType?: ApplicationIntegrationType;
+    permissions?: PermissionResolvable;
+    prompt?: 'none' | 'consent';
+    scopes?: readonly OAuth2Scopes[];
+    redirectURI?: string;
+  } = {},
+) => {
+  let invite = `https://discord.com/api/oauth2/authorize?client_id=${id}&scope=${options.scopes?.join('%20') || 'bot'}`;
+
+  const { disableGuildSelect, guildId, integrationType, permissions, prompt, redirectURI } = options;
+  if (permissions) invite += `&permissions=${new PermissionsBitField(permissions).bitfield}`;
+  if (guildId) invite += `&guild_id=${guildId}`;
+  if (disableGuildSelect) invite += `&disable_guild_select=${disableGuildSelect}`;
+  if (redirectURI) invite += `&redirect_uri=${redirectURI}`;
+  if (prompt) invite += `&prompt=${prompt}`;
+  if (integrationType) invite += `&integration_type=${integrationType}`;
+
+  return invite;
+};
 
 export const msToTime = (ms: number) => {
   const years = Math.floor(ms / 31536000000),
@@ -239,11 +359,11 @@ export const msToTime = (ms: number) => {
 };
 
 export const search = <O extends Record<any, any>>(object: O, key: keyof typeof object) => {
-  let value: typeof object[typeof key];
+  let value: (typeof object)[typeof key];
   for (key in object) value = object[key];
 
   return value;
 };
 
-export const searchKey = <O extends Record<any, any>>(object: O, value: typeof object[keyof typeof object]) =>
+export const searchKey = <O extends Record<any, any>>(object: O, value: (typeof object)[keyof typeof object]) =>
   Object.keys(object).find(key => object[key] === value);

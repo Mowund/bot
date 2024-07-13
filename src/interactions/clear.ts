@@ -1,3 +1,4 @@
+import { setTimeout } from 'node:timers';
 import {
   ActionRowBuilder,
   ApplicationCommandOptionType,
@@ -8,6 +9,8 @@ import {
   Colors,
   CommandInteractionOptionResolver,
   PermissionFlagsBits,
+  ApplicationIntegrationType,
+  InteractionContextType,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { botOwners } from '../defaults.js';
@@ -16,15 +19,17 @@ export default class Clear extends Command {
   constructor() {
     super([
       {
+        contexts: [InteractionContextType.Guild],
         defaultMemberPermissions: PermissionFlagsBits.ManageMessages,
-        dmPermission: false,
+        integration_types: [ApplicationIntegrationType.GuildInstall],
         name: 'CLEAR.DELETE_AFTER_THIS',
         type: ApplicationCommandType.Message,
       },
       {
+        contexts: [InteractionContextType.Guild],
         defaultMemberPermissions: PermissionFlagsBits.ManageMessages,
         description: 'CLEAR.DESCRIPTION',
-        dmPermission: false,
+        integration_types: [ApplicationIntegrationType.GuildInstall],
         name: 'CLEAR.NAME',
         options: [
           {
@@ -63,7 +68,7 @@ export default class Clear extends Command {
         return interaction.editReply({
           embeds: [
             embed({ type: 'error' }).setDescription(
-              localize('PERM.REQUIRES', { perm: localize('PERM.MANAGE_MESSAGES') }),
+              localize('ERROR.PERM.USER.SINGLE.REQUIRES', { perm: localize('PERM.MANAGE_MESSAGES') }),
             ),
           ],
         });
@@ -95,26 +100,42 @@ export default class Clear extends Command {
               beforeMsg: msg.id,
               delPins: `${delPinsO}`,
             },
+            color: Colors.Red,
             title: '🗑️ Deleting Messages',
-          })
-            .setColor(Colors.Red)
-            .setDescription(
-              `Are you sure you want to delete all \`${(delPinsO ? msgs : fMsgs).size}\` messages up to [this](${
-                msgs.last().url
-              })?${
-                pinCnt
-                  ? delPinsO
-                    ? `\n\`${pinCnt}\` pinned messages will be deleted together`
-                    : `\n\`${pinCnt}\` messages were ignored as they are pinned`
-                  : ''
-              }`,
-            ),
+          }).setDescription(
+            `Are you sure you want to delete all \`${(delPinsO ? msgs : fMsgs).size}\` messages up to [this](${
+              msgs.last().url
+            })?${
+              pinCnt
+                ? delPinsO
+                  ? `\n\`${pinCnt}\` pinned messages will be deleted together`
+                  : `\n\`${pinCnt}\` messages were ignored as they are pinned`
+                : ''
+            }`,
+          ),
         ],
       });
     }
 
     if (interaction.isButton()) {
       const { customId, message } = interaction;
+
+      if (message.interactionMetadata.user.id !== user.id) {
+        return interaction.reply({
+          embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
+          ephemeral: true,
+        });
+      }
+
+      if (!memberPermissions?.has(PermissionFlagsBits.ManageMessages) && !botOwners.includes(user.id)) {
+        return interaction.editReply({
+          embeds: [
+            embed({ type: 'error' }).setDescription(
+              localize('ERROR.PERM.USER.SINGLE.NO_LONGER', { perm: localize('PERM.MANAGE_MESSAGES') }),
+            ),
+          ],
+        });
+      }
 
       switch (customId) {
         case 'clear_delete': {
@@ -125,25 +146,26 @@ export default class Clear extends Command {
               before: embedParams.get('beforeMsg'),
             }),
             delMsgs = await channel.bulkDelete(delPinsP ? msgs : msgs.filter(m => !m.pinned), true),
-            pinCnt = delMsgs.filter(m => m.pinned).size;
+            pinCnt = delMsgs.filter(m => m.pinned).size,
+            emb = embed({
+              addParams: { messageOwners: user.id },
+              type: 'success',
+            }).setDescription(
+              `${delMsgs.size} messages were deleted${
+                pinCnt
+                  ? delPinsP
+                    ? `\n\`${pinCnt}\` pinned messages were deleted together`
+                    : `\n\`${pinCnt}\` messages were ignored as they are pinned`
+                  : ''
+              }`,
+            );
+
+          if (!isEphemeral)
+            return interaction.reply({ embeds: [emb] }).then(() => setTimeout(() => interaction.deleteReply(), 5000));
 
           return interaction.update({
             components: [],
-            embeds: [
-              embed({
-                type: 'success',
-              })
-                .setColor(Colors.Red)
-                .setDescription(
-                  `${delMsgs.size} messages were deleted${
-                    pinCnt
-                      ? delPinsP
-                        ? `\n\`${pinCnt}\` pinned messages were deleted together`
-                        : `\n\`${pinCnt}\` messages were ignored as they are pinned`
-                      : ''
-                  }`,
-                ),
-            ],
+            embeds: [emb],
           });
         }
       }

@@ -1,25 +1,33 @@
 import util from 'node:util';
-import { ApplicationCommandOptionType, BaseInteraction, Guild } from 'discord.js';
+import { inflate } from 'node:zlib';
+import {
+  ApplicationCommandOptionType,
+  BaseInteraction,
+  Guild,
+  ApplicationIntegrationType,
+  InteractionContextType,
+} from 'discord.js';
 import murmurhash from 'murmurhash';
 import { search } from 'fast-fuzzy';
-import { ExperimentRollout } from '../../lib/App.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
-import { botOwners, emojis } from '../defaults.js';
-import { fetchURL, toUTS, truncate } from '../utils.js';
+import { AppEmoji, imageOptions } from '../defaults.js';
+import { truncate } from '../utils.js';
+import { Kind, PopulationType } from '../../lib/interfaces/Experiment.js';
 
 // TODO: Add info about all treatments and their rollouts and overrides, along with checking if the guild actually is in the experiment
 export default class Rollout extends Command {
   constructor() {
     super([
       {
+        contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
         description: 'ROLLOUT.DESCRIPTION',
+        integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
         name: 'ROLLOUT.NAME',
         options: [
           {
             autocomplete: true,
             description: 'ROLLOUT.OPTIONS.EXPERIMENT.DESCRIPTION',
             name: 'ROLLOUT.OPTIONS.EXPERIMENT.NAME',
-            required: true,
             type: ApplicationCommandOptionType.String,
           },
           {
@@ -33,151 +41,214 @@ export default class Rollout extends Command {
   }
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
-    if (!botOwners.includes(interaction.user.id)) return;
-
     const { client, embed, isEphemeral, localize } = args,
       { experiments } = client;
 
     if (interaction.isAutocomplete()) {
       const focused = interaction.options.getFocused(),
-        hashFilter = search(focused, experiments.data, { keySelector: e => `${e.hash}`, threshold: 0.95 }),
-        idFilter = search(focused, experiments.data, { keySelector: e => e.id, threshold: 0.95 });
+        filteredData = experiments.data.filter(e => e.data.label && e.data.id && e.data.kind === Kind.Guild).reverse(),
+        hashFilter = search(focused, filteredData, { keySelector: e => `${e.data.hash}`, threshold: 0.95 }),
+        idFilter = search(focused, filteredData, { keySelector: e => e.data.id, threshold: 0.95 });
 
       return interaction.respond(
         (!focused.length
-          ? experiments.data
-              .sort((a, b) => b.created_at - a.created_at)
-              .filter(exp => exp.in_client && exp.type === 'guild')
-              .map(exp => ({ name: truncate(exp.title, 100), value: exp.id }))
-          : (hashFilter.length
-              ? hashFilter
-              : idFilter.length
+          ? filteredData
+          : hashFilter.length
+            ? hashFilter
+            : idFilter.length
               ? idFilter
-              : search(focused, experiments.data, { keySelector: e => e.title })
-            )
-              .sort((a, b) => +(b.type === 'guild') - +(a.type === 'guild'))
-              .map(exp => ({
-                name: truncate(`(${exp.type === 'guild' ? 'Guild' : 'User'}) ${exp.title}`, 100),
-                value: exp.id,
-              }))
-        ).slice(0, 25),
+              : search(focused, filteredData, { keySelector: e => e.data.label })
+        )
+          .slice(0, 25)
+          .map(e => ({
+            name: truncate(e.data.label, 100),
+            value: e.data.id,
+          })),
       );
     }
 
     if (interaction.isChatInputCommand()) {
       const { options } = interaction,
         experimentO = options.getString('experiment'),
-        guildO = options.getString('guild'),
-        guildId = guildO ?? interaction.guildId;
+        guildO = options.getString('guild');
 
       await interaction.deferReply({ ephemeral: isEphemeral });
 
-      const guild = guildO
-        ? await client.shard
-            .broadcastEval((c, { id }) => c.guilds.cache.get(id), {
-              context: {
-                id: guildO,
-              },
-            })
-            .then((gA: Guild[]) => gA.find(g => g))
-        : interaction.guild;
+      const guild = await client.fetchGuildGlobally(guildO ?? interaction.guildId);
+
+      if (guildO && !guild) {
+        return interaction.editReply({
+          embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.GUILD_NOT_FOUND'))],
+        });
+      }
+
+      const guildId = guild?.id ?? interaction.guildId,
+        memberCount = (guild as Guild)?.memberCount ?? guild?.approximateMemberCount;
 
       if (!experimentO) {
-        const embs = [embed({ title: `${emojis.info} Experiments List` })],
-          descriptions = [[]];
+        const embs = [embed({ title: `${AppEmoji.info} Experiments List` })],
+          descriptions = [''];
+        let counter = 0;
 
-        let length = 0,
-          counter = 0;
+        if (guild)
+          embs[0].setAuthor({ iconURL: client.rest.cdn.icon(guildId, guild.icon, imageOptions), name: guild.name });
 
-        for (const exp of experiments.data) {
-          if (length >= 4000) {
-            length = 0;
-            embs[counter++].data.footer = null;
+        for (const exp of experiments.data.filter(e => e.rollout && e.data.label).reverse()) {
+          // TODO
+          if (exp.data.hash !== 280866660) continue;
+          const rPos = guildId && murmurhash.v3(`${exp.data.hash}:${guildId}`) % 10000;
+          let inHash = false,
+            inFilters = false,
+            inOverride = false;
+
+          if (guildId) {
+            console.log(exp);
+            for (const pop of exp.rollout.populations) {
+              for (const [bucket, { rollout }] of Object.entries(pop.buckets).filter(([k]) => Number(k))) {
+                console.log('bucket', bucket);
+                if (exp.data.buckets?.includes(+bucket)) {
+                  inOverride = exp.rollout.overrides[bucket]?.includes(guildId) ?? false;
+                  for (const pos of rollout) inHash = pos.start < rPos && rPos < pos.end;
+                }
+                console.log('hash', inHash);
+              }
+
+              inFilters =
+                inHash &&
+                pop.filters.every(f =>
+                  Boolean(
+                    guild &&
+                      (f.type === PopulationType.GuildHasFeature
+                        ? f.features.some(ft => (guild.features as any)?.includes(ft))
+                        : f.type === PopulationType.GuildMemberCountRange
+                          ? f.min_count <= memberCount && memberCount <= f.max_count
+                          : PopulationType.GuildHasVanityURL
+                            ? f.has_vanity === !!guild.vanityURLCode
+                            : true),
+                  ),
+                );
+
+              console.log(
+                inHash &&
+                  pop.filters.every(f =>
+                    Boolean(
+                      guild &&
+                        (f.type === PopulationType.GuildHasFeature
+                          ? f.features.some(ft => (guild.features as any)?.includes(ft))
+                          : f.type === PopulationType.GuildMemberCountRange
+                            ? f.min_count <= memberCount && memberCount <= f.max_count
+                            : PopulationType.GuildHasVanityURL
+                              ? f.has_vanity === !!guild.vanityURLCode
+                              : true),
+                    ),
+                  ),
+                inFilters,
+              );
+
+              pop.filters.every(f =>
+                console.log(
+                  'test',
+                  Boolean(
+                    guild &&
+                      (f.type === PopulationType.GuildHasFeature
+                        ? console.log(
+                            'feature',
+                            f.features.some(ft => (guild.features as any)?.includes(ft)),
+                          )
+                        : f.type === PopulationType.GuildMemberCountRange
+                          ? console.log('member', f.min_count <= memberCount && memberCount <= f.max_count)
+                          : PopulationType.GuildHasVanityURL
+                            ? console.log('vanity', f.has_vanity === !!guild.vanityURLCode)
+                            : console.log('none', true)),
+                  ),
+                ),
+              );
+              console.log(pop);
+              console.log('infilters', inFilters);
+            }
+          }
+
+          const text = `${
+              guildId
+                ? inHash
+                  ? guild
+                    ? inFilters || inOverride
+                      ? AppEmoji.check
+                      : AppEmoji.maybe
+                    : AppEmoji.neutral
+                  : AppEmoji.no
+                : AppEmoji.neutral
+            } ${exp.data.label}`,
+            descLength = descriptions[counter].length;
+
+          if ((descLength && descLength + 2) + text.length < 4096) {
+            descriptions[counter] += descLength ? `\n${text}` : text;
+          } else {
+            embs[counter++].setTimestamp(null).data.footer = null;
             embs.push(embed());
-            descriptions.push([]);
+            descriptions.push(text);
           }
-
-          const rollout = (await fetchURL(
-              `https://distools.app/_next/data/bjZQmKO4_a8K8UwYRujPg/experiments/${exp.id}.json`,
-            )) as ExperimentRollout,
-            pos = murmurhash.v3(`${exp.hash}:${guildId}`) % 10000,
-            rollout_data_dict = {};
-          let enabled: boolean;
-
-          for (const i of rollout.populations[0].buckets) rollout_data_dict[i[0]] = i[1];
-          for (const i of exp.buckets) {
-            if (rollout_data_dict[i.bucket])
-              for (const item of rollout_data_dict[i.bucket]) enabled = item.s < pos && pos < item.e;
-          }
-
-          const text = `• ${enabled ? '✅' : '❌'} [${exp.title}](https://distools.app/experiments/${exp.hash})`;
-
-          length += text.length;
-          descriptions[counter].push(text);
         }
 
-        descriptions.forEach((e, i) => embs[i].setDescription(e.join('\n')));
-
+        descriptions.forEach((d, i) => embs[i].setDescription(d));
         return interaction.editReply({ embeds: embs });
       }
 
-      const experiment = experiments.data.find(exp => exp.id === experimentO);
+      const experiment = experiments.data.find(exp => exp.data.id === experimentO || exp.data.hash === +experimentO);
 
       if (!experiment)
         return interaction.editReply({ embeds: [embed({ type: 'error' }).setDescription('Experiment not found')] });
 
-      const rollout = (
-          await fetchURL(`https://distools.app/_next/data/bjZQmKO4_a8K8UwYRujPg/experiments/${experiment.id}.json`)
-        ).pageProps.rollout as ExperimentRollout,
-        rPos = murmurhash.v3(`${experiment.hash}:${guildId}`) % 10000,
+      const rPos = guildId && murmurhash.v3(`${experiment.data.hash}:${guildId}`) % 10000,
         emb = embed({
-          title: `${emojis.info} (${experiment.type === 'guild' ? 'Guild' : 'User'}) ${experiment.title}`,
-        })
-          .setURL(`https://distools.app/experiments/${experiment.hash}`)
-          .addFields(
-            {
-              inline: true,
-              name: `🪪 ${localize('GENERIC.ID')}`,
-              value: `\`${experiment.id}\``,
-            },
-            { inline: true, name: '#️⃣ Hash', value: `\`${experiment.hash}\`` },
-            { inline: true, name: '🚩 Position', value: `\`${rPos}\`` },
-            {
-              inline: true,
-              name: `📅 ${localize('GENERIC.CREATION_DATE')}`,
-              value: toUTS(experiment.created_at * 1000),
-            },
-            { inline: true, name: `🕑 ${localize('ROLLOUT.LAST_UPDATE')}`, value: toUTS(experiment.updated_at * 1000) },
-          );
+          title: `${AppEmoji.info} ${experiment.data.label || experiment.data.id || experiment.data.hash}`,
+        });
+
+      if (guild) emb.setAuthor({ iconURL: client.rest.cdn.icon(guildId, guild.icon, imageOptions), name: guild.name });
+
+      if (experiment.data.id) {
+        if (experiment.data.kind === Kind.Guild)
+          emb.setURL(`https://discordlookup.com/experiments/${experiment.data.id}`);
+        emb.addFields({
+          inline: true,
+          name: `🪪 ${localize('GENERIC.ID')}`,
+          value: `\`${experiment.data.id}\``,
+        });
+      }
+      emb.addFields({ inline: true, name: '#️⃣ Hash', value: `\`${experiment.data.hash}\`` });
+
+      if (rPos) emb.addFields({ inline: true, name: '🚩 Position', value: `\`${rPos}\`` });
+
       // overrides = []
 
       // for (const o of experiment.rollout[4]) if (o.k.find(g => g === guildId)) overrides.push(o.b);
       console.log(util.inspect(experiment, false, null, true));
-      console.log(util.inspect(rollout, false, null, true));
 
-      if (rollout) {
-        for (const pop of rollout.populations) {
+      if (experiment.rollout) {
+        for (const pop of experiment.rollout.populations) {
           const inFilters = pop.filters.every(
-              fl =>
+              f =>
                 guild &&
-                (fl.type === 'guild_features'
-                  ? fl.features.some(f => (guild.features as any)?.includes(f))
-                  : fl.type === 'member_count_range'
-                  ? fl.min <= guild.memberCount && guild.memberCount <= fl.max
-                  : fl.type === 'guild_id_range'
-                  ? fl.min <= guild.id && guild.id <= fl.max
-                  : fl.type === 'guild_ids' && fl.ids.includes(guild.id)),
+                (f.type === PopulationType.GuildHasFeature
+                  ? f.features.some(ft => (guild.features as any)?.includes(ft))
+                  : f.type === PopulationType.GuildMemberCountRange
+                    ? f.min_count <= memberCount && memberCount <= f.max_count
+                    : PopulationType.GuildHasVanityURL
+                      ? f.has_vanity === !!guild.vanityURLCode
+                      : true),
             ),
-            fieldValues = [];
+            fieldValues = [],
+            bucketArray = experiment.data.buckets;
 
           let control = 10000;
-          for (const pBkt of pop.buckets) {
-            const bkt = experiment.buckets.find(b => b.bucket === pBkt.bucket);
-            if (bkt) {
-              let inHash: boolean,
+
+          for (const [bucket, { rollout }] of Object.entries(pop.buckets)) {
+            if (bucketArray?.includes(+bucket)) {
+              const inOverride = experiment.rollout.overrides[bucket]?.includes(guildId) ?? false;
+              let inHash = false,
                 pr = 0;
 
-              for (const pos of pBkt.positions) {
+              for (const pos of rollout) {
                 inHash = pos.start <= rPos && rPos <= pos.end;
                 pr += pos.end - pos.start;
               }
@@ -185,21 +256,23 @@ export default class Rollout extends Command {
 
               fieldValues.push(
                 `${
-                  inHash
-                    ? pop.filters.length
-                      ? guild
-                        ? inFilters
-                          ? emojis.check
-                          : emojis.maybe
-                        : emojis.neutral
-                      : emojis.check
-                    : emojis.no
-                } **${bkt.title}${bkt.description ? `: ${bkt.description}` : ''}:** ${pr / 100}%`,
+                  guildId
+                    ? inHash
+                      ? pop.filters.length
+                        ? guild
+                          ? inFilters || inOverride
+                            ? AppEmoji.check
+                            : AppEmoji.maybe
+                          : AppEmoji.neutral
+                        : AppEmoji.check
+                      : AppEmoji.no
+                    : AppEmoji.neutral
+                } **${experiment.data.description.at(bucketArray.indexOf(+bucket))}:** ${pr / 100}%`,
               );
             }
           }
 
-          if (control) fieldValues.push(`🔘 **Control:** ${control / 100}%`);
+          if (control) fieldValues.unshift(`🔘 **Control:** ${control / 100}%`);
 
           emb.addFields({
             name: pop.filters.length
@@ -207,13 +280,21 @@ export default class Rollout extends Command {
                   .map(
                     f =>
                       `${
-                        f.type === 'guild_features'
+                        f.type === PopulationType.GuildHasFeature
                           ? f.features.map((f1, i) => (i === 0 ? `Guild has feature ${f1}` : `or ${f1}`)).join(' ')
-                          : f.type === 'guild_id_range'
-                          ? `Guild ID is in range ${f.min}${f.max ? `-${f.max}` : '+'}`
-                          : f.type === 'member_count_range'
-                          ? `Member count is in range ${f.min}${f.max ? `-${f.max}` : '+'}`
-                          : 'Unknown filter'
+                          : f.type === PopulationType.GuildInRangeByHash
+                            ? `${f.target / 100}% of guilds (hash: \`${f.hash_key}\`)`
+                            : f.type === PopulationType.GuildHasVanityURL
+                              ? f.has_vanity
+                                ? 'Guild has vanity URL'
+                                : "Guild doesn't have vanity URL"
+                              : f.type === PopulationType.GuildHubTypes
+                                ? f.hub_types
+                                    .map((h, i) => (i === 0 ? `Guild hub is of type ${h}` : `or ${h}`))
+                                    .join(' ')
+                                : f.type === PopulationType.GuildMemberCountRange
+                                  ? `Member count is in range ${f.min_count}${f.max_count ? `-${f.max_count}` : '+'}`
+                                  : 'Unknown filter'
                       }`,
                   )
                   .join(' & ')

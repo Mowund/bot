@@ -8,6 +8,8 @@ import {
   Role,
   GuildTextBasedChannel,
   StringSelectMenuBuilder,
+  ApplicationIntegrationType,
+  InteractionContextType,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { botOwners } from '../defaults.js';
@@ -17,9 +19,10 @@ export default class RoleMenu extends Command {
   constructor() {
     super([
       {
+        contexts: [InteractionContextType.Guild],
         defaultMemberPermissions: PermissionFlagsBits.ManageRoles,
         description: 'ROLEMENU.DESCRIPTION',
-        dmPermission: false,
+        integration_types: [ApplicationIntegrationType.GuildInstall],
         name: 'ROLEMENU.NAME',
         options: [
           {
@@ -28,12 +31,13 @@ export default class RoleMenu extends Command {
             options: [
               {
                 channelTypes: [
-                  ChannelType.GuildText,
-                  ChannelType.GuildAnnouncement,
                   ChannelType.AnnouncementThread,
-                  ChannelType.PublicThread,
-                  ChannelType.PrivateThread,
+                  ChannelType.GuildAnnouncement,
+                  ChannelType.GuildText,
                   ChannelType.GuildVoice,
+                  ChannelType.GuildStageVoice,
+                  ChannelType.PrivateThread,
+                  ChannelType.PublicThread,
                 ],
                 description: 'ROLEMENU.OPTIONS.CREATE.OPTIONS.CHANNEL.DESCRIPTION',
                 name: 'ROLEMENU.OPTIONS.CREATE.OPTIONS.CHANNEL.NAME',
@@ -117,7 +121,7 @@ export default class RoleMenu extends Command {
           });
         }
       }
-    } else if (interaction.isSelectMenu()) {
+    } else if (interaction.isStringSelectMenu()) {
       const { customId, values } = interaction;
 
       switch (customId) {

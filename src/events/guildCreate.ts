@@ -8,16 +8,14 @@ export default class GuildCreateEvent extends Event {
     super(Events.GuildCreate);
   }
 
-  async run(client: App, guild: Guild): Promise<any> {
-    const { chalk } = client,
-      settings = await client.database.guilds.set(guild, {}, { setFromCache: true });
+  run(client: App, guild: Guild): any {
+    const { chalk } = client;
     client.updateMowundDescription();
 
     if (debugLevel) {
       console.log(
         chalk.green('Joined ') + chalk.blue(guild.name) + chalk.gray(' (') + chalk.blue(guild.id) + chalk.gray('):'),
       );
-      console.log(settings);
     }
   }
 }

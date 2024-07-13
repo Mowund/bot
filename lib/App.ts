@@ -1,35 +1,50 @@
-/* eslint-disable @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-empty-function */
 
 import process from 'node:process';
 import { Buffer } from 'node:buffer';
+import util from 'node:util';
 import { Octokit } from '@octokit/core';
 import {
+  APIInteractionGuildMember,
   ApplicationCommand,
-  ApplicationCommandData,
   ApplicationCommandOptionType,
-  ApplicationCommandSubCommandData,
   ApplicationCommandType,
-  ChatInputApplicationCommandData,
   Client,
   ClientOptions,
   Collection,
   ColorResolvable,
   Colors,
   EmbedBuilder,
+  Guild,
   GuildMember,
+  GuildPreview,
+  GuildTemplate,
+  GuildTemplateResolvable,
+  Invite,
+  InviteGuild,
+  InviteResolvable,
+  Routes,
   Snowflake,
   User,
+  Widget,
 } from 'discord.js';
 import firebase, { firestore } from 'firebase-admin';
-import i18n, { GlobalCatalog, I18n, LocaleCatalog } from 'i18n';
+import i18n, { GlobalCatalog, I18n } from 'i18n';
 import { Chalk, ChalkInstance } from 'chalk';
-import { defaultLocale, emojis, imgOpts, supportServer } from '../src/defaults.js';
-import { addSearchParams } from '../src/utils.js';
+import { defaultLocale, AppEmoji, imageOptions, supportServer } from '../src/defaults.js';
+import { addSearchParams, isEmpty, truncate } from '../src/utils.js';
 import { Command } from './structures/Command.js';
 import { DatabaseManager } from './managers/DatabaseManager.js';
+import { Experiment } from './interfaces/Experiment.js';
 
-export class App extends Client {
-  badDomains: Array<string>;
+export interface Monster {
+  name: string;
+  eggs: Record<string, number>;
+  active?: boolean;
+}
+
+export class App extends Client<true> {
+  allShardsReady: boolean;
   chalk: ChalkInstance;
   commands: Collection<string, Command>;
   database: DatabaseManager;
@@ -38,7 +53,8 @@ export class App extends Client {
   globalCommandCount: { chatInput: number; message: number; sum: { all: number; contextMenu: number }; user: number };
   i18n: I18n;
   octokit: Octokit;
-  private nonDefaultLocales: string[];
+  supportedLocales: string[];
+  monsters: Monster[];
 
   constructor(options: ClientOptions) {
     super(options);
@@ -47,12 +63,18 @@ export class App extends Client {
       credential: firebase.credential.cert(JSON.parse(process.env.FIREBASE_TOKEN)),
     });
 
+    this.allShardsReady = false;
     this.chalk = new Chalk({ level: 3 });
     this.commands = new Collection();
     this.database = new DatabaseManager(this);
     this.firestore = firebase.firestore();
     this.i18n = i18n;
   }
+
+  get isMainShard() {
+    return this.shard.ids[0] === 0;
+  }
+
   async login(token?: string) {
     this.octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
     await this.updateLocalizations();
@@ -65,17 +87,52 @@ export class App extends Client {
   localizeObject(object: Record<string, any>, key: string) {
     object[`${key}Localizations`] ??= {};
 
-    for (const locale of this.nonDefaultLocales)
+    for (const locale of this.supportedLocales.filter((l: string) => l !== defaultLocale))
       object[`${key}Localizations`][locale] = this.localize({ locale, phrase: object[key] });
 
     object[key] = this.localize({ locale: defaultLocale, phrase: object[key] });
   }
 
-  localizeCommand(data: Record<string, any>) {
+  localizeData(data: Record<string, any>) {
     if ('name' in data) this.localizeObject(data, 'name');
     if ('description' in data) this.localizeObject(data, 'description');
-    if ('options' in data) for (const opt of data.options) this.localizeCommand(opt);
-    if ('choices' in data) for (const ch of data.choices) this.localizeCommand(ch);
+    if ('options' in data) for (const opt of data.options) this.localizeData(opt);
+    if ('choices' in data) for (const ch of data.choices) this.localizeData(ch);
+  }
+
+  fetchGuild(guild: Snowflake) {
+    return this.guilds.cache.get(guild) || this.guilds.fetch({ force: true, guild }).catch(() => null) || null;
+  }
+
+  async fetchGuildGlobally(guildOrInvite: Snowflake | InviteResolvable | GuildTemplateResolvable) {
+    let invite: Invite;
+    const template: GuildTemplate = await this.fetchGuildTemplate(guildOrInvite).catch(() => null);
+
+    if (template) {
+      if (template.guild) return template.guild;
+      guildOrInvite = template.guildId;
+    } else {
+      if (guildOrInvite) invite = await this.fetchInvite(guildOrInvite).catch(() => null);
+      if (invite) guildOrInvite = invite.guild.id;
+    }
+
+    let guild: Guild | (InviteGuild & Widget & GuildPreview) = await this.fetchGuild(guildOrInvite),
+      widget: Widget;
+
+    if (!invite && !guild) {
+      widget = await this.fetchGuildWidget(guildOrInvite).catch(() => null);
+      if (widget?.instantInvite) invite = await this.fetchInvite(widget.instantInvite);
+    }
+
+    guild ||= Object.assign(
+      invite?.guild || {},
+      widget || {},
+      await this.fetchGuildPreview(guildOrInvite).catch(() => {}),
+    ) as InviteGuild & Widget & GuildPreview;
+
+    if (isEmpty(guild)) guild = null;
+
+    return guild;
   }
 
   async updateLocalizations() {
@@ -104,23 +161,39 @@ export class App extends Client {
         ).toString(),
       );
     }
-
-    this.nonDefaultLocales = locales.filter((l: string) => l !== defaultLocale);
+    this.supportedLocales = locales;
 
     i18n.configure({
-      defaultLocale: defaultLocale,
-      locales: locales,
+      defaultLocale,
+      locales,
       objectNotation: true,
       retryInDefaultLocale: true,
       staticCatalog: staticCatalog,
     });
   }
 
-  countCommands(commands: Collection<string, ApplicationCommandData>) {
+  async updateExperiments() {
+    const res = (await this.octokit
+      .request('GET /repos/{owner}/{repo}/contents/{path}', {
+        owner: 'xHyroM',
+        path: 'data/client/experiments/experiments.json',
+        repo: 'discord-datamining',
+      })
+      .catch(() => null)) as { data: { content: string } };
+
+    if (res) {
+      this.experiments = {
+        data: JSON.parse(Buffer.from(res.data.content, 'base64').toString()) as Experiment[],
+        lastUpdated: Date.now(),
+      };
+    }
+  }
+
+  countCommands(commands: Collection<string, ApplicationCommand>) {
     const chatInput = commands
         .filter(c => c.type === ApplicationCommandType.ChatInput)
         .reduce(
-          (acc1, value1: ChatInputApplicationCommandData) =>
+          (acc1, value1) =>
             acc1 +
             (value1.options?.reduce(
               (acc2, value2) =>
@@ -128,8 +201,8 @@ export class App extends Client {
                 (value2.type === ApplicationCommandOptionType.SubcommandGroup
                   ? value2.options.reduce(acc3 => ++acc3, 0)
                   : value2.type === ApplicationCommandOptionType.Subcommand
-                  ? 1
-                  : 0),
+                    ? 1
+                    : 0),
               0,
             ) || 1),
           0,
@@ -155,23 +228,35 @@ export class App extends Client {
 
     if (options.footer !== 'none') {
       emb.setFooter({
-        iconURL: addSearchParams(new URL((options.member ?? options.user).displayAvatarURL(imgOpts)), options.addParams)
-          .href,
+        iconURL: addSearchParams(
+          new URL(
+            options.avatar ||
+              (options.member?.displayAvatarURL?.(imageOptions) ?? options.user.displayAvatarURL(imageOptions)),
+          ),
+          options.addParams,
+        ).href,
         text: options.localizer(`GENERIC.${options.footer === 'interacted' ? 'INTERACTED_BY' : 'REQUESTED_BY'}`, {
-          userName: options.member?.displayName ?? options.user.username,
+          userName:
+            options.member?.displayName ??
+            (options.member as any as APIInteractionGuildMember)?.nick ??
+            options.user.displayName,
         }),
       });
     }
 
     switch (options.type) {
       case 'error':
-        return emb.setColor(Colors.Red).setTitle(`❌ ${options.title || options.localizer('GENERIC.ERROR')}`);
+        return emb
+          .setColor(Colors.Red)
+          .setTitle(`${AppEmoji.no} ${options.title || options.localizer('GENERIC.ERROR')}`);
       case 'loading':
         return emb
           .setColor(Colors.Blurple)
-          .setTitle(`${emojis.loading} ${options.title || options.localizer('GENERIC.LOADING')}`);
+          .setTitle(`${AppEmoji.loading} ${options.title || options.localizer('GENERIC.LOADING')}`);
       case 'success':
-        return emb.setColor(Colors.Green).setTitle(`✅ ${options.title || options.localizer('GENERIC.SUCCESS')}`);
+        return emb
+          .setColor(Colors.Green)
+          .setTitle(`${AppEmoji.check} ${options.title || options.localizer('GENERIC.SUCCESS')}`);
       case 'warning':
         return emb.setColor(Colors.Yellow).setTitle(`⚠️ ${options.title || options.localizer('GENERIC.WARNING')}`);
       case 'wip':
@@ -234,10 +319,31 @@ export class App extends Client {
       { context: { serverId: supportServer.id } },
     );
   }
+
+  reportError(error: Error, options: { consoleMessage?: string; embed?: EmbedBuilderOptions; message?: string } = {}) {
+    const { consoleMessage, embed, message } = options;
+
+    if (consoleMessage || message) console.error(consoleMessage || this.chalk.red(message));
+    console.error(util.inspect(error, { depth: null }));
+
+    return this.rest.post(Routes.channelMessages(supportServer.errorChannelId), {
+      body: {
+        embeds: [
+          this.embedBuilder({ footer: 'none', type: 'error', ...embed }).setDescription(
+            `${message ? `${message}\n` : ''}\`\`\`ts\n${truncate(
+              error.toString(),
+              4096 - 9 - (message ? message.length + 1 : 0),
+            )}\`\`\``,
+          ),
+        ],
+      },
+    });
+  }
 }
 
 export interface EmbedBuilderOptions {
   addParams?: Record<string, string>;
+  avatar?: string;
   color?: ColorResolvable;
   footer?: 'interacted' | 'requested' | 'none';
   localizer?: (phrase: string, replace?: Record<string, any>) => string;
@@ -246,43 +352,4 @@ export interface EmbedBuilderOptions {
   title?: string;
   type?: 'error' | 'loading' | 'success' | 'warning' | 'wip';
   user: User;
-}
-
-export interface Experiment {
-  hash: number;
-  created_at: number;
-  updated_at: number;
-  buckets: {
-    bucket: number;
-    title: string;
-    description: string | null;
-  }[];
-  id: string;
-  title: string;
-  type: 'guild' | 'user';
-  in_client: boolean;
-}
-
-export interface ExperimentRollout {
-  created_at: number;
-  hash: number;
-  overrides: Record<Snowflake, number>[];
-  populations: {
-    buckets: {
-      bucket: number;
-      positions: {
-        end: number;
-        start: number;
-      }[];
-    }[];
-    filters: {
-      features?: string[];
-      type: 'guild_features' | 'guild_id_range' | 'guild_ids' | 'member_count_range';
-      max?: number | null | string;
-      min?: number | string;
-      ids?: Array<number | string>;
-    }[];
-  }[];
-  revision: number;
-  updated_at: number;
 }
