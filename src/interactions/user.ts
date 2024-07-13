@@ -27,11 +27,21 @@ import {
   InteractionContextType,
   Snowflake,
 } from 'discord.js';
-import { parse, stringify } from 'zipson';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { UserData, Warnings } from '../../lib/structures/UserData.js';
 import { defaultLocale, AppEmoji, UserFlagEmoji, imageOptions, AppFlagEmoji } from '../defaults.js';
-import { toUTS, collMap, monthDiff, getFieldValue, appInvite, toUpperSnakeCase, arrayMap, isEmpty } from '../utils.js';
+import {
+  toUTS,
+  collMap,
+  monthDiff,
+  getFieldValue,
+  appInvite,
+  toUpperSnakeCase,
+  arrayMap,
+  isEmpty,
+  compressJSON,
+  decompressJSON,
+} from '../utils.js';
 import { EmbeddedApplication, FullApplication } from '../../lib/interfaces/Application.js';
 
 export default class User extends Command {
@@ -322,7 +332,7 @@ export default class User extends Command {
 
         return { emb, rows: [row] };
       },
-      memberInfoOpts = (m: GuildMember, u: DiscordUser) => {
+      memberInfoOpts = (m: GuildMember, u: DiscordUser, sM: string | null) => {
         console.log(util.inspect(m, { depth: null }));
         const mFlags = typeof m.flags === 'object' ? m.flags : new GuildMemberFlagsBitField(m.flags),
           flags = u?.bot ? (u.flags.has(UserFlags.VerifiedBot) ? [AppEmoji.verifiedBot] : [AppEmoji.bot]) : [],
@@ -330,7 +340,9 @@ export default class User extends Command {
           avatar = m.avatar
             ? client.rest.cdn.guildMemberAvatar(guildId, u.id, m.avatar, imageOptions)
             : u.displayAvatarURL(imageOptions),
-          banner = client.rest.cdn.guildMemberBanner(guildId, u.id, m.banner, imageOptions);
+          banner = m.banner
+            ? client.rest.cdn.guildMemberBanner(guildId, u.id, m.banner, imageOptions)
+            : u.bannerURL(imageOptions);
 
         if (u.id === guild?.ownerId) flags.push(AppEmoji.serverOwner);
 
@@ -371,7 +383,7 @@ export default class User extends Command {
           addParams.permissions = (m as any as APIInteractionGuildMember).permissions;
 
         const emb = embed({
-            addParams: !m.user ? { member: stringify(m) } : {},
+            addParams: sM ? { member: sM } : {},
             color: m.displayColor || u.accentColor || Colors.Blurple,
             title: `${AppEmoji.info} ${localize('USER.OPTIONS.INFO.MEMBER.TITLE')}`,
           })
@@ -573,7 +585,7 @@ export default class User extends Command {
       (interaction.isChatInputCommand() && ['info', 'permissions'].includes(interaction.options.getSubcommand())) ||
       interaction.isUserContextMenuCommand()
     ) {
-      const { channel, commandName, options } = interaction,
+      const { channel, commandName, member, options } = interaction,
         appO = (options as CommandInteractionOptionResolver).getString?.('app'),
         appId = appO?.match(/\d{17,20}/g)?.[0];
 
@@ -589,8 +601,8 @@ export default class User extends Command {
       const userO = (await (appO
           ? client.users.fetch(appId, { force: true }).catch(() => null)
           : (options.getUser('user') ?? user).fetch(true))) as DiscordUser | null,
-        memberO = options.getMember('user') ?? guild?.members.cache.get(userO?.id),
-        sM = memberO && !memberO.user ? stringify(memberO) : null,
+        memberO = options.getMember('user') ?? member,
+        sM = memberO && !memberO.user ? compressJSON(memberO) : null,
         { app, embeddedApp } = await getFullApplication(appId || userO?.id);
 
       console.log(app);
@@ -613,7 +625,7 @@ export default class User extends Command {
           : !isUserInfoCmd && app
             ? appInfoOpts(app, embeddedApp, sM)
             : memberO
-              ? memberInfoOpts(memberO, userO)
+              ? memberInfoOpts(memberO, userO, sM)
               : userInfoOpts(userO, sM),
         noApp = !app && userO?.bot;
 
@@ -724,12 +736,11 @@ export default class User extends Command {
               { force: true },
             ),
             sM = new URLSearchParams(message.embeds.at(-1)?.footer?.iconURL).get('member'),
-            memberO = guild?.members.cache.get(userO.id) || (sM ? parse(sM) : null),
+            memberO = guild?.members.cache.get(userO.id) || (sM ? decompressJSON(sM) : null),
             memberButtonBlocked =
               !sM &&
               (message.components[0].components as ButtonComponent[])?.find(c => c.customId === 'user_member_info')
                 ?.style === ButtonStyle.Danger,
-            // TODO: check if member button is blurple instead, also fix it still disabling the user button
             noMember = isMember && !memberO,
             { app, embeddedApp } = await getFullApplication(userO.id),
             opts = isPermsCmd
@@ -737,7 +748,7 @@ export default class User extends Command {
               : isApp && app
                 ? appInfoOpts(app, embeddedApp, sM)
                 : isMember && memberO && !memberButtonBlocked
-                  ? memberInfoOpts(memberO, userO)
+                  ? memberInfoOpts(memberO, userO, sM)
                   : userInfoOpts(userO, sM);
 
           if (!isPermsCmd && (memberO || userO.bot || memberButtonBlocked || noMember)) {
@@ -778,7 +789,7 @@ export default class User extends Command {
               { force: true },
             ),
             sM = new URLSearchParams(message.embeds.at(-1)?.footer?.iconURL).get('member'),
-            memberO = guild?.members.cache.get(userO.id) || (sM ? (parse(sM) as GuildMember) : null),
+            memberO = guild?.members.cache.get(userO.id) || (sM ? (decompressJSON(sM) as GuildMember) : null),
             { app } = await getFullApplication(userO.id);
 
           if (!memberO) {

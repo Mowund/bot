@@ -4,7 +4,7 @@ import { ShardingManager } from 'discord.js';
 import { Chalk } from 'chalk';
 import 'log-timestamp';
 import { App } from '../lib/App';
-import { debugLevel } from './defaults';
+import { debugLevel } from './defaults.js';
 
 dotenv.load({ errorOnRegex: true });
 

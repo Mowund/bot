@@ -1,4 +1,6 @@
 import { URL } from 'node:url';
+import { Buffer } from 'node:buffer';
+import zlib from 'node:zlib';
 import {
   ButtonStyle,
   discordSort,
@@ -21,6 +23,17 @@ import {
   ApplicationIntegrationType,
 } from 'discord.js';
 import { firestore } from 'firebase-admin';
+
+export const compressJSON = (json: any) => {
+  const compressedData = zlib.deflateSync(JSON.stringify(json));
+  return compressedData.toString('base64');
+};
+
+export const decompressJSON = (string: string) => {
+  const compressedData = Buffer.from(string, 'base64'),
+    decompressedJSON = zlib.inflateSync(compressedData).toString();
+  return JSON.parse(decompressedJSON);
+};
 
 export type MergeTypes<A, B> = {
   [key in keyof A]: key extends keyof B ? B[key] : A[key];
