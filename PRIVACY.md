@@ -1,6 +1,4 @@
----
-description: 'Last updated: Saturday, April 20th 2024'
----
+**Last Updated:** July 18th, 2024
 
 # Privacy Policy
 

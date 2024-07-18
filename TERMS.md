@@ -1,6 +1,6 @@
 # Mowund Bot Terms of Service
 
-**Last Updated:** July 18, 2024
+**Last Updated:** July 18th, 2024
 
 This document pertains to the Discord bots **Mowund#3410** and **Mowund Beta#4816**.
 
