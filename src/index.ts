@@ -9,10 +9,13 @@ import { debugLevel } from './defaults.js';
 dotenv.load({ errorOnRegex: true });
 
 const manager = new ShardingManager('./dist/src/bot.js', {
-  token: process.env.DISCORD_TOKEN,
-  totalShards: debugLevel ? 2 : 'auto',
-});
+    token: process.env.DISCORD_TOKEN,
+    totalShards: debugLevel ? 2 : 'auto',
+  }),
+  chalk = new Chalk({ level: 3 });
 
-manager.on('shardCreate', shard => console.log(new Chalk({ level: 3 }).red(`Launched shard ${shard.id + 1}`)));
+manager.on('shardCreate', shard =>
+  console.log(chalk.gray('[') + chalk.magenta(shard.id + 1) + chalk.gray(']'), chalk.red('Launched shard')),
+);
 await manager.spawn();
 await manager.broadcastEval((c: App) => (c.allShardsReady = true));

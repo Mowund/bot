@@ -13,8 +13,8 @@ export default class GuildCreateEvent extends Event {
     client.updateMowundDescription();
 
     if (debugLevel) {
-      console.log(
-        chalk.green('Joined ') + chalk.blue(guild.name) + chalk.gray(' (') + chalk.blue(guild.id) + chalk.gray('):'),
+      client.log(
+        chalk.green('Joined ') + chalk.blue(guild.name) + chalk.gray(' (') + chalk.blue(guild.id) + chalk.gray(')'),
       );
     }
   }

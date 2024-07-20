@@ -25,7 +25,7 @@ import {
   InteractionContextType,
 } from 'discord.js';
 import { collMap, toUTS, getFieldValue, decreaseSizeCDN, disableComponents, beforeMatch, arrayMap } from '../utils.js';
-import { AppEmoji, imageOptions, premiumLimits } from '../defaults.js';
+import { imageOptions, premiumLimits } from '../defaults.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { App } from '../../lib/App.js';
 
@@ -231,7 +231,7 @@ export default class Emoji extends Command {
             ? anyEmj.animated
               ? `<${anyEmj.identifier}> `
               : `<:${anyEmj.identifier}> `
-            : '',
+            : `${client.useEmoji('emojiGhost')} `,
         emjCodePoint: string,
         emjURL = `https://cdn.discordapp.com/emojis/${parsedEmoji.id || emjId}`;
 
@@ -289,7 +289,7 @@ export default class Emoji extends Command {
       if (emjCodePoint || parsedEmoji.id || anyEmj) {
         emb.addFields({
           inline: true,
-          name: `${AppEmoji.mention} ${localize('GENERIC.MENTION')}`,
+          name: `${client.useEmoji('mention')} ${localize('GENERIC.MENTION')}`,
           value: `\`${emjDisplay.trim() || `<${imageType === 'gif' ? 'a' : ''}:${emjName}:${emjId}>`}\``,
         });
       }
@@ -311,20 +311,20 @@ export default class Emoji extends Command {
 
           emb.addFields({
             inline: true,
-            name: `${AppEmoji[integration.type]} ${localize('GENERIC.MANAGED_BY')}`,
+            name: `${client.useEmoji(integration.type)} ${localize('GENERIC.MANAGED_BY')}`,
             value: `<@${integration.userId || integration.user.id}>`,
           });
           editBtnVsby = 1;
         } else {
           emb.addFields({
             inline: true,
-            name: `${AppEmoji.user} ${localize('GENERIC.AUTHOR')}`,
+            name: `${client.useEmoji('user')} ${localize('GENERIC.AUTHOR')}`,
             value: `<@${shardEmj?.[0]?.author || (await emj.fetchAuthor()).id}>`,
           });
         }
 
         emb.addFields({
-          name: `${AppEmoji.role} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
+          name: `${client.useEmoji('role')} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
             count: shardEmj?.[1]?.length ?? emj.roles?.cache.size,
           })}]`,
           value:
@@ -450,8 +450,13 @@ export default class Emoji extends Command {
         .setThumbnail(emjURL)
         .setTimestamp(Date.now());
 
-      if (emjMention)
-        emb.addFields({ inline: true, name: `${AppEmoji.mention} ${localize('GENERIC.MENTION')}`, value: emjMention });
+      if (emjMention) {
+        emb.addFields({
+          inline: true,
+          name: `${client.useEmoji('mention')} ${localize('GENERIC.MENTION')}`,
+          value: emjMention,
+        });
+      }
       if (!emjCodePoint) {
         emb.addFields({
           inline: true,
@@ -462,11 +467,11 @@ export default class Emoji extends Command {
       if (emj) {
         emb.addFields({
           inline: true,
-          name: `${AppEmoji.user} ${localize('GENERIC.AUTHOR')}`,
+          name: `${client.useEmoji('user')} ${localize('GENERIC.AUTHOR')}`,
           value: `${await emj.fetchAuthor()}`,
         });
         emb.addFields({
-          name: `${AppEmoji.role} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
+          name: `${client.useEmoji('role')} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
             count: emj.roles.cache.size,
           })}]`,
           value:
@@ -488,7 +493,7 @@ export default class Emoji extends Command {
               embeds: [
                 emb
                   .setTitle(
-                    `${AppEmoji.loading} ${localize(
+                    `${client.useEmoji('loading')} ${localize(
                       `EMOJI.${isAddId ? (emjCodePoint ? 'ADDING_UNICODE' : 'ADDING') : 'READDING'}`,
                     )}`,
                   )
@@ -544,7 +549,7 @@ export default class Emoji extends Command {
               footer: 'interacted',
               title: `${emj} ${localize(`EMOJI.${isAddId ? (emjCodePoint ? 'ADDED_UNICODE' : 'ADDED') : 'READDED'}`)}`,
             })
-              .setThumbnail(emj.url)
+              .setThumbnail(emj.imageURL(imageOptions))
               .addFields(
                 {
                   inline: true,
@@ -558,7 +563,7 @@ export default class Emoji extends Command {
                 },
                 {
                   inline: true,
-                  name: `${AppEmoji.mention} ${localize('GENERIC.MENTION')}`,
+                  name: `${client.useEmoji('mention')} ${localize('GENERIC.MENTION')}`,
                   value: `\`${emj}\``,
                 },
                 {
@@ -568,11 +573,11 @@ export default class Emoji extends Command {
                 },
                 {
                   inline: true,
-                  name: `${AppEmoji.user} ${localize('GENERIC.AUTHOR')}`,
+                  name: `${client.useEmoji('user')} ${localize('GENERIC.AUTHOR')}`,
                   value: `${await emj.fetchAuthor()}`,
                 },
                 {
-                  name: `${AppEmoji.role} ${localize('GENERIC.ROLES.ROLES')} [0]`,
+                  name: `${client.useEmoji('role')} ${localize('GENERIC.ROLES.ROLES')} [0]`,
                   value: '@everyone',
                 },
               );
@@ -703,7 +708,9 @@ export default class Emoji extends Command {
 
           return (interaction as ButtonInteraction).update({
             components: rows,
-            embeds: [emb.setTitle(localize('EMOJI.DELETED')).setColor(Colors.Red)],
+            embeds: [
+              emb.setTitle(`${client.useEmoji('emojiGhost')} ${localize('EMOJI.DELETED')}`).setColor(Colors.Red),
+            ],
           });
         }
         case 'emoji_rename': {
@@ -757,7 +764,7 @@ export default class Emoji extends Command {
           });
           emb.spliceFields(2, 1, {
             inline: true,
-            name: `${AppEmoji.mention} ${localize('GENERIC.MENTION')}`,
+            name: `${client.useEmoji('mention')} ${localize('GENERIC.MENTION')}`,
             value: `\`${emj}\``,
           });
 
@@ -798,7 +805,7 @@ export default class Emoji extends Command {
             }
 
             emb.spliceFields(5, 1, {
-              name: `${AppEmoji.role} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
+              name: `${client.useEmoji('role')} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
                 count: emj.roles.cache.size,
               })}]`,
               value: collMap(emj.roles.cache) || '@everyone',
@@ -807,7 +814,7 @@ export default class Emoji extends Command {
             emj = await emj.roles.set([]);
             title = localize('GENERIC.ROLES.RESET');
             emb.setColor(Colors.Red).spliceFields(5, 1, {
-              name: `${AppEmoji.role} ${localize('GENERIC.ROLES.ROLES')} [0]`,
+              name: `${client.useEmoji('role')} ${localize('GENERIC.ROLES.ROLES')} [0]`,
               value: '@everyone',
             });
           } else if (isEdit) {

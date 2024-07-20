@@ -7,7 +7,6 @@ import {
   ButtonStyle,
   Snowflake,
 } from 'discord.js';
-import { AppEmoji } from '../defaults.js';
 import { toUTS } from '../utils.js';
 import { AppEvents, Event } from '../../lib/structures/Event.js';
 import { App } from '../../lib/App.js';
@@ -19,26 +18,27 @@ export default class ReminderFoundEvent extends Event {
   }
 
   async run(client: App, reminder: ReminderData): Promise<any> {
-    const { channelId, content, id, isRecursive, msTime, timestamp, userId } = reminder,
-      channel = client.channels.cache.get(channelId) as GuildTextBasedChannel;
+    const { allShardsReady, channels, database, isMainShard, shard, users } = client,
+      { channelId, content, id, isRecursive, msTime, timestamp, userId } = reminder,
+      channel = channels.cache.get(channelId) as GuildTextBasedChannel;
 
     if (
-      !client.isMainShard ||
+      !isMainShard ||
       (!channel &&
-        client.allShardsReady &&
-        (
-          await client.shard.broadcastEval((c, { cI }) => c.channels.cache.get(cI), { context: { cI: channelId } })
-        ).find(c => c))
+        allShardsReady &&
+        (await shard.broadcastEval((c, { cI }) => c.channels.cache.get(cI), { context: { cI: channelId } })).find(
+          c => c,
+        ))
     )
       return;
 
-    const userData = await client.database.users.fetch(userId);
+    const userData = await database.users.fetch(userId);
     await userData.reminders.delete(id);
 
     const locale = userData?.locale || 'en-US',
       localize = (phrase: string, replace?: Record<string, any>) => client.localize({ locale, phrase }, replace),
       member = channel?.guild.members.cache.get(userId),
-      user = await client.users.fetch(userId),
+      user = await users.fetch(userId),
       idTimestamp = SnowflakeUtil.timestampFrom(id),
       row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -98,7 +98,7 @@ export default class ReminderFoundEvent extends Event {
         localizer: localize,
         member,
         timestamp,
-        title: `${AppEmoji.bellRinging} ${localize('REMINDER.NEW')}`,
+        title: `${client.useEmoji('bellRinging')} ${localize('REMINDER.NEW')}`,
         user,
       })
       .addFields(fields);

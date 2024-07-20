@@ -1,5 +1,4 @@
 import util from 'node:util';
-import { inflate } from 'node:zlib';
 import {
   ApplicationCommandOptionType,
   BaseInteraction,
@@ -10,7 +9,7 @@ import {
 import murmurhash from 'murmurhash';
 import { search } from 'fast-fuzzy';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
-import { AppEmoji, imageOptions } from '../defaults.js';
+import { imageOptions } from '../defaults.js';
 import { truncate } from '../utils.js';
 import { Kind, PopulationType } from '../../lib/interfaces/Experiment.js';
 
@@ -86,7 +85,7 @@ export default class Rollout extends Command {
         memberCount = (guild as Guild)?.memberCount ?? guild?.approximateMemberCount;
 
       if (!experimentO) {
-        const embs = [embed({ title: `${AppEmoji.info} Experiments List` })],
+        const embs = [embed({ title: `${client.useEmoji('info')} Experiments List` })],
           descriptions = [''];
         let counter = 0;
 
@@ -102,15 +101,15 @@ export default class Rollout extends Command {
             inOverride = false;
 
           if (guildId) {
-            console.log(exp);
+            client.log(exp);
             for (const pop of exp.rollout.populations) {
               for (const [bucket, { rollout }] of Object.entries(pop.buckets).filter(([k]) => Number(k))) {
-                console.log('bucket', bucket);
+                client.log('bucket', bucket);
                 if (exp.data.buckets?.includes(+bucket)) {
                   inOverride = exp.rollout.overrides[bucket]?.includes(guildId) ?? false;
                   for (const pos of rollout) inHash = pos.start < rPos && rPos < pos.end;
                 }
-                console.log('hash', inHash);
+                client.log('hash', inHash);
               }
 
               inFilters =
@@ -128,7 +127,7 @@ export default class Rollout extends Command {
                   ),
                 );
 
-              console.log(
+              client.log(
                 inHash &&
                   pop.filters.every(f =>
                     Boolean(
@@ -146,25 +145,25 @@ export default class Rollout extends Command {
               );
 
               pop.filters.every(f =>
-                console.log(
+                client.log(
                   'test',
                   Boolean(
                     guild &&
                       (f.type === PopulationType.GuildHasFeature
-                        ? console.log(
+                        ? client.log(
                             'feature',
                             f.features.some(ft => (guild.features as any)?.includes(ft)),
                           )
                         : f.type === PopulationType.GuildMemberCountRange
-                          ? console.log('member', f.min_count <= memberCount && memberCount <= f.max_count)
+                          ? client.log('member', f.min_count <= memberCount && memberCount <= f.max_count)
                           : PopulationType.GuildHasVanityURL
-                            ? console.log('vanity', f.has_vanity === !!guild.vanityURLCode)
-                            : console.log('none', true)),
+                            ? client.log('vanity', f.has_vanity === !!guild.vanityURLCode)
+                            : client.log('none', true)),
                   ),
                 ),
               );
-              console.log(pop);
-              console.log('infilters', inFilters);
+              client.log(pop);
+              client.log('infilters', inFilters);
             }
           }
 
@@ -173,11 +172,11 @@ export default class Rollout extends Command {
                 ? inHash
                   ? guild
                     ? inFilters || inOverride
-                      ? AppEmoji.check
-                      : AppEmoji.maybe
-                    : AppEmoji.neutral
-                  : AppEmoji.no
-                : AppEmoji.neutral
+                      ? client.useEmoji('check')
+                      : client.useEmoji('maybe')
+                    : client.useEmoji('neutral')
+                  : client.useEmoji('no')
+                : client.useEmoji('neutral')
             } ${exp.data.label}`,
             descLength = descriptions[counter].length;
 
@@ -201,7 +200,7 @@ export default class Rollout extends Command {
 
       const rPos = guildId && murmurhash.v3(`${experiment.data.hash}:${guildId}`) % 10000,
         emb = embed({
-          title: `${AppEmoji.info} ${experiment.data.label || experiment.data.id || experiment.data.hash}`,
+          title: `${client.useEmoji('info')} ${experiment.data.label || experiment.data.id || experiment.data.hash}`,
         });
 
       if (guild) emb.setAuthor({ iconURL: client.rest.cdn.icon(guildId, guild.icon, imageOptions), name: guild.name });
@@ -222,7 +221,7 @@ export default class Rollout extends Command {
       // overrides = []
 
       // for (const o of experiment.rollout[4]) if (o.k.find(g => g === guildId)) overrides.push(o.b);
-      console.log(util.inspect(experiment, false, null, true));
+      client.log(util.inspect(experiment, false, null, true));
 
       if (experiment.rollout) {
         for (const pop of experiment.rollout.populations) {
@@ -261,12 +260,12 @@ export default class Rollout extends Command {
                       ? pop.filters.length
                         ? guild
                           ? inFilters || inOverride
-                            ? AppEmoji.check
-                            : AppEmoji.maybe
-                          : AppEmoji.neutral
-                        : AppEmoji.check
-                      : AppEmoji.no
-                    : AppEmoji.neutral
+                            ? client.useEmoji('check')
+                            : client.useEmoji('maybe')
+                          : client.useEmoji('neutral')
+                        : client.useEmoji('check')
+                      : client.useEmoji('no')
+                    : client.useEmoji('neutral')
                 } **${experiment.data.description.at(bucketArray.indexOf(+bucket))}:** ${pr / 100}%`,
               );
             }

@@ -172,11 +172,11 @@ export default class InteractionCreateEvent extends Event {
             ![ApplicationCommandOptionType.Subcommand, ApplicationCommandOptionType.SubcommandGroup].includes(o.type),
         );
         await client.reportError(err, {
-          consoleMessage: chalk.red('An error occured while running ') + chalk.yellow(`${customId || interaction}`),
+          consoleMessage: chalk.red('An error occured while running ') + chalk.yellow(`${customId || commandName}`),
           embed: { footer: 'requested', member, user },
           message: `An error occured while running ${
             interaction.isChatInputCommand()
-              ? `</${interaction.commandName}${
+              ? `</${commandName}${
                   cmdOptions.getSubcommandGroup(false)
                     ? ` ${cmdOptions.getSubcommandGroup(false)} ${cmdOptions.getSubcommand(false)}`
                     : cmdOptions.getSubcommand(false)
@@ -201,11 +201,8 @@ export default class InteractionCreateEvent extends Event {
       })
       .finally(() => {
         if (debugLevel && interaction.type !== InteractionType.ApplicationCommandAutocomplete) {
-          console.log(
-            chalk.gray('[') +
-              chalk.magenta(client.shard.ids[0] + 1) +
-              chalk.gray('] ') +
-              chalk.blue(user.tag) +
+          client.log(
+            chalk.blue(user.tag) +
               chalk.gray(' (') +
               chalk.blue(user.id) +
               chalk.gray(') - ') +

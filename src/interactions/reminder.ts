@@ -25,7 +25,6 @@ import {
 import parseDur from 'parse-duration';
 import chalk from 'chalk';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
-import { AppEmoji } from '../defaults.js';
 import { disableComponents, getFieldValue, msToTime, toUTS, truncate } from '../utils.js';
 
 export default class Reminder extends Command {
@@ -158,7 +157,7 @@ export default class Reminder extends Command {
               },
               {
                 inline: true,
-                name: `${AppEmoji.channelText} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
+                name: `${client.useEmoji('channelText')} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
                 value: reminder.channelId
                   ? `<#${reminder.channelId}> - \`${reminder.channelId}\``
                   : `**${localize('GENERIC.DIRECT_MESSAGE')}**`,
@@ -286,7 +285,7 @@ export default class Reminder extends Command {
             },
             {
               inline: true,
-              name: `${AppEmoji.channelText} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
+              name: `${client.useEmoji('channelText')} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
               value: reminder.channelId
                 ? `<#${reminder.channelId}> - \`${reminder.channelId}\``
                 : `**${localize('GENERIC.DIRECT_MESSAGE')}**`,
@@ -383,25 +382,25 @@ export default class Reminder extends Command {
             }
           }
 
-          console.log(util.inspect(rows, { depth: null }));
+          client.log(util.inspect(rows, { depth: null }));
           if ((!isList || customId === 'reminder_select') && !reminder) {
-            console.log(chalk.red('1'));
+            client.log(chalk.red('1'));
             await interaction.followUp({
               embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.REMINDER.NOT_FOUND', { reminderId }))],
               ephemeral: true,
             });
             if (!message.webhookId) {
-              console.log(chalk.green('2'));
+              client.log(chalk.green('2'));
               return interaction.editReply({
                 components: disableComponents(message.components, { enabledComponents: ['reminder_list'] }),
               });
             }
           }
 
-          console.log(chalk.yellow('3'));
+          client.log(chalk.yellow('3'));
           if (!message.webhookId) return interaction.followUp({ components: rows, embeds: [emb], ephemeral: true });
 
-          console.log(chalk.blue('4'));
+          client.log(chalk.blue('4'));
           return interaction.editReply({
             components: rows,
             embeds: [emb],
@@ -457,7 +456,7 @@ export default class Reminder extends Command {
                 .setCustomId('reminder_edit_content'),
               new ButtonBuilder()
                 .setLabel(localize('GENERIC.CHANNEL.EDIT'))
-                .setEmoji(AppEmoji.channelText)
+                .setEmoji(client.useEmoji('channelText'))
                 .setStyle(ButtonStyle.Secondary)
                 .setCustomId('reminder_edit_channel'),
               new ButtonBuilder()
@@ -583,7 +582,7 @@ export default class Reminder extends Command {
                   .setCustomId('reminder_edit'),
                 new ButtonBuilder()
                   .setLabel(localize(`GENERIC.${reminder.channelId ? 'NOT_DIRECT_MESSAGE' : 'DIRECT_MESSAGE'}`))
-                  .setEmoji(AppEmoji.user)
+                  .setEmoji(client.useEmoji('user'))
                   .setStyle(reminder.channelId ? ButtonStyle.Secondary : ButtonStyle.Success)
                   .setCustomId('reminder_dm')
                   .setDisabled(!reminder.channelId),
@@ -610,7 +609,7 @@ export default class Reminder extends Command {
                 .setTitle(`🔔 ${localize(`GENERIC.CHANNEL.${isEdit ? 'EDITING' : 'EDITED'}`)}`)
                 .spliceFields(2, 1, {
                   inline: true,
-                  name: `${AppEmoji.channelText} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
+                  name: `${client.useEmoji('channelText')} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
                   value: reminder.channelId
                     ? `<#${reminder.channelId}> - \`${reminder.channelId}\``
                     : `**${localize('GENERIC.DIRECT_MESSAGE')}**`,

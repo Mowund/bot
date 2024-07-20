@@ -51,7 +51,7 @@ export default class Clear extends Command {
   }
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
-    const { embed, isEphemeral, localize } = args,
+    const { client, embed, isEphemeral, localize } = args,
       { channel, memberPermissions, user } = interaction;
 
     // TODO: Create a confirmation menu
@@ -90,7 +90,7 @@ export default class Clear extends Command {
           .setCustomId('clear_delete'),
       );
 
-      console.log({ msgCnt: fMsgs.size, pinCnt });
+      client.log({ msgCnt: fMsgs.size, pinCnt });
       return interaction.editReply({
         components: rows,
         embeds: [

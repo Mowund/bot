@@ -13,8 +13,8 @@ export default class GuildDeleteEvent extends Event {
     client.updateMowundDescription();
 
     if (debugLevel) {
-      console.log(
-        chalk.red('Left ') + chalk.blue(guild.name) + chalk.gray(' (') + chalk.blue(guild.id) + chalk.gray('):'),
+      client.log(
+        chalk.red('Left ') + chalk.blue(guild.name) + chalk.gray(' (') + chalk.blue(guild.id) + chalk.gray(')'),
       );
     }
   }

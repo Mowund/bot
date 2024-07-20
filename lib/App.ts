@@ -5,6 +5,7 @@ import { Buffer } from 'node:buffer';
 import util from 'node:util';
 import { Octokit } from '@octokit/core';
 import {
+  APIEmoji,
   APIInteractionGuildMember,
   ApplicationCommand,
   ApplicationCommandOptionType,
@@ -15,6 +16,7 @@ import {
   ColorResolvable,
   Colors,
   EmbedBuilder,
+  formatEmoji,
   Guild,
   GuildMember,
   GuildPreview,
@@ -31,20 +33,15 @@ import {
 import firebase, { firestore } from 'firebase-admin';
 import i18n, { GlobalCatalog, I18n } from 'i18n';
 import { Chalk, ChalkInstance } from 'chalk';
-import { defaultLocale, AppEmoji, imageOptions, supportServer } from '../src/defaults.js';
+import { defaultLocale, imageOptions, supportServer } from '../src/defaults.js';
 import { addSearchParams, isEmpty, truncate } from '../src/utils.js';
 import { Command } from './structures/Command.js';
 import { DatabaseManager } from './managers/DatabaseManager.js';
 import { Experiment } from './interfaces/Experiment.js';
 
-export interface Monster {
-  name: string;
-  eggs: Record<string, number>;
-  active?: boolean;
-}
-
 export class App extends Client<true> {
   allShardsReady: boolean;
+  appEmojis: Collection<string, APIEmoji>;
   chalk: ChalkInstance;
   commands: Collection<string, Command>;
   database: DatabaseManager;
@@ -54,7 +51,8 @@ export class App extends Client<true> {
   i18n: I18n;
   octokit: Octokit;
   supportedLocales: string[];
-  monsters: Monster[];
+  readonly isMainShard: boolean;
+  readonly shardId: number;
 
   constructor(options: ClientOptions) {
     super(options);
@@ -64,21 +62,26 @@ export class App extends Client<true> {
     });
 
     this.allShardsReady = false;
+    this.appEmojis = new Collection();
     this.chalk = new Chalk({ level: 3 });
     this.commands = new Collection();
     this.database = new DatabaseManager(this);
     this.firestore = firebase.firestore();
     this.i18n = i18n;
-  }
-
-  get isMainShard() {
-    return this.shard.ids[0] === 0;
+    this.isMainShard = this.shard.ids[0] === 0;
+    this.shardId = this.shard.ids[0] + 1;
   }
 
   async login(token?: string) {
     this.octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
     await this.updateLocalizations();
     return super.login(token);
+  }
+
+  useEmoji(name: string) {
+    if (!name) return '';
+    const emoji = this.appEmojis.get(name);
+    return formatEmoji(emoji);
   }
 
   localize = (phraseOrOptions: string | i18n.TranslateOptions, replace?: Record<string, any>) =>
@@ -248,15 +251,15 @@ export class App extends Client<true> {
       case 'error':
         return emb
           .setColor(Colors.Red)
-          .setTitle(`${AppEmoji.no} ${options.title || options.localizer('GENERIC.ERROR')}`);
+          .setTitle(`${this.useEmoji('no')} ${options.title || options.localizer('GENERIC.ERROR')}`);
       case 'loading':
         return emb
           .setColor(Colors.Blurple)
-          .setTitle(`${AppEmoji.loading} ${options.title || options.localizer('GENERIC.LOADING')}`);
+          .setTitle(`${this.useEmoji('loading')} ${options.title || options.localizer('GENERIC.LOADING')}`);
       case 'success':
         return emb
           .setColor(Colors.Green)
-          .setTitle(`${AppEmoji.check} ${options.title || options.localizer('GENERIC.SUCCESS')}`);
+          .setTitle(`${this.useEmoji('check')} ${options.title || options.localizer('GENERIC.SUCCESS')}`);
       case 'warning':
         return emb.setColor(Colors.Yellow).setTitle(`⚠️ ${options.title || options.localizer('GENERIC.WARNING')}`);
       case 'wip':
@@ -323,8 +326,8 @@ export class App extends Client<true> {
   reportError(error: Error, options: { consoleMessage?: string; embed?: EmbedBuilderOptions; message?: string } = {}) {
     const { consoleMessage, embed, message } = options;
 
-    if (consoleMessage || message) console.error(consoleMessage || this.chalk.red(message));
-    console.error(util.inspect(error, { depth: null }));
+    if (consoleMessage || message) this.error(consoleMessage || this.chalk.red(message));
+    this.error(util.inspect(error, { depth: null }));
 
     return this.rest.post(Routes.channelMessages(supportServer.errorChannelId), {
       body: {
@@ -339,6 +342,20 @@ export class App extends Client<true> {
       },
     });
   }
+
+  log = (message: any, ...optionalParams: any[]) =>
+    console.log(
+      this.chalk.gray('[') + this.chalk.magenta(this.shardId) + this.chalk.gray(']'),
+      message,
+      ...optionalParams,
+    );
+
+  error = (message: any, ...optionalParams: any[]) =>
+    console.error(
+      this.chalk.gray('[') + this.chalk.magenta(this.shardId) + this.chalk.gray(']'),
+      message,
+      ...optionalParams,
+    );
 }
 
 export interface EmbedBuilderOptions {

@@ -12,7 +12,7 @@ import {
   ApplicationIntegrationType,
   InteractionContextType,
 } from 'discord.js';
-import { AppEmoji, imageOptions, supportServer } from '../defaults.js';
+import { imageOptions, supportServer } from '../defaults.js';
 import { toUTS, appInvite, msToTime } from '../utils.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 
@@ -54,13 +54,13 @@ export default class Bot extends Command {
             embs = [
               embed({
                 color: botMember?.displayColor || Colors.Blurple,
-                title: `${AppEmoji.info} ${localize('BOT.OPTIONS.INFO.TITLE')}`,
+                title: `${client.useEmoji('info')} ${localize('BOT.OPTIONS.INFO.TITLE')}`,
               })
                 .setAuthor({ iconURL: client.user.displayAvatarURL(imageOptions), name: client.user.displayName })
                 .addFields(
                   {
                     inline: true,
-                    name: `${AppEmoji.serverDiscovery} ${localize('GENERIC.SERVERS')}`,
+                    name: `${client.useEmoji('serverDiscovery')} ${localize('GENERIC.SERVERS')}`,
                     value: client.allShardsReady
                       ? `\`${localize('GENERIC.COUNT', {
                           count: ((await client.shard.fetchClientValues('guilds.cache.size')) as number[]).reduce(
@@ -68,11 +68,11 @@ export default class Bot extends Command {
                             0,
                           ),
                         })}\``
-                      : `${AppEmoji.loading} ${localize('GENERIC.LOADING')}`,
+                      : `${client.useEmoji('loading')} ${localize('GENERIC.LOADING')}`,
                   },
                   {
                     inline: true,
-                    name: `${AppEmoji.members} ${localize('GENERIC.MEMBERS')}`,
+                    name: `${client.useEmoji('members')} ${localize('GENERIC.MEMBERS')}`,
                     value: client.allShardsReady
                       ? `\`${localize('GENERIC.COUNT', {
                           count: (
@@ -81,11 +81,11 @@ export default class Bot extends Command {
                             )
                           ).reduce((acc, c) => acc + c, 0),
                         })}\``
-                      : `${AppEmoji.loading} ${localize('GENERIC.LOADING')}`,
+                      : `${client.useEmoji('loading')} ${localize('GENERIC.LOADING')}`,
                   },
                   {
                     inline: true,
-                    name: `${AppEmoji.commands} ${localize('GENERIC.COMMANDS')} [${localize('GENERIC.COUNT', {
+                    name: `${client.useEmoji('commands')} ${localize('GENERIC.COMMANDS')} [${localize('GENERIC.COUNT', {
                       count: globalCommandCount.sum.all,
                     })}${
                       guildCommandCount.sum.all
@@ -94,7 +94,7 @@ export default class Bot extends Command {
                           })}`
                         : ''
                     }]`,
-                    value: `${AppEmoji.slashCommand} \`${localize('GENERIC.COUNT', {
+                    value: `${client.useEmoji('slashCommand')} \`${localize('GENERIC.COUNT', {
                       count: globalCommandCount.chatInput,
                     })}\`${
                       guildCommandCount.chatInput
@@ -102,7 +102,7 @@ export default class Bot extends Command {
                             count: guildCommandCount.chatInput,
                           })}\``
                         : ''
-                    }\n${AppEmoji.contextMenuCommand} \`${localize('GENERIC.COUNT', {
+                    }\n${client.useEmoji('contextMenuCommand')} \`${localize('GENERIC.COUNT', {
                       count: globalCommandCount.sum.contextMenu,
                     })}\`${
                       guildCommandCount.sum.contextMenu
@@ -114,7 +114,7 @@ export default class Bot extends Command {
                   },
                   {
                     inline: true,
-                    name: `${AppEmoji.ramMemory} ${localize('BOT.OPTIONS.INFO.MEMORY_USAGE')}`,
+                    name: `${client.useEmoji('ramMemory')} ${localize('BOT.OPTIONS.INFO.MEMORY_USAGE')}`,
                     value: `\`${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB\`/\`${(
                       process.memoryUsage().heapTotal /
                       1024 /
@@ -123,12 +123,12 @@ export default class Bot extends Command {
                   },
                   {
                     inline: true,
-                    name: `${AppEmoji.discordJS} ${localize('BOT.OPTIONS.INFO.DISCORDJS_VERSION')}`,
+                    name: `${client.useEmoji('discordJS')} ${localize('BOT.OPTIONS.INFO.DISCORDJS_VERSION')}`,
                     value: `[\`${version}\`](https://discord.js.org)`,
                   },
                   {
                     inline: true,
-                    name: `${AppEmoji.nodeJS} ${localize('BOT.OPTIONS.INFO.NODEJS_VERSION')}`,
+                    name: `${client.useEmoji('nodeJS')} ${localize('BOT.OPTIONS.INFO.NODEJS_VERSION')}`,
                     value: `[\`${process.versions.node}\`](https://nodejs.org)`,
                   },
                 ),
@@ -137,7 +137,7 @@ export default class Bot extends Command {
               new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
                   .setLabel('GitHub')
-                  .setEmoji(AppEmoji.github)
+                  .setEmoji(client.useEmoji('github'))
                   .setStyle(ButtonStyle.Link)
                   .setURL(pkg.repository.url),
                 new ButtonBuilder()

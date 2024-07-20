@@ -24,7 +24,7 @@ import {
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { GuildData } from '../../lib/structures/GuildData.js';
-import { AppEmoji, imageOptions, premiumLimits } from '../defaults.js';
+import { imageOptions, premiumLimits } from '../defaults.js';
 import { arrayMap, toUTS } from '../utils.js';
 
 export default class Server extends Command {
@@ -96,11 +96,11 @@ export default class Server extends Command {
                 : premiumLimit.emojis,
             roles = guild.roles.cache.filter(r => r.id !== guildId),
             webhooks = await guild.fetchWebhooks(),
-            emb = embed({ title: `${AppEmoji.info} ${localize('SERVER.OPTIONS.INFO.TITLE')}` }).addFields(
+            emb = embed({ title: `${client.useEmoji('info')} ${localize('SERVER.OPTIONS.INFO.TITLE')}` }).addFields(
               { inline: true, name: `🪪 ${localize('GENERIC.ID')}`, value: `\`${guild.id}\`` },
               {
                 inline: true,
-                name: `${AppEmoji.serverOwner} ${localize('GENERIC.OWNER')}`,
+                name: `${client.useEmoji('serverOwner')} ${localize('GENERIC.OWNER')}`,
                 value: `<@${guild.ownerId}>`,
               },
               {
@@ -110,12 +110,12 @@ export default class Server extends Command {
               },
               {
                 inline: true,
-                name: `${AppEmoji.role} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
+                name: `${client.useEmoji('role')} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
                   count: roles.size,
                 })} / ${localize('GENERIC.COUNT', { count: 250 })}]`,
-                value: `${AppEmoji.members} ${localize('GENERIC.COUNTER.COMMON', {
+                value: `${client.useEmoji('members')} ${localize('GENERIC.COUNTER.COMMON', {
                   count: roles.filter(r => !r.tags?.botId && !r.tags?.integrationId).size,
-                })}\n${AppEmoji.integration} ${localize('GENERIC.COUNTER.BOT', {
+                })}\n${client.useEmoji('integration')} ${localize('GENERIC.COUNTER.BOT', {
                   count: roles.filter(r => r.tags?.botId).size,
                 })}\n⚙️ ${localize('GENERIC.COUNTER.INTEGRATED', {
                   count: roles.filter(r => r.tags?.integrationId).size,
@@ -123,7 +123,7 @@ export default class Server extends Command {
               },
               {
                 inline: true,
-                name: `${AppEmoji.emojiGhost} ${localize('GENERIC.EMOJIS')} [${localize('GENERIC.COUNT', {
+                name: `${client.useEmoji('emojiGhost')} ${localize('GENERIC.EMOJIS')} [${localize('GENERIC.COUNT', {
                   count: guild.emojis.cache.size,
                 })} / ${emojiLimit * 2}]`,
                 value: `• **${localize('GENERIC.COUNT', {
@@ -140,7 +140,7 @@ export default class Server extends Command {
               },
               {
                 inline: true,
-                name: `${AppEmoji.sticker} ${localize('GENERIC.STICKERS')} [${guild.stickers.cache.size} / ${
+                name: `${client.useEmoji('sticker')} ${localize('GENERIC.STICKERS')} [${guild.stickers.cache.size} / ${
                   premiumLimit.stickers
                 }]`,
                 value: `• **${localize('GENERIC.COUNT', {
@@ -155,10 +155,10 @@ export default class Server extends Command {
               },
               {
                 inline: true,
-                name: `${AppEmoji.members} ${localize('GENERIC.MEMBERS')} [${localize('GENERIC.COUNT', {
+                name: `${client.useEmoji('members')} ${localize('GENERIC.MEMBERS')} [${localize('GENERIC.COUNT', {
                   count: guild.memberCount,
                 })}]`,
-                value: `**${AppEmoji.statusOnline} ${localize('GENERIC.COUNT', {
+                value: `**${client.useEmoji('statusOnline')} ${localize('GENERIC.COUNT', {
                   count: guild.members.cache.filter(
                     m =>
                       m.presence &&
@@ -167,46 +167,52 @@ export default class Server extends Command {
                       ) &&
                       !m.presence.activities.some(a => a.type === ActivityType.Streaming),
                   ).size,
-                })}** ${localize('GENERIC.ONLINE')}\n${AppEmoji.statusIdle} **${localize('GENERIC.COUNT', {
+                })}** ${localize('GENERIC.ONLINE')}\n${client.useEmoji('statusIdle')} **${localize('GENERIC.COUNT', {
                   count: guild.members.cache.filter(m => m.presence?.status === PresenceUpdateStatus.Idle).size,
-                })}** ${localize('GENERIC.IDLE')}\n${AppEmoji.statusDND} **${localize('GENERIC.COUNT', {
+                })}** ${localize('GENERIC.IDLE')}\n${client.useEmoji('statusDND')} **${localize('GENERIC.COUNT', {
                   count: guild.members.cache.filter(m => m.presence?.status === PresenceUpdateStatus.DoNotDisturb).size,
-                })}** ${localize('GENERIC.DO_NOT_DISTURB')}\n${AppEmoji.statusStreaming} **${localize('GENERIC.COUNT', {
-                  count: guild.members.cache.filter(m =>
-                    m.presence?.activities.some(a => a.type === ActivityType.Streaming),
-                  ).size,
-                })}** ${localize('GENERIC.STREAMING')}\n${AppEmoji.statusOffline} **${localize('GENERIC.COUNT', {
-                  count: guild.memberCount - guild.members.cache.filter(m => m.presence).size,
-                })}** ${localize('GENERIC.OFFLINE')}\n• **${localize('GENERIC.COUNT', {
+                })}** ${localize('GENERIC.DO_NOT_DISTURB')}\n${client.useEmoji('statusStreaming')} **${localize(
+                  'GENERIC.COUNT',
+                  {
+                    count: guild.members.cache.filter(m =>
+                      m.presence?.activities.some(a => a.type === ActivityType.Streaming),
+                    ).size,
+                  },
+                )}** ${localize('GENERIC.STREAMING')}\n${client.useEmoji('statusOffline')} **${localize(
+                  'GENERIC.COUNT',
+                  {
+                    count: guild.memberCount - guild.members.cache.filter(m => m.presence).size,
+                  },
+                )}** ${localize('GENERIC.OFFLINE')}\n• **${localize('GENERIC.COUNT', {
                   count: guild.maximumMembers,
                 })}** ${localize('GENERIC.MAXIMUM')}`,
               },
               {
                 inline: true,
-                name: `${AppEmoji.systemMessage} ${localize('GENERIC.SYSTEM_MESSAGES')}`,
+                name: `${client.useEmoji('systemMessage')} ${localize('GENERIC.SYSTEM_MESSAGES')}`,
                 value: `${
                   guild.systemChannelFlags.has(GuildSystemChannelFlags.SuppressJoinNotifications)
-                    ? AppEmoji.no
-                    : AppEmoji.check
+                    ? client.useEmoji('no')
+                    : client.useEmoji('check')
                 } ${localize('GENERIC.JOIN_MESSAGES')}\n${
                   guild.systemChannelFlags.has(GuildSystemChannelFlags.SuppressJoinNotificationReplies)
-                    ? AppEmoji.no
-                    : AppEmoji.check
+                    ? client.useEmoji('no')
+                    : client.useEmoji('check')
                 } ${localize('GENERIC.WAVE_BUTTON')}\n${
                   guild.systemChannelFlags.has(GuildSystemChannelFlags.SuppressPremiumSubscriptions)
-                    ? AppEmoji.no
-                    : AppEmoji.check
+                    ? client.useEmoji('no')
+                    : client.useEmoji('check')
                 } ${localize('GENERIC.BOOST_MESSAGES')}\n${
                   guild.systemChannelFlags.has(GuildSystemChannelFlags.SuppressGuildReminderNotifications)
-                    ? AppEmoji.no
-                    : AppEmoji.check
+                    ? client.useEmoji('no')
+                    : client.useEmoji('check')
                 } ${localize('GENERIC.SETUP_TIPS')}\n• **${localize('GENERIC.CHANNEL.CHANNEL')}:** ${
                   guild.systemChannel || localize('GENERIC.NONE')
                 }`,
               },
               {
                 inline: true,
-                name: `${AppEmoji.webhook} ${localize('GENERIC.WEBHOOKS')} [${localize('GENERIC.COUNT', {
+                name: `${client.useEmoji('webhook')} ${localize('GENERIC.WEBHOOKS')} [${localize('GENERIC.COUNT', {
                   count: webhooks.size,
                 })}]`,
                 value: `• ${localize('GENERIC.COUNTER.CHANNEL_FOLLOWER', {
@@ -217,15 +223,18 @@ export default class Server extends Command {
               },
               {
                 inline: true,
-                name: `${AppEmoji.moderatorProgramsAlumni} ${localize('GENERIC.SECURITY')}`,
-                value: `${`${AppEmoji.banHammer} ${localize('GENERIC.COUNTER.BAN', {
+                name: `${client.useEmoji('moderatorProgramsAlumni')} ${localize('GENERIC.SECURITY')}`,
+                value: `${`${client.useEmoji('banHammer')} ${localize('GENERIC.COUNTER.BAN', {
                   count: guild.bans.cache.size,
                 })}`}`,
               },
               {
-                name: `${AppEmoji.channelText} ${localize('GENERIC.CHANNELS.CHANNELS')} [${localize('GENERIC.COUNT', {
-                  count: guild.channels.cache.size,
-                })} / ${localize('GENERIC.COUNT', {
+                name: `${client.useEmoji('channelText')} ${localize('GENERIC.CHANNELS.CHANNELS')} [${localize(
+                  'GENERIC.COUNT',
+                  {
+                    count: guild.channels.cache.size,
+                  },
+                )} / ${localize('GENERIC.COUNT', {
                   count: 1500,
                 })}]`,
                 value: `• **${localize('GENERIC.COUNT', {
@@ -237,17 +246,17 @@ export default class Server extends Command {
                   ).size,
                 })} / ${localize('GENERIC.COUNT', {
                   count: 500,
-                })}** | ${AppEmoji.channelCategory} ${localize('GENERIC.COUNT', {
+                })}** | ${client.useEmoji('channelCategory')} ${localize('GENERIC.COUNT', {
                   count: guild.channels.cache.filter(c => c.type === ChannelType.GuildCategory).size,
-                })} | ${AppEmoji.channelText} ${localize('GENERIC.COUNT', {
+                })} | ${client.useEmoji('channelText')} ${localize('GENERIC.COUNT', {
                   count: guild.channels.cache.filter(c => c.type === ChannelType.GuildText).size,
-                })} | ${AppEmoji.channelAnnouncement} ${localize('GENERIC.COUNT', {
+                })} | ${client.useEmoji('channelAnnouncement')} ${localize('GENERIC.COUNT', {
                   count: guild.channels.cache.filter(c => c.type === ChannelType.GuildAnnouncement).size,
-                })} | ${AppEmoji.channelVoice} ${localize('GENERIC.COUNT', {
+                })} | ${client.useEmoji('channelVoice')} ${localize('GENERIC.COUNT', {
                   count: guild.channels.cache.filter(c => c.type === ChannelType.GuildVoice).size,
-                })} | ${AppEmoji.channelStage} ${localize('GENERIC.COUNT', {
+                })} | ${client.useEmoji('channelStage')} ${localize('GENERIC.COUNT', {
                   count: guild.channels.cache.filter(c => c.type === ChannelType.GuildStageVoice).size,
-                })} | ${AppEmoji.channelForum} ${localize('GENERIC.COUNT', {
+                })} | ${client.useEmoji('channelForum')} ${localize('GENERIC.COUNT', {
                   count: guild.channels.cache.filter(c => c.type === ChannelType.GuildForum).size,
                 })}\n• **${localize('GENERIC.COUNT', {
                   count: guild.channels.cache.filter(c =>
@@ -257,11 +266,11 @@ export default class Server extends Command {
                   ).size,
                 })} / ${localize('GENERIC.COUNT', {
                   count: 1000,
-                })}** | ${AppEmoji.channelThreadPublic} ${localize('GENERIC.COUNT', {
+                })}** | ${client.useEmoji('channelThreadPublic')} ${localize('GENERIC.COUNT', {
                   count: guild.channels.cache.filter(c => c.type === ChannelType.PublicThread).size,
-                })} | ${AppEmoji.channelThreadPrivate} ${localize('GENERIC.COUNT', {
+                })} | ${client.useEmoji('channelThreadPrivate')} ${localize('GENERIC.COUNT', {
                   count: guild.channels.cache.filter(c => c.type === ChannelType.PrivateThread).size,
-                })} | ${AppEmoji.channelAnnouncementThread} ${localize('GENERIC.COUNT', {
+                })} | ${client.useEmoji('channelAnnouncementThread')} ${localize('GENERIC.COUNT', {
                   count: guild.channels.cache.filter(c => c.type === ChannelType.AnnouncementThread).size,
                 })}`,
               },
@@ -290,7 +299,7 @@ export default class Server extends Command {
 
           if (guild.rulesChannel || guild.publicUpdatesChannel) {
             emb.spliceFields(10, 0, {
-              name: `${AppEmoji.public} ${localize('GENERIC.CHANNELS.COMMUNITY')}`,
+              name: `${client.useEmoji('public')} ${localize('GENERIC.CHANNELS.COMMUNITY')}`,
               value: `${guild.rulesChannel ? `• **${localize('GENERIC.RULES')}:** ${guild.rulesChannel}\n` : ''}${
                 guild.publicUpdatesChannel
                   ? `• **${localize('GENERIC.PUBLIC_UPDATES')}:** ${guild.publicUpdatesChannel}\n`
@@ -312,8 +321,8 @@ export default class Server extends Command {
           const badges = [];
           let description = '';
 
-          if (guild.verified) badges.push(AppEmoji.verified);
-          if (guild.partnered) badges.push(AppEmoji.partnered);
+          if (guild.verified) badges.push(client.useEmoji('verified'));
+          if (guild.partnered) badges.push(client.useEmoji('partnered'));
           if (badges.length) description += `${badges.join(' ')}${guild.description ? '\n' : ''}`;
           if (guild.description) description += guild.description;
 

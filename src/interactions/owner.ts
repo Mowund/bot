@@ -170,7 +170,7 @@ export default class Owner extends Command {
             ],
           });
         } catch (err) {
-          console.error(err);
+          client.error(err);
           return interaction.editReply({
             embeds: [
               embed({ type: 'error' }).addFields({
@@ -228,7 +228,7 @@ export default class Owner extends Command {
                       if ((!dataEquals || idO) && gOnly) {
                         const cmd = await appCmds.create(dt, guild?.id || gOnly);
                         updCmds.set(cmd.id, cmd);
-                        console.log(
+                        client.log(
                           chalk.green(`Updated guild (${guild?.id || gOnly}) command: ${cmd.name} (${cmd.id})`),
                         );
                       }
@@ -241,7 +241,7 @@ export default class Owner extends Command {
                       if ((!dataEquals || idO) && !guild) {
                         const cmd = await appCmds.create(dt);
                         updCmds.set(cmd.id, cmd);
-                        console.log(chalk.yellow(`Updated global command: ${cmd.name} (${cmd.id})`));
+                        client.log(chalk.yellow(`Updated global command: ${cmd.name} (${cmd.id})`));
                       }
                     }
                   }
@@ -265,10 +265,10 @@ export default class Owner extends Command {
             delCmds.forEach(async ({ guildId, name }, id) => {
               if (guildId) {
                 await (guild ?? interaction.guild).commands.delete(id);
-                console.log(chalk.red(`Deleted guild (${(guild ?? interaction.guild).id}) command: ${name} (${id})`));
+                client.log(chalk.red(`Deleted guild (${(guild ?? interaction.guild).id}) command: ${name} (${id})`));
               } else {
                 await appCmds.delete(id);
-                console.log(chalk.red(`Deleted global command: ${name} (${id})`));
+                client.log(chalk.red(`Deleted global command: ${name} (${id})`));
               }
             });
 

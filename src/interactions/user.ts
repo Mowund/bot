@@ -29,7 +29,7 @@ import {
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { UserData, Warnings } from '../../lib/structures/UserData.js';
-import { defaultLocale, AppEmoji, UserFlagEmoji, imageOptions, AppFlagEmoji } from '../defaults.js';
+import { defaultLocale, UserFlagEmoji, imageOptions, AppFlagEmoji } from '../defaults.js';
 import {
   toUTS,
   collMap,
@@ -148,23 +148,23 @@ export default class User extends Command {
         data?.ephemeralResponses
           ? {
               inline: true,
-              name: `${AppEmoji.check} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.RESPONSES.NAME')}`,
+              name: `${client.useEmoji('check')} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.RESPONSES.NAME')}`,
               value: localize('USER.OPTIONS.SETTINGS.EPHEMERAL.RESPONSES.ENABLED'),
             }
           : {
               inline: true,
-              name: `${AppEmoji.no} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.RESPONSES.NAME')}`,
+              name: `${client.useEmoji('no')} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.RESPONSES.NAME')}`,
               value: localize('USER.OPTIONS.SETTINGS.EPHEMERAL.RESPONSES.DISABLED'),
             },
         data?.ignoreEphemeralRoles
           ? {
               inline: true,
-              name: `${AppEmoji.check} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME')}`,
+              name: `${client.useEmoji('check')} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME')}`,
               value: localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.ENABLED'),
             }
           : {
               inline: true,
-              name: `${AppEmoji.no} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME')}`,
+              name: `${client.useEmoji('no')} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME')}`,
               value: localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.DISABLED'),
             },
       ],
@@ -174,7 +174,7 @@ export default class User extends Command {
           emb = embed({
             addParams: sM ? { member: sM } : {},
             color: Colors.Blurple,
-            title: `${AppEmoji.info} ${localize('APP.OPTIONS.INFO.TITLE')}`,
+            title: `${client.useEmoji('info')} ${localize('APP.OPTIONS.INFO.TITLE')}`,
           })
             .setAuthor({ iconURL, name: app.name })
             .setThumbnail(iconURL)
@@ -192,27 +192,27 @@ export default class User extends Command {
               },
               {
                 inline: true,
-                name: `${AppEmoji.integration} ${localize('GENERIC.BOT')}`,
-                value: `${app.bot_public ? AppEmoji.check : AppEmoji.no} ${localize('GENERIC.PUBLIC_BOT')}\n${
-                  app.bot_require_code_grant ? AppEmoji.check : AppEmoji.no
+                name: `${client.useEmoji('integration')} ${localize('GENERIC.BOT')}`,
+                value: `${app.bot_public ? client.useEmoji('check') : client.useEmoji('no')} ${localize('GENERIC.PUBLIC_BOT')}\n${
+                  app.bot_require_code_grant ? client.useEmoji('check') : client.useEmoji('no')
                 } ${localize('GENERIC.REQUIRES_CODE_GRANT')}\n${
                   flags.has(ApplicationFlags.GatewayMessageContent)
-                    ? AppEmoji.check
+                    ? client.useEmoji('check')
                     : flags.has(ApplicationFlags.GatewayMessageContentLimited)
-                      ? AppEmoji.maybe
-                      : AppEmoji.no
+                      ? client.useEmoji('maybe')
+                      : client.useEmoji('no')
                 } ${localize('GENERIC.INTENT.MESSAGE_CONTENT')}\n${
                   flags.has(ApplicationFlags.GatewayGuildMembers)
-                    ? AppEmoji.check
+                    ? client.useEmoji('check')
                     : flags.has(ApplicationFlags.GatewayGuildMembersLimited)
-                      ? AppEmoji.maybe
-                      : AppEmoji.no
+                      ? client.useEmoji('maybe')
+                      : client.useEmoji('no')
                 } ${localize('GENERIC.INTENT.SERVER_MEMBERS')}\n${
                   flags.has(ApplicationFlags.GatewayPresence)
-                    ? AppEmoji.check
+                    ? client.useEmoji('check')
                     : flags.has(ApplicationFlags.GatewayPresenceLimited)
-                      ? AppEmoji.maybe
-                      : AppEmoji.no
+                      ? client.useEmoji('maybe')
+                      : client.useEmoji('no')
                 } ${localize('GENERIC.INTENT.PRESENCE')}`,
               },
             ),
@@ -246,7 +246,7 @@ export default class User extends Command {
           descriptions = [],
           emojiFlags = flags
             .toArray()
-            .map(f => AppFlagEmoji[f])
+            .map(f => client.useEmoji(AppFlagEmoji[f]))
             .filter(v => v);
 
         if (emojiFlags.length) descriptions.push(emojiFlags.join(' '));
@@ -266,7 +266,7 @@ export default class User extends Command {
           rows[1].addComponents(
             new ButtonBuilder()
               .setLabel(localize('GENERIC.PRIVACY_POLICY'))
-              .setEmoji(AppEmoji.privacySettings)
+              .setEmoji(client.useEmoji('privacySettings'))
               .setStyle(ButtonStyle.Link)
               .setURL(app.privacy_policy_url),
           );
@@ -285,18 +285,18 @@ export default class User extends Command {
       },
       userInfoOpts = (u: DiscordUser, sM: string | null) => {
         const flags = u.system
-          ? [AppEmoji.verifiedSystem]
+          ? [client.useEmoji('verifiedSystem')]
           : u.bot
             ? u.flags.has(UserFlags.VerifiedBot)
-              ? [AppEmoji.verifiedBot]
-              : [AppEmoji.bot]
+              ? [client.useEmoji('verifiedBot')]
+              : [client.useEmoji('bot')]
             : [];
-        for (const flag of u.flags.toArray()) flags.push(UserFlagEmoji[flag]);
+        for (const flag of u.flags.toArray()) flags.push(client.useEmoji(UserFlagEmoji[flag]));
 
         const emb = embed({
             addParams: sM ? { member: sM } : {},
             color: u.accentColor || Colors.Blurple,
-            title: `${AppEmoji.info} ${localize('USER.OPTIONS.INFO.USER.TITLE')}`,
+            title: `${client.useEmoji('info')} ${localize('USER.OPTIONS.INFO.USER.TITLE')}`,
           })
             .setAuthor({
               iconURL: u.displayAvatarURL(imageOptions),
@@ -333,9 +333,13 @@ export default class User extends Command {
         return { emb, rows: [row] };
       },
       memberInfoOpts = (m: GuildMember, u: DiscordUser, sM: string | null) => {
-        console.log(util.inspect(m, { depth: null }));
+        client.log(util.inspect(m, { depth: null }));
         const mFlags = typeof m.flags === 'object' ? m.flags : new GuildMemberFlagsBitField(m.flags),
-          flags = u?.bot ? (u.flags.has(UserFlags.VerifiedBot) ? [AppEmoji.verifiedBot] : [AppEmoji.bot]) : [],
+          flags = u?.bot
+            ? u.flags.has(UserFlags.VerifiedBot)
+              ? [client.useEmoji('verifiedBot')]
+              : [client.useEmoji('bot')]
+            : [],
           rejoined = mFlags.has(GuildMemberFlags.DidRejoin),
           avatar = m.avatar
             ? client.rest.cdn.guildMemberAvatar(guildId, u.id, m.avatar, imageOptions)
@@ -344,7 +348,7 @@ export default class User extends Command {
             ? client.rest.cdn.guildMemberBanner(guildId, u.id, m.banner, imageOptions)
             : u.bannerURL(imageOptions);
 
-        if (u.id === guild?.ownerId) flags.push(AppEmoji.serverOwner);
+        if (u.id === guild?.ownerId) flags.push(client.useEmoji('serverOwner'));
 
         const premimSince = m.premiumSince ?? (m as any as APIInteractionGuildMember).premium_since;
         if (premimSince) {
@@ -352,31 +356,32 @@ export default class User extends Command {
 
           flags.push(
             pMonths <= 1
-              ? AppEmoji.boosting1Month
+              ? client.useEmoji('boosting1Month')
               : pMonths === 2
-                ? AppEmoji.boosting2Months
+                ? client.useEmoji('boosting2Months')
                 : pMonths >= 3 && pMonths < 6
-                  ? AppEmoji.boosting3Months
+                  ? client.useEmoji('boosting3Months')
                   : pMonths >= 6 && pMonths < 12
-                    ? AppEmoji.boosting6Months
+                    ? client.useEmoji('boosting6Months')
                     : pMonths >= 12 && pMonths < 15
-                      ? AppEmoji.boosting12Months
+                      ? client.useEmoji('boosting12Months')
                       : pMonths >= 15 && pMonths < 18
-                        ? AppEmoji.boosting15Months
-                        : AppEmoji.boosting18Months,
+                        ? client.useEmoji('boosting15Months')
+                        : client.useEmoji('boosting18Months'),
           );
         }
 
-        if (!rejoined && Date.now() - m.joinedTimestamp < 1000 * 60 * 60 * 24 * 7) flags.push(AppEmoji.newMember);
+        if (!rejoined && Date.now() - m.joinedTimestamp < 1000 * 60 * 60 * 24 * 7)
+          flags.push(client.useEmoji('newMember'));
 
-        if (mFlags.has(GuildMemberFlags.CompletedOnboarding)) flags.push(AppEmoji.completedOnboarding);
-        else if (mFlags.has(GuildMemberFlags.StartedOnboarding)) flags.push(AppEmoji.startedOnboarding);
+        if (mFlags.has(GuildMemberFlags.CompletedOnboarding)) flags.push(client.useEmoji('completedOnboarding'));
+        else if (mFlags.has(GuildMemberFlags.StartedOnboarding)) flags.push(client.useEmoji('startedOnboarding'));
 
-        if (mFlags.has(1 << 6)) flags.push(AppEmoji.completedHomeActions);
-        else if (mFlags.has(1 << 5)) flags.push(AppEmoji.startedHomeActions);
+        if (mFlags.has(1 << 6)) flags.push(client.useEmoji('completedHomeActions'));
+        else if (mFlags.has(1 << 5)) flags.push(client.useEmoji('startedHomeActions'));
 
-        if (mFlags.has(GuildMemberFlags.BypassesVerification)) flags.push(AppEmoji.bypassedVerification);
-        if (u.flags.has(UserFlags.Spammer)) flags.push(AppEmoji.likelySpammer);
+        if (mFlags.has(GuildMemberFlags.BypassesVerification)) flags.push(client.useEmoji('bypassedVerification'));
+        if (u.flags.has(UserFlags.Spammer)) flags.push(client.useEmoji('likelySpammer'));
 
         const addParams: Record<string, string> = {};
         if (typeof m.permissions !== 'object')
@@ -385,7 +390,7 @@ export default class User extends Command {
         const emb = embed({
             addParams: sM ? { member: sM } : {},
             color: m.displayColor || u.accentColor || Colors.Blurple,
-            title: `${AppEmoji.info} ${localize('USER.OPTIONS.INFO.MEMBER.TITLE')}`,
+            title: `${client.useEmoji('info')} ${localize('USER.OPTIONS.INFO.MEMBER.TITLE')}`,
           })
             .setAuthor({
               iconURL: avatar,
@@ -405,11 +410,11 @@ export default class User extends Command {
                 inline: true,
                 name: m.pending
                   ? rejoined
-                    ? `${AppEmoji.pendingRejoin} ${localize('USER.OPTIONS.INFO.MEMBER.REJOINED_PENDING')}`
-                    : `${AppEmoji.pendingJoin} ${localize('USER.OPTIONS.INFO.MEMBER.JOINED_PENDING')}`
+                    ? `${client.useEmoji('pendingRejoin')} ${localize('USER.OPTIONS.INFO.MEMBER.REJOINED_PENDING')}`
+                    : `${client.useEmoji('pendingJoin')} ${localize('USER.OPTIONS.INFO.MEMBER.JOINED_PENDING')}`
                   : rejoined
-                    ? `${AppEmoji.rejoin} ${localize('USER.OPTIONS.INFO.MEMBER.REJOINED')}`
-                    : `${AppEmoji.join} ${localize('USER.OPTIONS.INFO.MEMBER.JOINED')}`,
+                    ? `${client.useEmoji('rejoin')} ${localize('USER.OPTIONS.INFO.MEMBER.REJOINED')}`
+                    : `${client.useEmoji('join')} ${localize('USER.OPTIONS.INFO.MEMBER.JOINED')}`,
                 value: toUTS(m.joinedTimestamp ?? Date.parse((m as any as APIInteractionGuildMember).joined_at)),
               },
             ),
@@ -427,7 +432,7 @@ export default class User extends Command {
           ),
           mRoles = m.roles.cache?.filter(({ id }) => id !== guildId);
 
-        console.log(typeof m.roles);
+        client.log(typeof m.roles);
 
         const timeoutTimestamp =
           m.communicationDisabledUntilTimestamp ??
@@ -436,14 +441,14 @@ export default class User extends Command {
         if (timeoutTimestamp > Date.now()) {
           emb.spliceFields(3, 0, {
             inline: true,
-            name: `${AppEmoji.timeout} ${localize('GENERIC.TIMEOUT_ENDS')}`,
+            name: `${client.useEmoji('timeout')} ${localize('GENERIC.TIMEOUT_ENDS')}`,
             value: toUTS(timeoutTimestamp),
           });
         }
 
         if (mRoles?.size ?? (m as any as APIInteractionGuildMember).roles.length) {
           emb.addFields({
-            name: `${AppEmoji.role} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
+            name: `${client.useEmoji('role')} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
               count: mRoles?.size ?? (m as any as APIInteractionGuildMember).roles.length,
             })}]`,
             value: mRoles
@@ -486,11 +491,11 @@ export default class User extends Command {
                     `${
                       integratedPerms || overwrittenPerms
                         ? integratedPerms?.has(p)
-                          ? AppEmoji.check
+                          ? client.useEmoji('check')
                           : overwrittenPerms?.has(p)
-                            ? AppEmoji.maybe
-                            : AppEmoji.no
-                        : AppEmoji.neutral
+                            ? client.useEmoji('maybe')
+                            : client.useEmoji('no')
+                        : client.useEmoji('neutral')
                     } ${localize(`PERM.${toUpperSnakeCase(p)}`)}`,
                 )
                 .sort((a, b) => a.localeCompare(b))
@@ -498,11 +503,11 @@ export default class User extends Command {
             )
             .addFields({
               name: `📍 ${localize('GENERIC.LEGEND')}`,
-              value: `${AppEmoji.check} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.CHECK')}\n${
-                AppEmoji.maybe
-              } ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.MAYBE')}\n${AppEmoji.no} ${localize(
+              value: `${client.useEmoji('check')} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.CHECK')}\n${client.useEmoji(
+                'maybe',
+              )} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.MAYBE')}\n${client.useEmoji('no')} ${localize(
                 'APP.OPTIONS.PERMISSIONS.LEGEND.NO',
-              )}\n${AppEmoji.neutral} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.NEUTRAL')}`,
+              )}\n${client.useEmoji('neutral')} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.NEUTRAL')}`,
             }),
           rows =
             overwrittenPerms && member?.permissions.has?.(PermissionFlagsBits.ManageGuild)
@@ -532,13 +537,13 @@ export default class User extends Command {
       },
       switchRow = (u: DiscordUser, m: GuildMember, disable: string, noApp: boolean, noMember = false) => {
         const row = new ActionRowBuilder<ButtonBuilder>();
-        console.log(noMember);
+        client.log(noMember);
 
         if (u.bot) {
           row.addComponents(
             new ButtonBuilder()
               .setLabel(localize('GENERIC.APP'))
-              .setEmoji(AppEmoji.integration)
+              .setEmoji(client.useEmoji('integration'))
               .setStyle(noApp ? ButtonStyle.Danger : ButtonStyle.Primary)
               .setCustomId('user_app_info')
               .setDisabled(noApp || disable === 'user_app_info'),
@@ -548,7 +553,7 @@ export default class User extends Command {
           row.addComponents(
             new ButtonBuilder()
               .setLabel(localize('GENERIC.MEMBER'))
-              .setEmoji(AppEmoji.members)
+              .setEmoji(client.useEmoji('members'))
               .setStyle(noMember || (m && !m.user) ? ButtonStyle.Danger : ButtonStyle.Primary)
               .setCustomId('user_member_info')
               .setDisabled(noMember || disable === 'user_member_info'),
@@ -558,7 +563,7 @@ export default class User extends Command {
           row.addComponents(
             new ButtonBuilder()
               .setLabel(localize('GENERIC.USER'))
-              .setEmoji(AppEmoji.user)
+              .setEmoji(client.useEmoji('user'))
               .setStyle(ButtonStyle.Primary)
               .setCustomId('user_info')
               .setDisabled(disable === 'user_info'),
@@ -576,7 +581,7 @@ export default class User extends Command {
           embeddedApp = (await client.rest
             .get(`/applications/public?application_ids=${id}`)
             .catch(() => {})) as EmbeddedApplication;
-        console.log(util.inspect(app, { colors: true, depth: null }));
+        client.log(util.inspect(app, { colors: true, depth: null }));
 
         return { app: isEmpty(app) ? null : app, embeddedApp: isEmpty(embeddedApp) ? null : embeddedApp };
       };
@@ -589,7 +594,7 @@ export default class User extends Command {
         appO = (options as CommandInteractionOptionResolver).getString?.('app'),
         appId = appO?.match(/\d{17,20}/g)?.[0];
 
-      console.log(appO, appId);
+      client.log(appO, appId);
       if (appO && !appId) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.INVALID.APP'))],
@@ -601,12 +606,12 @@ export default class User extends Command {
       const userO = (await (appO
           ? client.users.fetch(appId, { force: true }).catch(() => null)
           : (options.getUser('user') ?? user).fetch(true))) as DiscordUser | null,
-        memberO = options.getMember('user') ?? member,
+        memberO = userO.id === user.id ? member : options.getMember('user'),
         sM = memberO && !memberO.user ? compressJSON(memberO) : null,
         { app, embeddedApp } = await getFullApplication(appId || userO?.id);
 
-      console.log(app);
-      console.log(embeddedApp);
+      client.log(app);
+      client.log(embeddedApp);
 
       if (appO && !app) {
         return interaction.editReply({
@@ -709,12 +714,12 @@ export default class User extends Command {
     }
 
     if (interaction.isButton() || interaction.isStringSelectMenu()) {
-      const { channel, customId, message } = interaction,
+      const { channel, customId, member, message } = interaction,
         sameUser =
           (channel && message.reference ? await channel.messages.fetch(message.reference.messageId) : message)
             .interactionMetadata.user.id === user.id;
-      console.log(message.reference);
-      console.log(message.interactionMetadata);
+      client.log(message.reference);
+      client.log(message.interactionMetadata);
 
       if (!sameUser && customId.startsWith('user_settings')) {
         return interaction.reply({
@@ -736,7 +741,8 @@ export default class User extends Command {
               { force: true },
             ),
             sM = new URLSearchParams(message.embeds.at(-1)?.footer?.iconURL).get('member'),
-            memberO = guild?.members.cache.get(userO.id) || (sM ? decompressJSON(sM) : null),
+            memberO =
+              userO.id === user.id ? member : guild?.members.cache.get(userO.id) || (sM ? decompressJSON(sM) : null),
             memberButtonBlocked =
               !sM &&
               (message.components[0].components as ButtonComponent[])?.find(c => c.customId === 'user_member_info')
@@ -797,7 +803,7 @@ export default class User extends Command {
 
             opts.rows.unshift(switchRow(userO, memberO, 'user_info', !app && userO.bot, true));
 
-            console.log(util.inspect(opts.rows, { depth: null }));
+            client.log(util.inspect(opts.rows, { depth: null }));
 
             if (sameUser) {
               await interaction.update({
@@ -837,17 +843,17 @@ export default class User extends Command {
             emb.addFields(
               {
                 inline: true,
-                name: `${AppEmoji.highestRole} ${localize('GENERIC.HIGHEST_ROLE')}`,
+                name: `${client.useEmoji('highestRole')} ${localize('GENERIC.HIGHEST_ROLE')}`,
                 value: memberO.roles.highest?.toString() || '@everyone',
               },
               {
                 inline: true,
-                name: `${AppEmoji.hoistRole} ${localize('GENERIC.HOIST_ROLE')}`,
+                name: `${client.useEmoji('hoistRole')} ${localize('GENERIC.HOIST_ROLE')}`,
                 value: memberO.roles.hoist?.toString() || '@everyone',
               },
               {
                 inline: true,
-                name: `${AppEmoji.colorRole} ${localize('GENERIC.COLOR_ROLE')}`,
+                name: `${client.useEmoji('colorRole')} ${localize('GENERIC.COLOR_ROLE')}`,
                 value: memberO.roles.color?.toString() || '@everyone',
               },
             );
@@ -899,13 +905,13 @@ export default class User extends Command {
                 userData?.ignoreEphemeralRoles
                   ? new ButtonBuilder()
                       .setLabel(localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME'))
-                      .setEmoji(AppEmoji.role)
+                      .setEmoji(client.useEmoji('role'))
                       .setStyle(ButtonStyle.Success)
                       .setCustomId('user_settings_ephemeral_role_override')
                       .setDisabled(userData?.ephemeralResponses)
                   : new ButtonBuilder()
                       .setLabel(localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME'))
-                      .setEmoji(AppEmoji.role)
+                      .setEmoji(client.useEmoji('role'))
                       .setStyle(ButtonStyle.Secondary)
                       .setDisabled(userData?.ephemeralResponses)
                       .setCustomId('user_settings_ephemeral_role_override'),
@@ -974,7 +980,7 @@ export default class User extends Command {
                   .setCustomId('user_settings'),
                 new ButtonBuilder()
                   .setLabel(userData.autoLocale ? localize('GENERIC.AUTOMATIC') : localize('GENERIC.NOT_AUTOMATIC'))
-                  .setEmoji(AppEmoji.integration)
+                  .setEmoji(client.useEmoji('integration'))
                   .setStyle(userData.autoLocale ? ButtonStyle.Success : ButtonStyle.Secondary)
                   .setCustomId('user_settings_locale_auto'),
               ),

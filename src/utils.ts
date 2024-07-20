@@ -21,6 +21,7 @@ import {
   StringSelectMenuComponent,
   OAuth2Scopes,
   ApplicationIntegrationType,
+  ALLOWED_SIZES,
 } from 'discord.js';
 import { firestore } from 'firebase-admin';
 
@@ -142,15 +143,15 @@ export interface SearchOptions {
 
 export const decreaseSizeCDN = async (url: string, options: { initialSize?: number; maxSize?: number } = {}) => {
   const { initialSize, maxSize } = options,
-    fileSize = (await appFetch(url))?.data.length;
+    fileSize = +(await fetch(url))?.headers?.get('content-length');
 
-  let sizes = [4096, 2048, 1024, 600, 512, 300, 256, 128, 96, 64, 56, 32, 16],
+  let sizes = Array.from(ALLOWED_SIZES),
     otherFileSize = fileSize;
 
   if (initialSize) sizes = sizes.filter(i => i < initialSize);
   while (maxSize ? maxSize < otherFileSize : fileSize === otherFileSize) {
     url = `${beforeMatch(url, '?')}?size=${sizes.shift()}`;
-    otherFileSize = (await appFetch(url))?.data.length;
+    otherFileSize = +(await fetch(url))?.headers?.get('content-length');
   }
   return url;
 };
