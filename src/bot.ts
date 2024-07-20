@@ -20,11 +20,15 @@ import {
   formatEmoji,
   RESTJSONErrorCodes,
 } from 'discord.js';
+import cs from 'console-stamp';
 import { App } from '../lib/App.js';
 import { Command } from '../lib/structures/Command.js';
-import { debugLevel, imageOptions } from './defaults.js';
-import 'log-timestamp';
+import { debugLevel, imageOptions, isDev } from './defaults.js';
 import { decreaseSizeCDN } from './utils.js';
+
+cs(console, {
+  format: ':date(dd/mm/yyyy HH:MM:ss.l)',
+});
 
 const __filename = fileURLToPath(import.meta.url),
   __dirname = dirname(__filename),
@@ -77,7 +81,7 @@ client.on('ready', async () => {
 
       if (client.isMainShard) {
         // Update emojis
-        if (process.env.NODE_ENV === 'development') {
+        if (isDev) {
           const emjFile = new URL('../../src/emojis.json', import.meta.url),
             emojisJSON = JSON.parse(readFileSync(emjFile, 'utf8')) as Record<string, string>,
             combinedEmojis = { ...emojisJSON };

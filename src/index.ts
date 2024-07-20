@@ -2,9 +2,13 @@ import process from 'node:process';
 import dotenv from 'dotenv-extended';
 import { ShardingManager } from 'discord.js';
 import { Chalk } from 'chalk';
-import 'log-timestamp';
+import cs from 'console-stamp';
 import { App } from '../lib/App';
 import { debugLevel } from './defaults.js';
+
+cs(console, {
+  format: ':date(dd/mm/yyyy HH:MM:ss.l)',
+});
 
 dotenv.load({ errorOnRegex: true });
 

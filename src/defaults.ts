@@ -2,7 +2,8 @@ import process from 'node:process';
 import { ImageURLOptions } from 'discord.js';
 
 export const botOwners = process.env.OWNERS?.split(','),
-  debugLevel = +(process.env.DEBUG_LEVEL ?? process.env.NODE_ENV === 'development'),
+  isDev = process.env.NODE_ENV === 'development',
+  debugLevel = +(process.env.DEBUG_LEVEL ?? isDev),
   defaultLocale = 'en-US',
   imageOptions: ImageURLOptions = { extension: 'png', size: 4096 },
   premiumLimits = {
