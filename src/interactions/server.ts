@@ -91,7 +91,7 @@ export default class Server extends Command {
         case 'info': {
           const premiumLimit = premiumLimits[guild.premiumTier],
             emojiLimit =
-              (guild.features as `${GuildFeature}`[] & string[]).includes('MORE_EMOJIS') && guild.premiumTier < 3
+              (guild.features as `${GuildFeature}`[] & string[]).includes('MORE_EMOJI') && guild.premiumTier < 3
                 ? 200
                 : premiumLimit.emojis,
             roles = guild.roles.cache.filter(r => r.id !== guildId),

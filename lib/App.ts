@@ -79,8 +79,12 @@ export class App extends Client<true> {
   }
 
   useEmoji(name: string) {
-    if (!name) return '';
-    const emoji = this.appEmojis.get(name);
+    let emoji = name && this.appEmojis.get(name);
+    if (!emoji) {
+      const missing = this.appEmojis.get('missing');
+      if (missing) emoji = { ...missing, name };
+      else return '🚫';
+    }
     return formatEmoji(emoji);
   }
 

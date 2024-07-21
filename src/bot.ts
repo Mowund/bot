@@ -19,11 +19,13 @@ import {
   resolveImage,
   formatEmoji,
   RESTJSONErrorCodes,
+  SnowflakeUtil,
+  PartialEmoji,
 } from 'discord.js';
 import cs from 'console-stamp';
 import { App } from '../lib/App.js';
 import { Command } from '../lib/structures/Command.js';
-import { debugLevel, imageOptions, isDev } from './defaults.js';
+import { debugLevel, imageOptions } from './defaults.js';
 import { decreaseSizeCDN } from './utils.js';
 
 cs(console, {
@@ -81,86 +83,140 @@ client.on('ready', async () => {
 
       if (client.isMainShard) {
         // Update emojis
-        if (isDev) {
-          const emjFile = new URL('../../src/emojis.json', import.meta.url),
-            emojisJSON = JSON.parse(readFileSync(emjFile, 'utf8')) as Record<string, string>,
-            combinedEmojis = { ...emojisJSON };
+        const emjFilePath = new URL('../../src/emojis.json', import.meta.url),
+          emjColl = new Collection(
+            Object.entries(
+              JSON.parse(readFileSync(emjFilePath, 'utf8')) as Record<
+                string,
+                `<:${string}:${string}>` | `<a:${string}:${string}>`
+              >,
+            ),
+          ).mapValues(x => parseEmoji(x) as APIEmoji | PartialEmoji),
+          mergedColl = emjColl
+            .merge(
+              client.appEmojis,
+              x => ({ keep: true, value: x }),
+              y => ({ keep: true, value: y }),
+              x => ({ keep: true, value: x }),
+            )
+            .sort((a, b) => a.name.localeCompare(b.name));
 
-          for (const [name, emoji] of client.appEmojis) combinedEmojis[name] ||= formatEmoji(emoji);
+        if (mergedColl.some(x => !emjColl.has(x.name) || x.id !== client.appEmojis.get(x.name)?.id)) {
+          client.log(client.chalk.yellow('Updating emojis...'));
 
-          const emojisToUpdate = Object.entries(combinedEmojis).sort(([a], [b]) => a.localeCompare(b));
+          const updatedEntries = await mergedColl.reduce(async (accPromise, emj) => {
+              const acc = await accPromise,
+                { name } = emj,
+                emjFormatted = formatEmoji(emj),
+                emjJSON = emjColl.get(name),
+                emjJSONTimestamp = emjJSON?.id ? SnowflakeUtil.timestampFrom(emjJSON.id) : 0,
+                emjApp = client.appEmojis.get(name),
+                emjAppTimestamp = emjApp?.id ? SnowflakeUtil.timestampFrom(emjApp.id) : 0,
+                emojiUrl = `https://cdn.discordapp.com/emojis/${emj.id}.${emj.animated ? 'gif' : 'png'}?size=${imageOptions.size}`;
 
-          if (!client.appEmojis.hasAll(...Object.keys(combinedEmojis))) {
-            client.log(client.chalk.yellow('Adding missing emojis...'));
+              if (emjAppTimestamp > emjJSONTimestamp) {
+                const formattedClientEmj = formatEmoji(emjApp);
 
-            const updatedEntries = await Promise.all(
-                emojisToUpdate.map(async ([name, formatted]) => {
-                  const emj = parseEmoji(formatted),
-                    clientEmj = client.appEmojis.get(name);
-                  let emojiUrl = `https://cdn.discordapp.com/emojis/${emj.id}`;
-
-                  if (clientEmj) {
-                    const formattedClientEmj = formatEmoji(clientEmj);
-                    if (formattedClientEmj !== formatted) {
-                      client.log(
-                        client.chalk.yellow(`Updated ${client.chalk.gray(formattedClientEmj)} emoji from JSON`),
-                      );
-                      return [name, formattedClientEmj];
-                    }
-                    if (!Object.keys(emojisJSON).includes(name))
-                      client.log(client.chalk.green(`Added ${client.chalk.gray(formatted)} emoji to JSON`));
-                  } else {
-                    try {
-                      const imageType =
-                        (await fetch(`${emojiUrl}.gif`).then(res => (res.ok ? 'gif' : null))) ||
-                        (await fetch(emojiUrl).then(res => (res.ok ? 'png' : null)));
-
-                      if (imageType) {
-                        emojiUrl += `.${imageType}?size=${imageOptions.size}`;
-                        client.log(
-                          client.chalk.blue(
-                            `Fetching emoji ${client.chalk.gray(formatted)} from ${client.chalk.gray(emojiUrl)}`,
-                          ),
-                        );
-
-                        const resolveAndCreateEmoji = async (url: string): Promise<APIEmoji | null> => {
-                            try {
-                              const image = await resolveImage(url),
-                                newEmoji = (await client.rest.post(`/applications/${client.application.id}/emojis`, {
-                                  body: { image, name },
-                                })) as APIEmoji;
-                              return newEmoji;
-                            } catch (err) {
-                              if (err.code === RESTJSONErrorCodes.InvalidFormBodyOrContentType) {
-                                return resolveAndCreateEmoji(
-                                  await decreaseSizeCDN(url, { initialSize: 256, maxSize: 256000 }),
-                                );
-                              }
-                              client.error(`Error creating emoji: `, err);
-                              return null;
-                            }
-                          },
-                          newEmoji = await resolveAndCreateEmoji(emojiUrl);
-                        if (newEmoji) {
-                          client.appEmojis.set(name, newEmoji);
-                          client.log(
-                            client.chalk.green(`Added ${client.chalk.gray(formatEmoji(newEmoji))} emoji to app`),
-                          );
-                          return [name, formatEmoji(newEmoji)];
-                        }
-                      }
-                    } catch (err) {
-                      client.error(client.chalk.red(`Error adding emoji ${client.chalk.gray(formatted)}:`, err));
-                    }
+                if (emjJSON) {
+                  client.log(client.chalk.yellow(`Updated ${client.chalk.gray(formattedClientEmj)} emoji from JSON`));
+                  acc.push([name, formattedClientEmj]);
+                } else {
+                  client.log(client.chalk.green(`Added ${client.chalk.gray(emjFormatted)} emoji to JSON`));
+                  acc.push([name, emjFormatted]);
+                }
+              } else if (emjAppTimestamp === emjJSONTimestamp) {
+                acc.push([name, emjFormatted]);
+              } else {
+                try {
+                  if (emjApp) {
+                    await client.rest.delete(`/applications/${client.application.id}/emojis/${emjApp.id}`);
+                    client.log(client.chalk.red(`Deleted ${client.chalk.gray(formatEmoji(emjApp))} emoji from app`));
                   }
 
-                  return [name, formatted];
-                }),
-              ),
-              updatedCombinedEmojis = Object.fromEntries(updatedEntries);
-            if (Object.entries(updatedCombinedEmojis).some(([name, formatted]) => combinedEmojis[name] !== formatted))
-              writeFileSync(emjFile, JSON.stringify(updatedCombinedEmojis, null, 2));
-          }
+                  client.log(
+                    client.chalk.blue(
+                      `Fetching emoji ${client.chalk.gray(emjFormatted)} from ${client.chalk.gray(emojiUrl)}`,
+                    ),
+                  );
+
+                  const resolveAndCreateEmoji = async (
+                      url: string,
+                      stuck = false,
+                      mismatch = false,
+                    ): Promise<APIEmoji | null> => {
+                      try {
+                        const image = await resolveImage(url),
+                          newEmoji = (await client.rest.post(`/applications/${client.application.id}/emojis`, {
+                            body: { image, name },
+                          })) as APIEmoji,
+                          newImage = await resolveImage(
+                            `https://cdn.discordapp.com/emojis/${newEmoji.id}.${newEmoji.animated ? 'gif' : 'png'}?size=${imageOptions.size}`,
+                          );
+
+                        if (!stuck && newImage !== image) {
+                          if (!mismatch) {
+                            client.log(
+                              client.chalk.magenta(
+                                `Fixing image mismatch for emoji ${client.chalk.gray(emjFormatted)}`,
+                              ),
+                            );
+                          }
+                          await client.rest.delete(`/applications/${client.application.id}/emojis/${newEmoji.id}`);
+                          return resolveAndCreateEmoji(url, stuck, true);
+                        }
+
+                        return newEmoji;
+                      } catch (err) {
+                        if (err.code === RESTJSONErrorCodes.InvalidFormBodyOrContentType) {
+                          const newUrl = await decreaseSizeCDN(url, { initialSize: 256, maxSize: 256000 });
+                          if (newUrl === url) return resolveAndCreateEmoji(newUrl, true);
+                          client.log(
+                            client.chalk.blue(
+                              `Refetching emoji ${client.chalk.gray(emjFormatted)} from ${client.chalk.gray(url)}`,
+                            ),
+                          );
+                          return resolveAndCreateEmoji(newUrl);
+                        }
+
+                        client.error(`Error creating emoji: `, err);
+                        return null;
+                      }
+                    },
+                    newEmoji = await resolveAndCreateEmoji(emojiUrl);
+
+                  if (newEmoji) {
+                    client.appEmojis.set(name, newEmoji);
+                    client.log(client.chalk.green(`Added ${client.chalk.gray(formatEmoji(newEmoji))} emoji to app`));
+                    acc.push([name, formatEmoji(newEmoji)]);
+                  }
+                } catch (err) {
+                  client.error(client.chalk.red(`Error adding emoji ${client.chalk.gray(emjFormatted)}:`, err));
+                }
+              }
+
+              return acc;
+            }, Promise.resolve([])),
+            updatedCombinedEmojis = Object.fromEntries(updatedEntries);
+
+          if (Object.entries(updatedCombinedEmojis).some(([name, formatted]) => mergedColl[name] !== formatted))
+            writeFileSync(emjFilePath, JSON.stringify(updatedCombinedEmojis, null, 2));
+
+          // Update emojis in other shards
+          await client.shard.broadcastEval(async (c: App) => {
+            if (!c.isMainShard && c.application) {
+              const eD = (await c.rest.get(`/applications/${c.application.id}/emojis`)) as {
+                items: APIEmoji[];
+              };
+              eD.items.forEach(e => {
+                c.log(e.name, c.appEmojis.get(e.name));
+                c.appEmojis.set(e.name, e);
+                c.log(e.name, c.appEmojis.get(e.name));
+              });
+              c.log(c.chalk.yellow('Updated emojis'));
+            }
+          });
+
+          client.log(client.chalk.yellow('Finished updating emojis'));
         }
 
         await (async function updateData() {

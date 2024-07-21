@@ -81,7 +81,7 @@ export default class Emoji extends Command {
     const { client, embed, isEphemeral, localize } = args,
       { appPermissions, guild, memberPermissions, user } = interaction,
       emojiLimit = guild
-        ? (guild.features as GuildFeature | string[]).includes('MORE_STICKERS') && guild.premiumTier < 3
+        ? (guild.features as GuildFeature | string[]).includes('MORE_EMOJI') && guild.premiumTier < 3
           ? 200
           : premiumLimits[guild.premiumTier].emojis
         : 0;
@@ -290,7 +290,7 @@ export default class Emoji extends Command {
         emb.addFields({
           inline: true,
           name: `${client.useEmoji('mention')} ${localize('GENERIC.MENTION')}`,
-          value: `\`${emjDisplay.trim() || `<${imageType === 'gif' ? 'a' : ''}:${emjName}:${emjId}>`}\``,
+          value: `\`<${imageType === 'gif' ? 'a' : ''}:${emjName}:${emjId}>\``,
         });
       }
 

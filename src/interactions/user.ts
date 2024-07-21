@@ -168,7 +168,7 @@ export default class User extends Command {
               value: localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.DISABLED'),
             },
       ],
-      appInfoOpts = (app: FullApplication, embeddedApp: EmbeddedApplication, sM: string | null) => {
+      appInfoOpts = (app: FullApplication, embeddedApp: EmbeddedApplication, u: DiscordUser, sM: string | null) => {
         const flags = new ApplicationFlagsBitField(app.flags),
           iconURL = client.rest.cdn.appIcon(app.id, app.icon, imageOptions),
           emb = embed({
@@ -246,10 +246,22 @@ export default class User extends Command {
           descriptions = [],
           emojiFlags = flags
             .toArray()
-            .map(f => client.useEmoji(AppFlagEmoji[f]))
-            .filter(v => v);
+            .map(f => {
+              const e = AppFlagEmoji[f];
+              return e && client.useEmoji(e);
+            })
+            .filter(v => v) as string[];
+
+        if (u?.system) {
+          emojiFlags.unshift(client.useEmoji('verifiedSystem1') + client.useEmoji('verifiedSystem2'));
+        } else if (u?.bot) {
+          if (u.flags.has(UserFlags.VerifiedBot))
+            emojiFlags.unshift(client.useEmoji('verifiedBot1') + client.useEmoji('verifiedBot2'));
+          else emojiFlags.unshift(client.useEmoji('bot'));
+        }
 
         if (emojiFlags.length) descriptions.push(emojiFlags.join(' '));
+
         if (app.description) descriptions.push(app.description);
         emb.setDescription(descriptions.join('\n'));
 
@@ -285,13 +297,17 @@ export default class User extends Command {
       },
       userInfoOpts = (u: DiscordUser, sM: string | null) => {
         const flags = u.system
-          ? [client.useEmoji('verifiedSystem')]
+          ? [client.useEmoji('verifiedSystem1') + client.useEmoji('verifiedSystem2')]
           : u.bot
             ? u.flags.has(UserFlags.VerifiedBot)
-              ? [client.useEmoji('verifiedBot')]
+              ? [client.useEmoji('verifiedBot1') + client.useEmoji('verifiedBot2')]
               : [client.useEmoji('bot')]
             : [];
-        for (const flag of u.flags.toArray()) flags.push(client.useEmoji(UserFlagEmoji[flag]));
+
+        for (const flag of u.flags.toArray()) {
+          const e = UserFlagEmoji[flag];
+          if (e) flags.push(client.useEmoji(e));
+        }
 
         const emb = embed({
             addParams: sM ? { member: sM } : {},
@@ -300,7 +316,7 @@ export default class User extends Command {
           })
             .setAuthor({
               iconURL: u.displayAvatarURL(imageOptions),
-              name: u.tag,
+              name: u.discriminator === '0000' ? u.username : u.tag,
               url: `https://discord.com/users/${u.id}`,
             })
             .setThumbnail(u.displayAvatarURL(imageOptions))
@@ -337,16 +353,14 @@ export default class User extends Command {
         const mFlags = typeof m.flags === 'object' ? m.flags : new GuildMemberFlagsBitField(m.flags),
           flags = u?.bot
             ? u.flags.has(UserFlags.VerifiedBot)
-              ? [client.useEmoji('verifiedBot')]
+              ? [client.useEmoji('verifiedBot1') + client.useEmoji('verifiedBot2')]
               : [client.useEmoji('bot')]
             : [],
           rejoined = mFlags.has(GuildMemberFlags.DidRejoin),
           avatar = m.avatar
             ? client.rest.cdn.guildMemberAvatar(guildId, u.id, m.avatar, imageOptions)
             : u.displayAvatarURL(imageOptions),
-          banner = m.banner
-            ? client.rest.cdn.guildMemberBanner(guildId, u.id, m.banner, imageOptions)
-            : u.bannerURL(imageOptions);
+          banner = m.banner && client.rest.cdn.guildMemberBanner(guildId, u.id, m.banner, imageOptions);
 
         if (u.id === guild?.ownerId) flags.push(client.useEmoji('serverOwner'));
 
@@ -394,7 +408,7 @@ export default class User extends Command {
           })
             .setAuthor({
               iconURL: avatar,
-              name: u.tag,
+              name: u.discriminator === '0000' ? u.username : u.tag,
               url: `https://discord.com/users/${m.id}`,
             })
             .setThumbnail(avatar)
@@ -628,7 +642,7 @@ export default class User extends Command {
         opts = isPermsCmd
           ? appPermsOpts(app, memberO, channel)
           : !isUserInfoCmd && app
-            ? appInfoOpts(app, embeddedApp, sM)
+            ? appInfoOpts(app, embeddedApp, userO, sM)
             : memberO
               ? memberInfoOpts(memberO, userO, sM)
               : userInfoOpts(userO, sM),
@@ -752,7 +766,7 @@ export default class User extends Command {
             opts = isPermsCmd
               ? appPermsOpts(app, memberO, channel)
               : isApp && app
-                ? appInfoOpts(app, embeddedApp, sM)
+                ? appInfoOpts(app, embeddedApp, userO, sM)
                 : isMember && memberO && !memberButtonBlocked
                   ? memberInfoOpts(memberO, userO, sM)
                   : userInfoOpts(userO, sM);
