@@ -175,13 +175,14 @@ client.on('ready', async () => {
                       } catch (err) {
                         if (err.code === RESTJSONErrorCodes.InvalidFormBodyOrContentType) {
                           const newUrl = await decreaseSizeCDN(url, { initialSize: 256, maxSize: 256000 });
-                          if (newUrl === url) return resolveAndCreateEmoji(newUrl);
-                          client.log(
-                            client.chalk.blue(
-                              `Refetching emoji ${client.chalk.gray(emjFormatted)} from ${client.chalk.gray(url)}`,
-                            ),
-                          );
-                          return resolveAndCreateEmoji(newUrl);
+                          if (newUrl !== url) {
+                            client.log(
+                              client.chalk.blue(
+                                `Refetching emoji ${client.chalk.gray(emjFormatted)} from ${client.chalk.gray(url)}`,
+                              ),
+                            );
+                          }
+                          return resolveAndCreateEmoji(newUrl, mismatches);
                         }
 
                         client.error(`Error creating emoji: `, err);
