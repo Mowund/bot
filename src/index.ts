@@ -4,7 +4,7 @@ import { ShardingManager } from 'discord.js';
 import { Chalk } from 'chalk';
 import cs from 'console-stamp';
 import { App } from '../lib/App';
-import { debugLevel } from './defaults.js';
+import { isDev } from './defaults.js';
 
 cs(console, {
   format: ':date(dd/mm/yyyy HH:MM:ss.l)',
@@ -14,7 +14,7 @@ dotenv.load({ errorOnRegex: true });
 
 const manager = new ShardingManager('./dist/src/bot.js', {
     token: process.env.DISCORD_TOKEN,
-    totalShards: debugLevel ? 2 : 'auto',
+    totalShards: isDev ? 2 : 'auto',
   }),
   chalk = new Chalk({ level: 3 });
 

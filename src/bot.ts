@@ -16,16 +16,18 @@ import {
   ApplicationCommand,
   APIEmoji,
   parseEmoji,
-  resolveImage,
   formatEmoji,
   RESTJSONErrorCodes,
   SnowflakeUtil,
   PartialEmoji,
+  resolveFile,
+  resolveBase64,
 } from 'discord.js';
 import cs from 'console-stamp';
+import looksSame from 'looks-same';
 import { App } from '../lib/App.js';
 import { Command } from '../lib/structures/Command.js';
-import { debugLevel, imageOptions } from './defaults.js';
+import { debugLevel, imageOptions, isDev } from './defaults.js';
 import { decreaseSizeCDN } from './utils.js';
 
 cs(console, {
@@ -99,12 +101,13 @@ client.on('ready', async () => {
               y => ({ keep: true, value: y }),
               x => ({ keep: true, value: x }),
             )
-            .sort((a, b) => a.name.localeCompare(b.name));
+            .sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
 
         if (mergedColl.some(x => !emjColl.has(x.name) || x.id !== client.appEmojis.get(x.name)?.id)) {
           client.log(client.chalk.yellow('Updating emojis...'));
 
-          const updatedEntries = await mergedColl.reduce(async (accPromise, emj) => {
+          const updatedEntries = await mergedColl.reduce(
+            async (accPromise: Promise<[string, `<:${string}:${string}>` | `<a:${string}:${string}>`][]>, emj) => {
               const acc = await accPromise,
                 { name } = emj,
                 emjFormatted = formatEmoji(emj),
@@ -115,14 +118,20 @@ client.on('ready', async () => {
                 emojiUrl = `https://cdn.discordapp.com/emojis/${emj.id}.${emj.animated ? 'gif' : 'png'}?size=${imageOptions.size}`;
 
               if (emjAppTimestamp > emjJSONTimestamp) {
-                const formattedClientEmj = formatEmoji(emjApp);
-
                 if (emjJSON) {
-                  client.log(client.chalk.yellow(`Updated ${client.chalk.gray(formattedClientEmj)} emoji from JSON`));
+                  const formattedClientEmj = formatEmoji(emjApp);
                   acc.push([name, formattedClientEmj]);
+                  if (isDev)
+                    client.log(client.chalk.green(`Updated ${client.chalk.gray(formattedClientEmj)} emoji from JSON`));
                 } else {
-                  client.log(client.chalk.green(`Added ${client.chalk.gray(emjFormatted)} emoji to JSON`));
                   acc.push([name, emjFormatted]);
+                  if (isDev) {
+                    client.log(client.chalk.green(`Added ${client.chalk.gray(emjFormatted)} emoji to JSON`));
+                  } else {
+                    await client.rest.delete(`/applications/${client.application.id}/emojis/${emjApp.id}`);
+                    client.appEmojis.delete(name);
+                    client.log(client.chalk.red(`Deleted ${client.chalk.gray(formatEmoji(emjApp))} emoji from app`));
+                  }
                 }
               } else if (emjAppTimestamp === emjJSONTimestamp) {
                 acc.push([name, emjFormatted]);
@@ -139,37 +148,34 @@ client.on('ready', async () => {
                     ),
                   );
 
-                  const resolveAndCreateEmoji = async (
-                      url: string,
-                      stuck = false,
-                      mismatch = false,
-                    ): Promise<APIEmoji | null> => {
+                  const resolveAndCreateEmoji = async (url: string, mismatches = 0): Promise<APIEmoji | null> => {
                       try {
-                        const image = await resolveImage(url),
+                        const { data: imageData } = await resolveFile(url),
                           newEmoji = (await client.rest.post(`/applications/${client.application.id}/emojis`, {
-                            body: { image, name },
+                            body: { image: resolveBase64(imageData), name },
                           })) as APIEmoji,
-                          newImage = await resolveImage(
+                          { data: newImageData } = await resolveFile(
                             `https://cdn.discordapp.com/emojis/${newEmoji.id}.${newEmoji.animated ? 'gif' : 'png'}?size=${imageOptions.size}`,
-                          );
+                          ),
+                          { equal } = await looksSame(imageData, newImageData);
 
-                        if (!stuck && newImage !== image) {
-                          if (!mismatch) {
-                            client.log(
-                              client.chalk.magenta(
-                                `Fixing image mismatch for emoji ${client.chalk.gray(emjFormatted)}`,
-                              ),
-                            );
-                          }
+                        if (!equal) {
                           await client.rest.delete(`/applications/${client.application.id}/emojis/${newEmoji.id}`);
-                          return resolveAndCreateEmoji(url, stuck, true);
+                          return resolveAndCreateEmoji(url, mismatches + 1);
+                        }
+                        if (mismatches) {
+                          client.log(
+                            client.chalk.magenta(
+                              `Fixed duplicated image for emoji ${client.chalk.gray(emjFormatted)} (${mismatches} attempts)`,
+                            ),
+                          );
                         }
 
                         return newEmoji;
                       } catch (err) {
                         if (err.code === RESTJSONErrorCodes.InvalidFormBodyOrContentType) {
                           const newUrl = await decreaseSizeCDN(url, { initialSize: 256, maxSize: 256000 });
-                          if (newUrl === url) return resolveAndCreateEmoji(newUrl, true);
+                          if (newUrl === url) return resolveAndCreateEmoji(newUrl);
                           client.log(
                             client.chalk.blue(
                               `Refetching emoji ${client.chalk.gray(emjFormatted)} from ${client.chalk.gray(url)}`,
@@ -195,11 +201,11 @@ client.on('ready', async () => {
               }
 
               return acc;
-            }, Promise.resolve([])),
-            updatedCombinedEmojis = Object.fromEntries(updatedEntries);
+            },
+            Promise.resolve([] as [string, `<:${string}:${string}>` | `<a:${string}:${string}>`][]),
+          );
 
-          if (Object.entries(updatedCombinedEmojis).some(([name, formatted]) => mergedColl[name] !== formatted))
-            writeFileSync(emjFilePath, JSON.stringify(updatedCombinedEmojis, null, 2));
+          if (isDev) writeFileSync(emjFilePath, JSON.stringify(Object.fromEntries(updatedEntries), null, 2));
 
           // Update emojis in other shards
           await client.shard.broadcastEval(async (c: App) => {
