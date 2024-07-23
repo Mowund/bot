@@ -9,7 +9,7 @@
     "ecmaVersion": "latest",
     "sourceType": "module"
   },
-  "plugins": ["import", "json-format", "sort-destructure-keys", "@typescript-eslint", "@stylistic"],
+  "plugins": ["import", "json-format", "prettier", "sort-destructure-keys", "@typescript-eslint", "@stylistic"],
   "rules": {
     "@stylistic/array-bracket-spacing": "error",
     "@stylistic/arrow-parens": ["error", "as-needed"],
