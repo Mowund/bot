@@ -13,11 +13,11 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v3
         with:
-          node-version-file: "package.json"
-          cache: "pnpm"
+          node-version-file: 'package.json'
+          cache: 'npm'
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm install --frozen-lockfile
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -27,7 +27,7 @@ jobs:
           aws-region: us-east-2
 
       - name: Build Application
-        run: pnpm run build
+        run: npm run build
 
   continuous-deployment:
     runs-on: ubuntu-latest
@@ -49,7 +49,7 @@ jobs:
             --deployment-group-name MowundBetaDeploymentGroup \
             --deployment-config-name CodeDeployDefault.OneAtATime \
             --github-location repository=${{ github.repository }},commitId=${{ github.sha }}
-            
+
       - if: github.ref == 'refs/heads/stable'
         name: Create Production CodeDeploy Deployment
         id: deploy-stable

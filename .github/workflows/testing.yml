@@ -14,11 +14,11 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v3
         with:
-          node-version-file: "package.json"
-          cache: "pnpm"
+          node-version-file: 'package.json'
+          cache: 'npm'
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm install --frozen-lockfile
 
       - name: Run ESLint
-        run: pnpm run lint
+        run: npm run lint
