@@ -331,12 +331,14 @@ export default class Server extends Command {
           if (guild.icon && guild.banner && (guild.splash || guild.discoverySplash))
             rows.push(new ActionRowBuilder<ButtonBuilder>());
           if (guild.banner) {
+            const banner = guild.bannerURL(imageOptions);
+            emb.addFields({ name: `🖼️ ${localize('GENERIC.BANNER')}`, value: '\u200B' }).setImage(banner);
             rows[0].addComponents(
               new ButtonBuilder()
                 .setLabel(localize('GENERIC.BANNER'))
                 .setEmoji('🖼️')
                 .setStyle(ButtonStyle.Link)
-                .setURL(guild.bannerURL(imageOptions)),
+                .setURL(banner),
             );
           }
           if (guild.splash) {

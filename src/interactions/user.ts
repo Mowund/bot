@@ -334,15 +334,14 @@ export default class User extends Command {
           );
 
         if (u.banner) {
-          emb
-            .addFields({ name: `🖼️ ${localize('GENERIC.BANNER')}`, value: '\u200B' })
-            .setImage(u.bannerURL(imageOptions));
+          const banner = u.bannerURL(imageOptions);
+          emb.addFields({ name: `🖼️ ${localize('GENERIC.BANNER')}`, value: '\u200B' }).setImage(banner);
           row.addComponents(
             new ButtonBuilder()
               .setLabel(localize('GENERIC.BANNER'))
               .setEmoji('🖼️')
               .setStyle(ButtonStyle.Link)
-              .setURL(u.bannerURL(imageOptions)),
+              .setURL(banner),
           );
         }
 
