@@ -5,7 +5,6 @@ import { App } from '../App.js';
 import { Base } from './Base.js';
 
 export class ReminderData extends Base {
-  channelId: Snowflake;
   content: string;
   isRecursive?: boolean;
   msTime: number;
@@ -16,7 +15,6 @@ export class ReminderData extends Base {
     super(client);
 
     this.id = data.id;
-    this.channelId = data.channelId;
     this.content = data.content;
     this.isRecursive = data.isRecursive;
     this.msTime = data.msTime;
@@ -33,7 +31,6 @@ export class ReminderData extends Base {
   }
 
   _patch(data: any) {
-    if ('channelId' in data) this.channelId = data.channelId;
     if ('content' in data) this.content = data.content;
     if ('isRecursive' in data) this.isRecursive = data.isRecursive;
     if ('msTime' in data) this.msTime = data.msTime;
@@ -44,7 +41,6 @@ export class ReminderData extends Base {
 }
 
 export interface ReminderDataSetOptions {
-  channelId?: Snowflake;
   content?: string;
   isRecursive?: boolean;
   msTime?: number;

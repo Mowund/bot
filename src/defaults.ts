@@ -17,28 +17,3 @@ export const botOwners = process.env.OWNERS?.split(','),
     id: '420007989261500418',
     invite: 'https://discord.gg/f85rEGJ',
   };
-
-export enum UserFlagEmoji {
-  ActiveDeveloper = 'activeDeveloper',
-  BotHTTPInteractions = 'commands',
-  BugHunterLevel1 = 'bugHunterLvl1',
-  BugHunterLevel2 = 'bugHunterLvl2',
-  CertifiedModerator = 'moderatorProgramsAlumni',
-  HypeSquadOnlineHouse1 = 'bravery',
-  HypeSquadOnlineHouse2 = 'brilliance',
-  HypeSquadOnlineHouse3 = 'balance',
-  Hypesquad = 'hypeSquadEvents',
-  Partner = 'partneredServerOwner',
-  PremiumEarlySupporter = 'earlySupporter',
-  Quarantined = 'quarantined',
-  Spammer = 'likelySpammer',
-  Staff = 'discordEmployee',
-  TeamPseudoUser = 'teamUser',
-  VerifiedDeveloper = 'earlyVerifiedBotDeveloper',
-}
-
-export enum AppFlagEmoji {
-  ApplicationAutoModerationRuleCreateBadge = 'automod',
-  VerificationPendingGuildLimit = 'unusualGrowth',
-  ApplicationCommandBadge = 'slashCommands',
-}

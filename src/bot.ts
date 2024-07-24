@@ -27,8 +27,8 @@ import cs from 'console-stamp';
 import looksSame from 'looks-same';
 import { App } from '../lib/App.js';
 import { Command } from '../lib/structures/Command.js';
-import { debugLevel, imageOptions, isDev } from './defaults.js';
 import { decreaseSizeCDN } from './utils.js';
+import { debugLevel, imageOptions, isDev } from './defaults.js';
 
 cs(console, {
   format: ':date(dd/mm/yyyy HH:MM:ss.l)',
@@ -64,6 +64,7 @@ if (!debugLevel) disableValidators();
 if (debugLevel > 1) client.on('debug', client.log).on('warn', client.error).rest.on('rateLimited', client.error);
 
 client.on('ready', async () => {
+  client.log(isDev);
   try {
     client.user.setPresence({
       activities: [{ name: '🕑 Starting...', type: ActivityType.Custom }],

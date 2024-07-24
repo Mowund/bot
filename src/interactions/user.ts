@@ -29,7 +29,7 @@ import {
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { UserData, Warnings } from '../../lib/structures/UserData.js';
-import { defaultLocale, UserFlagEmoji, imageOptions, AppFlagEmoji } from '../defaults.js';
+import { defaultLocale, imageOptions } from '../defaults.js';
 import {
   toUTS,
   collMap,
@@ -43,6 +43,7 @@ import {
   decompressJSON,
 } from '../utils.js';
 import { EmbeddedApplication, FullApplication } from '../../lib/interfaces/Application.js';
+import { AppFlagEmoji, UserFlagEmoji } from '../../lib/App.js';
 
 export default class User extends Command {
   constructor() {

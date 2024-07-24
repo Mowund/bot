@@ -11,14 +11,11 @@ import {
   SnowflakeUtil,
   TimestampStyles,
   StringSelectMenuInteraction,
-  ChannelSelectMenuBuilder,
-  ChannelSelectMenuInteraction,
   ButtonInteraction,
   ModalBuilder,
   ModalMessageModalSubmitInteraction,
   TextInputBuilder,
   TextInputStyle,
-  ChannelType,
   ApplicationIntegrationType,
   InteractionContextType,
 } from 'discord.js';
@@ -42,7 +39,7 @@ export default class Reminder extends Command {
             options: [
               {
                 description: 'REMINDER.OPTIONS.CREATE.OPTIONS.CONTENT.DESCRIPTION',
-                max_length: 1024,
+                max_length: 4000,
                 name: 'REMINDER.OPTIONS.CREATE.OPTIONS.CONTENT.NAME',
                 required: true,
                 type: ApplicationCommandOptionType.String,
@@ -69,7 +66,7 @@ export default class Reminder extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { client, embed, isEphemeral, localize, userData } = args,
-      { channel, user } = interaction,
+      { user } = interaction,
       minTime = 1000 * 60 * 3,
       maxTime = 1000 * 60 * 60 * 24 * 365.25 * 100,
       minRecursiveTime = minTime * 10,
@@ -139,46 +136,36 @@ export default class Reminder extends Command {
           await interaction.deferReply({ ephemeral: isEphemeral });
 
           const reminder = await userData.reminders.set(reminderId, {
-              channelId: interaction.guild ? channel.id : null,
               content: contentO,
               msTime,
               timestamp: summedTime,
               userId: user.id,
             }),
-            emb = embed({ title: localize('REMINDER.CREATED'), type: 'success' }).addFields(
-              {
-                name: `📄 ${localize('GENERIC.CONTENT.CONTENT')}`,
-                value: reminder.content,
-              },
-              {
-                inline: true,
-                name: `🪪 ${localize('GENERIC.ID')}`,
-                value: `\`${reminder.id}\``,
-              },
-              {
-                inline: true,
-                name: `${client.useEmoji('channelText')} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
-                value: reminder.channelId
-                  ? `<#${reminder.channelId}> - \`${reminder.channelId}\``
-                  : `**${localize('GENERIC.DIRECT_MESSAGE')}**`,
-              },
-              {
-                name: `📅 ${localize('GENERIC.TIMESTAMP')}`,
-                value: `${localize('REMINDER.TIMESTAMP', { timestamp: toUTS(reminder.timestamp) })}\n${localize(
-                  'REMINDER.CREATED_AT',
-                  { timestamp: toUTS(SnowflakeUtil.timestampFrom(reminder.id)) },
-                )}`,
-              },
-              {
-                name: `🔁 ${localize('GENERIC.NOT_RECURSIVE')}`,
-                value:
-                  reminder.msTime < minRecursiveTime
-                    ? localize('REMINDER.RECURSIVE.DISABLED', {
-                        time: localize('GENERIC.TIME.MINUTES', { count: minRecursiveTime / 60000 }),
-                      })
-                    : localize('REMINDER.RECURSIVE.OFF'),
-              },
-            );
+            emb = embed({ title: localize('REMINDER.CREATED'), type: 'success' })
+              .setDescription(reminder.content)
+              .addFields(
+                {
+                  inline: true,
+                  name: `🪪 ${localize('GENERIC.ID')}`,
+                  value: `\`${reminder.id}\``,
+                },
+                {
+                  name: `📅 ${localize('GENERIC.TIMESTAMP')}`,
+                  value: `${localize('REMINDER.TIMESTAMP', { timestamp: toUTS(reminder.timestamp) })}\n${localize(
+                    'REMINDER.CREATED_AT',
+                    { timestamp: toUTS(SnowflakeUtil.timestampFrom(reminder.id)) },
+                  )}`,
+                },
+                {
+                  name: `🔁 ${localize('GENERIC.NOT_RECURSIVE')}`,
+                  value:
+                    reminder.msTime < minRecursiveTime
+                      ? localize('REMINDER.RECURSIVE.DISABLED', {
+                          time: localize('GENERIC.TIME.MINUTES', { count: minRecursiveTime / 60000 }),
+                        })
+                      : localize('REMINDER.RECURSIVE.OFF'),
+                },
+              );
 
           rows.push(
             new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -238,12 +225,7 @@ export default class Reminder extends Command {
           });
         }
       }
-    } else if (
-      interaction.isButton() ||
-      interaction.isChannelSelectMenu() ||
-      interaction.isStringSelectMenu() ||
-      interaction.isModalSubmit()
-    ) {
+    } else if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
       let { customId } = interaction,
         isList = customId === 'reminder_list';
       const { message } = interaction,
@@ -273,45 +255,39 @@ export default class Reminder extends Command {
 
       if (!isList) {
         if (reminder) {
-          emb.setTitle(`🔔 ${localize('REMINDER.INFO')}`).addFields(
-            {
-              name: `📄 ${localize('GENERIC.CONTENT.CONTENT')}`,
-              value: reminder.content,
-            },
-            {
-              inline: true,
-              name: `🪪 ${localize('GENERIC.ID')}`,
-              value: `\`${reminder.id}\``,
-            },
-            {
-              inline: true,
-              name: `${client.useEmoji('channelText')} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
-              value: reminder.channelId
-                ? `<#${reminder.channelId}> - \`${reminder.channelId}\``
-                : `**${localize('GENERIC.DIRECT_MESSAGE')}**`,
-            },
-            {
-              name: `📅 ${localize('GENERIC.TIMESTAMP')}`,
-              value: `${localize('REMINDER.TIMESTAMP', { timestamp: toUTS(reminder.timestamp) })}\n${localize(
-                'REMINDER.CREATED_AT',
-                { timestamp: toUTS(SnowflakeUtil.timestampFrom(reminder.id)) },
-              )}`,
-            },
-            reminder.isRecursive
-              ? {
-                  name: `🔁 ${localize('GENERIC.RECURSIVE')}`,
-                  value: localize('REMINDER.RECURSIVE.ON', { timestamp: toUTS(reminder.timestamp + reminder.msTime) }),
-                }
-              : {
-                  name: `🔁 ${localize('GENERIC.NOT_RECURSIVE')}`,
-                  value:
-                    reminder.msTime < minRecursiveTime
-                      ? localize('REMINDER.RECURSIVE.DISABLED', {
-                          time: localize('GENERIC.TIME.MINUTES', { count: minRecursiveTime / 60000 }),
-                        })
-                      : localize('REMINDER.RECURSIVE.OFF'),
-                },
-          );
+          emb
+            .setTitle(`🔔 ${localize('REMINDER.INFO')}`)
+            .setDescription(reminder.content)
+            .addFields(
+              {
+                inline: true,
+                name: `🪪 ${localize('GENERIC.ID')}`,
+                value: `\`${reminder.id}\``,
+              },
+              {
+                name: `📅 ${localize('GENERIC.TIMESTAMP')}`,
+                value: `${localize('REMINDER.TIMESTAMP', { timestamp: toUTS(reminder.timestamp) })}\n${localize(
+                  'REMINDER.CREATED_AT',
+                  { timestamp: toUTS(SnowflakeUtil.timestampFrom(reminder.id)) },
+                )}`,
+              },
+              reminder.isRecursive
+                ? {
+                    name: `🔁 ${localize('GENERIC.RECURSIVE')}`,
+                    value: localize('REMINDER.RECURSIVE.ON', {
+                      timestamp: toUTS(reminder.timestamp + reminder.msTime),
+                    }),
+                  }
+                : {
+                    name: `🔁 ${localize('GENERIC.NOT_RECURSIVE')}`,
+                    value:
+                      reminder.msTime < minRecursiveTime
+                        ? localize('REMINDER.RECURSIVE.DISABLED', {
+                            time: localize('GENERIC.TIME.MINUTES', { count: minRecursiveTime / 60000 }),
+                          })
+                        : localize('REMINDER.RECURSIVE.OFF'),
+                  },
+            );
         } else if (customId === 'reminder_select') {
           isList = true;
         } else {
@@ -416,7 +392,7 @@ export default class Reminder extends Command {
             emb
               .setTitle(`🔔 ${localize('REMINDER.EDITED')}`)
               .spliceFields(
-                4,
+                2,
                 1,
                 reminder.isRecursive
                   ? {
@@ -455,11 +431,6 @@ export default class Reminder extends Command {
                 .setStyle(ButtonStyle.Secondary)
                 .setCustomId('reminder_edit_content'),
               new ButtonBuilder()
-                .setLabel(localize('GENERIC.CHANNEL.EDIT'))
-                .setEmoji(client.useEmoji('channelText'))
-                .setStyle(ButtonStyle.Secondary)
-                .setCustomId('reminder_edit_channel'),
-              new ButtonBuilder()
                 .setLabel(localize('GENERIC.DELETE'))
                 .setEmoji('🗑️')
                 .setStyle(ButtonStyle.Danger)
@@ -488,12 +459,13 @@ export default class Reminder extends Command {
                 .setCustomId('reminder_delete_confirm'),
             ),
           );
+          const confirmText = `**${localize('REMINDER.DELETING_DESCRIPTION')}**\n\n`;
           return (interaction as ButtonInteraction).update({
             components: rows,
             embeds: [
               emb
                 .setTitle(`🔔 ${localize('REMINDER.DELETING')}`)
-                .setDescription(localize('REMINDER.DELETING_DESCRIPTION'))
+                .setDescription(confirmText + truncate(reminder.content, 4096 - confirmText.length))
                 .setColor(Colors.Orange),
             ],
           });
@@ -511,7 +483,12 @@ export default class Reminder extends Command {
           );
           return (interaction as ButtonInteraction).update({
             components: rows,
-            embeds: [emb.setTitle(`🔕 ${localize('REMINDER.DELETED')}`).setColor(Colors.Red)],
+            embeds: [
+              emb
+                .setTitle(`🔕 ${localize('REMINDER.DELETED')}`)
+                .setDescription(reminder.content)
+                .setColor(Colors.Red),
+            ],
           });
         }
         case 'reminder_edit_content': {
@@ -525,7 +502,7 @@ export default class Reminder extends Command {
                     .setCustomId('reminder_edit_content_input')
                     .setLabel(localize('GENERIC.CONTENT.EDITING_LABEL'))
                     .setMinLength(1)
-                    .setMaxLength(1024)
+                    .setMaxLength(4000)
                     .setStyle(TextInputStyle.Paragraph)
                     .setPlaceholder(truncate(reminder.content, 100)),
                 ),
@@ -554,67 +531,8 @@ export default class Reminder extends Command {
             embeds: [
               emb
                 .setTitle(`🔔 ${localize('GENERIC.CONTENT.EDITED')}`)
-                .spliceFields(0, 1, {
-                  name: `📄 ${localize('GENERIC.CONTENT.CONTENT')}`,
-                  value: reminder.content,
-                })
+                .setDescription(reminder.content)
                 .setColor(Colors.Green),
-            ],
-          });
-        }
-        case 'reminder_dm':
-        case 'reminder_edit_channel_submit':
-          reminder = await userData.reminders.set(reminderId, {
-            channelId:
-              (customId !== 'reminder_dm' && (interaction as ChannelSelectMenuInteraction).channels.first()?.id) ||
-              null,
-          });
-        // eslint-disable-next-line no-fallthrough
-        case 'reminder_edit_channel': {
-          const isEdit = customId === 'reminder_edit_channel';
-          return (interaction as ButtonInteraction).update({
-            components: [
-              new ActionRowBuilder<ButtonBuilder>().addComponents(
-                new ButtonBuilder()
-                  .setLabel(localize('GENERIC.BACK'))
-                  .setEmoji('↩️')
-                  .setStyle(ButtonStyle.Primary)
-                  .setCustomId('reminder_edit'),
-                new ButtonBuilder()
-                  .setLabel(localize(`GENERIC.${reminder.channelId ? 'NOT_DIRECT_MESSAGE' : 'DIRECT_MESSAGE'}`))
-                  .setEmoji(client.useEmoji('user'))
-                  .setStyle(reminder.channelId ? ButtonStyle.Secondary : ButtonStyle.Success)
-                  .setCustomId('reminder_dm')
-                  .setDisabled(!reminder.channelId),
-              ),
-              new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
-                new ChannelSelectMenuBuilder()
-                  .setMinValues(0)
-                  .setDefaultChannels([reminder.channelId].filter(Boolean))
-                  .setPlaceholder(localize('GENERIC.CHANNEL.SELECT_PLACEHOLDER'))
-                  .setChannelTypes(
-                    ChannelType.AnnouncementThread,
-                    ChannelType.GuildAnnouncement,
-                    ChannelType.GuildText,
-                    ChannelType.GuildVoice,
-                    ChannelType.GuildStageVoice,
-                    ChannelType.PrivateThread,
-                    ChannelType.PublicThread,
-                  )
-                  .setCustomId('reminder_edit_channel_submit'),
-              ),
-            ],
-            embeds: [
-              emb
-                .setTitle(`🔔 ${localize(`GENERIC.CHANNEL.${isEdit ? 'EDITING' : 'EDITED'}`)}`)
-                .spliceFields(2, 1, {
-                  inline: true,
-                  name: `${client.useEmoji('channelText')} ${localize('GENERIC.CHANNEL.CHANNEL')}`,
-                  value: reminder.channelId
-                    ? `<#${reminder.channelId}> - \`${reminder.channelId}\``
-                    : `**${localize('GENERIC.DIRECT_MESSAGE')}**`,
-                })
-                .setColor(isEdit ? Colors.Yellow : Colors.Green),
             ],
           });
         }

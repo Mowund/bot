@@ -120,7 +120,7 @@ export default class Echo extends Command {
         thumbnailO = options.getAttachment('thumbnail'),
         colorO = tc(options.getString('color')).isValid()
           ? +tc(options.getString('color')).toHex()
-          : (memberO ?? member)?.displayColor ?? Colors.Blurple,
+          : ((memberO ?? member)?.displayColor ?? Colors.Blurple),
         ttsO = options.getBoolean('tts'),
         channelO = options.getChannel('channel') as GuildTextBasedChannel,
         enableEmbed = descriptionO || titleO || authorO || footerO || imageO || thumbnailO;

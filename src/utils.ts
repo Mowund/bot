@@ -92,7 +92,7 @@ export const disableComponents = (
           : disableLinkButtons && isLinkButton
             ? true
             : disabledSet
-              ? isComponentDisabled ?? false
+              ? (isComponentDisabled ?? false)
               : !isLinkButton,
       );
 

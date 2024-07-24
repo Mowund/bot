@@ -13,7 +13,7 @@ import {
   Snowflake,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
-import * as defaults from '../defaults.js';
+import * as index from '../defaults.js';
 import * as utils from '../utils.js';
 
 export default class Owner extends Command {
@@ -135,7 +135,7 @@ export default class Owner extends Command {
 
     await interaction.deferReply({ ephemeral: isEphemeral });
 
-    if (!defaults.botOwners.includes(user.id)) {
+    if (!index.botOwners.includes(user.id)) {
       return interaction.editReply({
         embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.DEVELOPERS_ONLY'))],
       });
@@ -206,10 +206,10 @@ export default class Owner extends Command {
 
                   const gOnly = command.options?.guildOnly?.find(i => i === (guild ?? interaction.guild)?.id),
                     findCmd = idO
-                      ? (await appCmds.fetch(idO, {
+                      ? ((await appCmds.fetch(idO, {
                           guildId: (guild ?? interaction.guild).id,
                           withLocalizations: true,
-                        })) ?? (await appCmds.fetch(idO, { withLocalizations: true }))
+                        })) ?? (await appCmds.fetch(idO, { withLocalizations: true })))
                       : dt,
                     searchCmd =
                       fGdCmds?.find(c => c.name === findCmd.name) ?? fAppCmds.find(c => c.name === findCmd.name),
