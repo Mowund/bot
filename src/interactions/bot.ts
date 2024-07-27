@@ -85,7 +85,7 @@ export default class Bot extends Command {
                   },
                   {
                     inline: true,
-                    name: `${client.useEmoji('commands')} ${localize('GENERIC.COMMANDS')} [${localize('GENERIC.COUNT', {
+                    name: `${client.useEmoji('apps')} ${localize('GENERIC.COMMANDS')} [${localize('GENERIC.COUNT', {
                       count: globalCommandCount.sum.all,
                     })}${
                       guildCommandCount.sum.all
@@ -94,7 +94,7 @@ export default class Bot extends Command {
                           })}`
                         : ''
                     }]`,
-                    value: `${client.useEmoji('slashCommand')} \`${localize('GENERIC.COUNT', {
+                    value: `- ${client.useEmoji('slashCommand')} \`${localize('GENERIC.COUNT', {
                       count: globalCommandCount.chatInput,
                     })}\`${
                       guildCommandCount.chatInput
@@ -102,7 +102,7 @@ export default class Bot extends Command {
                             count: guildCommandCount.chatInput,
                           })}\``
                         : ''
-                    }\n${client.useEmoji('contextMenuCommand')} \`${localize('GENERIC.COUNT', {
+                    }\n- ${client.useEmoji('contextMenuCommand')} \`${localize('GENERIC.COUNT', {
                       count: globalCommandCount.sum.contextMenu,
                     })}\`${
                       guildCommandCount.sum.contextMenu

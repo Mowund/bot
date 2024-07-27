@@ -196,7 +196,7 @@ export default class Reminder extends Command {
               .setCustomId('reminder_select');
 
           let emb: EmbedBuilder;
-          if (reminders.size) {
+          if (reminders?.size) {
             emb = embed({ title: `🔔 ${localize('REMINDER.LIST')}` });
             reminders
               .sort((a, b) => a.timestamp - b.timestamp)
@@ -333,7 +333,7 @@ export default class Reminder extends Command {
                 .setPlaceholder(localize('REMINDER.SELECT_LIST'))
                 .setCustomId('reminder_select');
 
-            if (reminders.size) {
+            if (reminders?.size) {
               emb.setTitle(`🔔 ${localize('REMINDER.LIST')}`);
               reminders
                 .sort((a, b) => a.timestamp - b.timestamp)

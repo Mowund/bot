@@ -64,7 +64,6 @@ if (!debugLevel) disableValidators();
 if (debugLevel > 1) client.on('debug', client.log).on('warn', client.error).rest.on('rateLimited', client.error);
 
 client.on('ready', async () => {
-  client.log(isDev);
   try {
     client.user.setPresence({
       activities: [{ name: '🕑 Starting...', type: ActivityType.Custom }],
@@ -110,21 +109,21 @@ client.on('ready', async () => {
           const updatedEntries = await mergedColl.reduce(
             async (accPromise: Promise<[string, `<:${string}:${string}>` | `<a:${string}:${string}>`][]>, emj) => {
               const acc = await accPromise,
-                { name } = emj,
+                { id, name } = emj,
                 emjFormatted = formatEmoji(emj),
                 emjJSON = emjColl.get(name),
                 emjJSONTimestamp = emjJSON?.id ? SnowflakeUtil.timestampFrom(emjJSON.id) : 0,
-                emjApp = client.appEmojis.get(name),
+                emjApp = client.appEmojis.get(name) || client.appEmojis.find(e => e.id === id),
                 emjAppTimestamp = emjApp?.id ? SnowflakeUtil.timestampFrom(emjApp.id) : 0,
                 emojiUrl = `https://cdn.discordapp.com/emojis/${emj.id}.${emj.animated ? 'gif' : 'png'}?size=${imageOptions.size}`;
 
               if (emjAppTimestamp > emjJSONTimestamp) {
                 if (emjJSON) {
-                  const formattedClientEmj = formatEmoji(emjApp);
-                  acc.push([name, formattedClientEmj]);
+                  const emjAppFormatted = formatEmoji(emjApp);
+                  acc.push([name, emjAppFormatted]);
                   if (isDev)
-                    client.log(client.chalk.green(`Updated ${client.chalk.gray(formattedClientEmj)} emoji from JSON`));
-                } else {
+                    client.log(client.chalk.green(`Updated ${client.chalk.gray(emjAppFormatted)} emoji from JSON`));
+                } else if (!acc.find(([n]) => n === name)) {
                   acc.push([name, emjFormatted]);
                   if (isDev) {
                     client.log(client.chalk.green(`Added ${client.chalk.gray(emjFormatted)} emoji to JSON`));
@@ -135,7 +134,17 @@ client.on('ready', async () => {
                   }
                 }
               } else if (emjAppTimestamp === emjJSONTimestamp) {
-                acc.push([name, emjFormatted]);
+                if (name !== emjApp.name) {
+                  const emjAppFormatted = formatEmoji(emjApp);
+                  client.log(
+                    client.chalk.blue(
+                      `Renamed ${client.chalk.gray(emjFormatted)} to ${client.chalk.gray(emjAppFormatted)} from JSON`,
+                    ),
+                  );
+                  acc.push([emjApp.name, emjAppFormatted]);
+                } else {
+                  acc.push([name, emjFormatted]);
+                }
               } else {
                 try {
                   if (emjApp) {
@@ -207,7 +216,16 @@ client.on('ready', async () => {
             Promise.resolve([] as [string, `<:${string}:${string}>` | `<a:${string}:${string}>`][]),
           );
 
-          if (isDev) writeFileSync(emjFilePath, JSON.stringify(Object.fromEntries(updatedEntries), null, 2));
+          if (isDev) {
+            writeFileSync(
+              emjFilePath,
+              JSON.stringify(
+                Object.fromEntries(updatedEntries.sort((a, b) => a[0].localeCompare(b[0], 'en', { numeric: true }))),
+                null,
+                2,
+              ),
+            );
+          }
 
           // Update emojis in other shards
           await client.shard.broadcastEval(async (c: App) => {

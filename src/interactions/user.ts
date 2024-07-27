@@ -193,7 +193,7 @@ export default class User extends Command {
               },
               {
                 inline: true,
-                name: `${client.useEmoji('integration')} ${localize('GENERIC.BOT')}`,
+                name: `${client.useEmoji('bot')} ${localize('GENERIC.BOT')}`,
                 value: `${app.bot_public ? client.useEmoji('check') : client.useEmoji('no')} ${localize('GENERIC.PUBLIC_BOT')}\n${
                   app.bot_require_code_grant ? client.useEmoji('check') : client.useEmoji('no')
                 } ${localize('GENERIC.REQUIRES_CODE_GRANT')}\n${
@@ -244,7 +244,6 @@ export default class User extends Command {
                 .setURL(iconURL),
             ),
           ],
-          descriptions = [],
           emojiFlags = flags
             .toArray()
             .map(f => {
@@ -254,17 +253,26 @@ export default class User extends Command {
             .filter(v => v) as string[];
 
         if (u?.system) {
-          emojiFlags.unshift(client.useEmoji('verifiedSystem1') + client.useEmoji('verifiedSystem2'));
+          emojiFlags.unshift(
+            client.useEmoji('official1') + client.useEmoji('official2') + client.useEmoji('official3'),
+          );
         } else if (u?.bot) {
           if (u.flags.has(UserFlags.VerifiedBot))
-            emojiFlags.unshift(client.useEmoji('verifiedBot1') + client.useEmoji('verifiedBot2'));
-          else emojiFlags.unshift(client.useEmoji('bot'));
+            emojiFlags.unshift(client.useEmoji('verifiedApp1') + client.useEmoji('verifiedApp2'));
+          else emojiFlags.unshift(client.useEmoji('app'));
         }
 
-        if (emojiFlags.length) descriptions.push(emojiFlags.join(' '));
-
-        if (app.description) descriptions.push(app.description);
-        emb.setDescription(descriptions.join('\n'));
+        let description = '';
+        if (u) description += u.toString();
+        if (emojiFlags.length) {
+          if (description.length) description += ' ';
+          description += emojiFlags.join(' ');
+        }
+        if (app.description) {
+          if (description.length) description += '\n\n';
+          description += app.description;
+        }
+        if (description.length) emb.setDescription(description);
 
         if (embeddedApp && flags.has(ApplicationFlags.Embedded)) {
           emb.addFields({
@@ -298,11 +306,11 @@ export default class User extends Command {
       },
       userInfoOpts = (u: DiscordUser, sM: string | null) => {
         const flags = u.system
-          ? [client.useEmoji('verifiedSystem1') + client.useEmoji('verifiedSystem2')]
+          ? [client.useEmoji('official1') + client.useEmoji('official2') + client.useEmoji('official3')]
           : u.bot
             ? u.flags.has(UserFlags.VerifiedBot)
-              ? [client.useEmoji('verifiedBot1') + client.useEmoji('verifiedBot2')]
-              : [client.useEmoji('bot')]
+              ? [client.useEmoji('verifiedApp1') + client.useEmoji('verifiedApp2')]
+              : [client.useEmoji('app')]
             : [];
 
         for (const flag of u.flags.toArray()) {
@@ -353,8 +361,8 @@ export default class User extends Command {
         const mFlags = typeof m.flags === 'object' ? m.flags : new GuildMemberFlagsBitField(m.flags),
           flags = u?.bot
             ? u.flags.has(UserFlags.VerifiedBot)
-              ? [client.useEmoji('verifiedBot1') + client.useEmoji('verifiedBot2')]
-              : [client.useEmoji('bot')]
+              ? [client.useEmoji('verifiedApp1') + client.useEmoji('verifiedApp2')]
+              : [client.useEmoji('app')]
             : [],
           rejoined = mFlags.has(GuildMemberFlags.DidRejoin),
           avatar = m.avatar
@@ -366,22 +374,13 @@ export default class User extends Command {
 
         const premimSince = m.premiumSince ?? (m as any as APIInteractionGuildMember).premium_since;
         if (premimSince) {
-          const pMonths = monthDiff(premimSince);
-
+          const pMonths = monthDiff(premimSince),
+            months = [1, 2, 3, 6, 12, 15, 18, 24].find(mo => pMonths <= mo) || 24;
+          console.log(pMonths, months);
           flags.push(
-            pMonths <= 1
+            months === 1
               ? client.useEmoji('boosting1Month')
-              : pMonths === 2
-                ? client.useEmoji('boosting2Months')
-                : pMonths >= 3 && pMonths < 6
-                  ? client.useEmoji('boosting3Months')
-                  : pMonths >= 6 && pMonths < 12
-                    ? client.useEmoji('boosting6Months')
-                    : pMonths >= 12 && pMonths < 15
-                      ? client.useEmoji('boosting12Months')
-                      : pMonths >= 15 && pMonths < 18
-                        ? client.useEmoji('boosting15Months')
-                        : client.useEmoji('boosting18Months'),
+              : client.useEmoji(`boosting${months}Months`, `boosting${pMonths}Months`),
           );
         }
 
@@ -409,7 +408,7 @@ export default class User extends Command {
             .setAuthor({
               iconURL: avatar,
               name: u.discriminator === '0000' ? u.username : u.tag,
-              url: `https://discord.com/users/${m.id}`,
+              url: `https://discord.com/users/${u.id}`,
             })
             .setThumbnail(avatar)
             .setDescription(`${u} ${flags.join(' ')}`)
@@ -557,7 +556,7 @@ export default class User extends Command {
           row.addComponents(
             new ButtonBuilder()
               .setLabel(localize('GENERIC.APP'))
-              .setEmoji(client.useEmoji('integration'))
+              .setEmoji(client.useEmoji('bot'))
               .setStyle(noApp ? ButtonStyle.Danger : ButtonStyle.Primary)
               .setCustomId('user_app_info')
               .setDisabled(noApp || disable === 'user_app_info'),
@@ -809,7 +808,10 @@ export default class User extends Command {
               { force: true },
             ),
             sM = new URLSearchParams(message.embeds.at(-1)?.footer?.iconURL).get('member'),
-            memberO = guild?.members.cache.get(userO.id) || (sM ? (decompressJSON(sM) as GuildMember) : null),
+            memberO =
+              userO.id === user.id
+                ? member
+                : guild?.members.cache.get(userO.id) || (sM ? (decompressJSON(sM) as GuildMember) : null),
             { app } = await getFullApplication(userO.id);
 
           if (!memberO) {
@@ -838,20 +840,29 @@ export default class User extends Command {
             });
           }
 
-          const emb = embed({
-            color: memberO?.displayColor || userO.accentColor || Colors.Blurple,
-            title: `🔒 ${localize('GENERIC.PERMISSIONS')}`,
-          }).setDescription(
-            (memberO.permissions.bitfield
-              ? memberO.permissions
-              : new PermissionsBitField(BigInt(memberO.permissions as unknown as number))
-            )
-              .toArray()
-              .filter(p => p !== 'ManageEmojisAndStickers')
-              .map(p => `\`${localize(`PERM.${toUpperSnakeCase(p)}`)}\``)
-              .sort((a, b) => a.localeCompare(b))
-              .join(', ') || `**${localize('GENERIC.NONE')}**`,
-          );
+          const avatar = memberO.avatar
+              ? client.rest.cdn.guildMemberAvatar(guildId, userO.id, memberO.avatar, imageOptions)
+              : userO.displayAvatarURL(imageOptions),
+            emb = embed({
+              color: memberO?.displayColor || userO.accentColor || Colors.Blurple,
+              title: `🔒 ${localize('GENERIC.PERMISSIONS')}`,
+            })
+              .setAuthor({
+                iconURL: avatar,
+                name: userO.discriminator === '0000' ? userO.username : userO.tag,
+                url: `https://discord.com/users/${userO.id}`,
+              })
+              .setDescription(
+                (memberO.permissions.bitfield
+                  ? memberO.permissions
+                  : new PermissionsBitField(BigInt(memberO.permissions as unknown as number))
+                )
+                  .toArray()
+                  .filter(p => p !== 'ManageEmojisAndStickers')
+                  .map(p => `\`${localize(`PERM.${toUpperSnakeCase(p)}`)}\``)
+                  .sort((a, b) => a.localeCompare(b))
+                  .join(', ') || `**${localize('GENERIC.NONE')}**`,
+              );
 
           if (memberO?.guild) {
             emb.addFields(
@@ -994,7 +1005,7 @@ export default class User extends Command {
                   .setCustomId('user_settings'),
                 new ButtonBuilder()
                   .setLabel(userData.autoLocale ? localize('GENERIC.AUTOMATIC') : localize('GENERIC.NOT_AUTOMATIC'))
-                  .setEmoji(client.useEmoji('integration'))
+                  .setEmoji(client.useEmoji('bot'))
                   .setStyle(userData.autoLocale ? ButtonStyle.Success : ButtonStyle.Secondary)
                   .setCustomId('user_settings_locale_auto'),
               ),

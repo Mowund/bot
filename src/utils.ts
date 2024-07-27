@@ -340,7 +340,7 @@ export const appInvite = (
     redirectURI?: string;
   } = {},
 ) => {
-  let invite = `https://discord.com/api/oauth2/authorize?client_id=${id}&scope=${options.scopes?.join('%20') || 'bot'}`;
+  let invite = `https://discord.com/api/oauth2/authorize?client_id=${id}&scope=${options.scopes?.join('%20') || 'app'}`;
 
   const { disableGuildSelect, guildId, integrationType, permissions, prompt, redirectURI } = options;
   if (permissions) invite += `&permissions=${new PermissionsBitField(permissions).bitfield}`;

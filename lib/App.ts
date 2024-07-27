@@ -78,13 +78,13 @@ export class App extends Client<true> {
     return super.login(token);
   }
 
-  useEmoji(name: string) {
-    let emoji = name && this.appEmojis.get(name);
-    if (!emoji) {
-      const missing = this.appEmojis.get('missing');
-      if (missing) emoji = { ...missing, name };
-      else return '🚫';
-    }
+  useEmoji<N extends string, C extends string = ''>(name: N, customName?: C) {
+    const emoji = (this.appEmojis.get(name) || this.appEmojis.get('missing')) as Omit<APIEmoji, 'name'> & {
+      name: C extends '' ? N : C;
+    };
+    if (!emoji) return '🚫';
+    if (emoji.name !== name) return formatEmoji({ ...emoji, name });
+    if (customName) return formatEmoji({ ...emoji, name: customName as typeof emoji.name });
     return formatEmoji(emoji);
   }
 
@@ -377,7 +377,7 @@ export interface EmbedBuilderOptions {
 
 export enum UserFlagEmoji {
   ActiveDeveloper = 'activeDeveloper',
-  BotHTTPInteractions = 'commands',
+  BotHTTPInteractions = 'slashCommand',
   BugHunterLevel1 = 'bugHunterLvl1',
   BugHunterLevel2 = 'bugHunterLvl2',
   CertifiedModerator = 'moderatorProgramsAlumni',
@@ -397,5 +397,5 @@ export enum UserFlagEmoji {
 export enum AppFlagEmoji {
   ApplicationAutoModerationRuleCreateBadge = 'automod',
   VerificationPendingGuildLimit = 'unusualGrowth',
-  ApplicationCommandBadge = 'slashCommands',
+  ApplicationCommandBadge = 'appCommandBadge',
 }
