@@ -13,7 +13,7 @@ dotenv.load({ errorOnRegex: true });
 
 const manager = new ShardingManager('./dist/src/bot.js', {
     token: process.env.DISCORD_TOKEN,
-    totalShards: process.env.NODE_ENV === 'development' ? 2 : 'auto',
+    totalShards: +process.env.SHARDS || 'auto',
   }),
   chalk = new Chalk({ level: 3 });
 
