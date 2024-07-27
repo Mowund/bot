@@ -36,6 +36,8 @@ export const decompressJSON = (string: string) => {
   return JSON.parse(decompressedJSON);
 };
 
+export type Overwrite<T, U> = Omit<T, keyof U> & U;
+
 export type MergeTypes<A, B> = {
   [key in keyof A]: key extends keyof B ? B[key] : A[key];
 } & B;

@@ -34,7 +34,7 @@ import firebase, { firestore } from 'firebase-admin';
 import i18n, { GlobalCatalog, I18n } from 'i18n';
 import { Chalk, ChalkInstance } from 'chalk';
 import { defaultLocale, imageOptions, supportServer } from '../src/defaults.js';
-import { addSearchParams, isEmpty, truncate } from '../src/utils.js';
+import { addSearchParams, isEmpty, Overwrite, truncate } from '../src/utils.js';
 import { Command } from './structures/Command.js';
 import { DatabaseManager } from './managers/DatabaseManager.js';
 import { Experiment } from './interfaces/Experiment.js';
@@ -79,9 +79,12 @@ export class App extends Client<true> {
   }
 
   useEmoji<N extends string, C extends string = ''>(name: N, customName?: C) {
-    const emoji = (this.appEmojis.get(name) || this.appEmojis.get('missing')) as Omit<APIEmoji, 'name'> & {
-      name: C extends '' ? N : C;
-    };
+    const emoji = (this.appEmojis.get(name) || this.appEmojis.get('missing')) as Overwrite<
+      APIEmoji,
+      {
+        name: C extends '' ? N : C;
+      }
+    >;
     if (!emoji) return '🚫';
     if (emoji.name !== name) return formatEmoji({ ...emoji, name });
     if (customName) return formatEmoji({ ...emoji, name: customName as typeof emoji.name });
