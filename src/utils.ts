@@ -249,16 +249,18 @@ export const truncate = (input: string, limit = 1024) =>
  * @returns The truncated array
  * @param array The array to truncate
  * @param limit The limit of total characters to be included inside of an array
+ * @param extra The extra characters to be added every iteration (Default: 0)
+ * @param offset The extra characters to be added to the total length (Default: 0)
  */
-export const truncateArray = (array: string[], limit: number) => {
+export const truncateArray = (array: string[], limit: number, extra = 0, offset = 0) => {
   const copy = [...array],
     lengths = copy.map(v => v.length);
-  let index = 0,
-    length = 0;
+  let index = 0;
 
-  while (limit > length) {
+  while (limit > offset) {
+    console.log(offset);
     index++;
-    length += lengths.shift();
+    offset += lengths.shift() + extra;
   }
 
   return limit ? copy.splice(1 - index) : copy;
@@ -288,7 +290,7 @@ export const collMap = (
 
   if (reverse) tCM.reverse();
   if (cM.length > maxValues) tCM = tCM.slice(0, maxValues);
-  if (maxLength) tCM = truncateArray(tCM, maxLength);
+  if (maxLength) tCM = truncateArray(tCM, maxLength, 2, 6);
   if (cM.length > tCM.length) tCM.push(`\`+${cM.length - tCM.length}\``);
 
   return tCM.join(', ');
@@ -310,7 +312,7 @@ export const arrayMap = (
 
   if (reverse) tAM.reverse();
   if (maxValues !== null && aM.length > maxValues) tAM = tAM.slice(0, maxValues);
-  if (maxLength) tAM = truncateArray(tAM, maxLength);
+  if (maxLength) tAM = truncateArray(tAM, maxLength, 2, 6);
   if (aM.length > tAM.length) tAM.push(`\`+${aM.length - tAM.length}\``);
 
   return tAM.join(', ');
