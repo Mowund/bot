@@ -100,7 +100,7 @@ export default class Server extends Command {
               { inline: true, name: `🪪 ${localize('GENERIC.ID')}`, value: `\`${guild.id}\`` },
               {
                 inline: true,
-                name: `${client.useEmoji('serverOwner')} ${localize('GENERIC.OWNER')}`,
+                name: `${client.useEmoji('owner')} ${localize('GENERIC.OWNER')}`,
                 value: `<@${guild.ownerId}>`,
               },
               {
@@ -117,7 +117,7 @@ export default class Server extends Command {
                   count: roles.filter(r => !r.tags?.botId && !r.tags?.integrationId).size,
                 })}\n${client.useEmoji('bot')} ${localize('GENERIC.COUNTER.BOT', {
                   count: roles.filter(r => r.tags?.botId).size,
-                })}\n⚙️ ${localize('GENERIC.COUNTER.INTEGRATED', {
+                })}\n${client.useEmoji('cog')} ${localize('GENERIC.COUNTER.INTEGRATED', {
                   count: roles.filter(r => r.tags?.integrationId).size,
                 })}`,
               },
@@ -217,15 +217,20 @@ export default class Server extends Command {
                 name: `${client.useEmoji('webhook')} ${localize('GENERIC.WEBHOOKS')} [${localize('GENERIC.COUNT', {
                   count: webhooks.size,
                 })}]`,
-                value: `- ${localize('GENERIC.COUNTER.CHANNEL_FOLLOWER', {
+                value: `${client.useEmoji('cog')} **${localize('GENERIC.COUNT', {
                   count: webhooks.filter(e => e.isIncoming()).size,
-                })}\n- **${localize('GENERIC.COUNT', {
-                  count: webhooks.filter(e => e.isChannelFollower()).size,
-                })}** ${localize('GENERIC.INCOMING')}`,
+                })}** ${localize('GENERIC.INCOMING')}\n${client.useEmoji('channelFollower')} ${localize(
+                  'GENERIC.COUNTER.CHANNEL_FOLLOWER',
+                  {
+                    count: webhooks.filter(e => e.isChannelFollower()).size,
+                  },
+                )}\n${client.useEmoji('bot')} ${localize('GENERIC.COUNTER.APPLICATION', {
+                  count: webhooks.filter(e => e.isApplicationCreated()).size,
+                })}`,
               },
               {
                 inline: true,
-                name: `${client.useEmoji('moderatorProgramsAlumni')} ${localize('GENERIC.SECURITY')}`,
+                name: `${client.useEmoji('security')} ${localize('GENERIC.SECURITY')}`,
                 value: `${`${client.useEmoji('banHammer')} ${localize('GENERIC.COUNTER.BAN', {
                   count: guild.bans.cache.size,
                 })}`}`,
@@ -270,11 +275,11 @@ export default class Server extends Command {
                   ).size,
                 })} / ${localize('GENERIC.COUNT', {
                   count: 1000,
-                })}]:** ${client.useEmoji('channelText')} ${localize('GENERIC.COUNT', {
+                })}]:** ${client.useEmoji('channelText', 'publicThread')} ${localize('GENERIC.COUNT', {
                   count: guild.channels.cache.filter(c => c.type === ChannelType.PublicThread).size,
-                })} | ${client.useEmoji('channelTextLocked')} ${localize('GENERIC.COUNT', {
+                })} | ${client.useEmoji('channelTextLocked', 'privateThread')} ${localize('GENERIC.COUNT', {
                   count: guild.channels.cache.filter(c => c.type === ChannelType.PrivateThread).size,
-                })} | ${client.useEmoji('channelNews')} ${localize('GENERIC.COUNT', {
+                })} | ${client.useEmoji('channelNews', 'newsThread')} ${localize('GENERIC.COUNT', {
                   count: guild.channels.cache.filter(c => c.type === ChannelType.AnnouncementThread).size,
                 })}`,
               },
@@ -303,7 +308,7 @@ export default class Server extends Command {
 
           if (guild.rulesChannel || guild.publicUpdatesChannel) {
             emb.spliceFields(10, 0, {
-              name: `${client.useEmoji('public')} ${localize('GENERIC.CHANNELS.COMMUNITY')}`,
+              name: `${client.useEmoji('community')} ${localize('GENERIC.CHANNELS.COMMUNITY')}`,
               value: `${guild.rulesChannel ? `- **${localize('GENERIC.RULES')}:** ${guild.rulesChannel}\n` : ''}${
                 guild.publicUpdatesChannel
                   ? `- **${localize('GENERIC.PUBLIC_UPDATES')}:** ${guild.publicUpdatesChannel}\n`
@@ -376,7 +381,9 @@ export default class Server extends Command {
           return interaction.editReply({
             components: memberPermissions.has(PermissionFlagsBits.ManageGuild) ? settingsComponents() : [],
             embeds: [
-              embed({ title: `⚙️ ${localize('SERVER.OPTIONS.SETTINGS.TITLE')}` }).addFields(settingsFields(guildData)),
+              embed({ title: `${client.useEmoji('cog')} ${localize('SERVER.OPTIONS.SETTINGS.TITLE')}` }).addFields(
+                settingsFields(guildData),
+              ),
             ],
           });
         }
@@ -398,7 +405,9 @@ export default class Server extends Command {
         await interaction.update({
           components: settingsComponents(),
           embeds: [
-            embed({ title: `⚙️ ${localize('SERVER.OPTIONS.SETTINGS.TITLE')}` }).addFields(settingsFields(guildData)),
+            embed({ title: `${client.useEmoji('cog')} ${localize('SERVER.OPTIONS.SETTINGS.TITLE')}` }).addFields(
+              settingsFields(guildData),
+            ),
           ],
         });
         return interaction.followUp({
@@ -416,7 +425,9 @@ export default class Server extends Command {
           return interaction.update({
             components: settingsComponents(),
             embeds: [
-              embed({ title: `⚙️ ${localize('SERVER.OPTIONS.SETTINGS.TITLE')}` }).addFields(settingsFields(guildData)),
+              embed({ title: `${client.useEmoji('cog')} ${localize('SERVER.OPTIONS.SETTINGS.TITLE')}` }).addFields(
+                settingsFields(guildData),
+              ),
             ],
           });
         }

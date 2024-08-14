@@ -60,7 +60,7 @@ export default class Bot extends Command {
                 .addFields(
                   {
                     inline: true,
-                    name: `${client.useEmoji('serverDiscovery')} ${localize('GENERIC.SERVERS')}`,
+                    name: `${client.useEmoji('discovery')} ${localize('GENERIC.SERVERS')}`,
                     value: client.allShardsReady
                       ? `\`${localize('GENERIC.COUNT', {
                           count: ((await client.shard.fetchClientValues('guilds.cache.size')) as number[]).reduce(
@@ -141,17 +141,17 @@ export default class Bot extends Command {
                   .setStyle(ButtonStyle.Link)
                   .setURL(pkg.repository.url),
                 new ButtonBuilder()
+                  .setLabel(localize('GENERIC.SUPPORT_SERVER'))
+                  .setEmoji(client.useEmoji('discord'))
+                  .setStyle(ButtonStyle.Link)
+                  .setURL(supportServer.invite),
+                new ButtonBuilder()
                   .setLabel(localize('GENERIC.ADD_TO_SERVER'))
-                  .setEmoji('🔗')
+                  .setEmoji(client.useEmoji('invite'))
                   .setStyle(ButtonStyle.Link)
                   .setURL(
                     appInvite(client.user.id, { permissions: installParams.permissions, scopes: installParams.scopes }),
                   ),
-                new ButtonBuilder()
-                  .setLabel(localize('GENERIC.SUPPORT_SERVER'))
-                  .setEmoji('📖')
-                  .setStyle(ButtonStyle.Link)
-                  .setURL(supportServer.invite),
               ),
             ];
 

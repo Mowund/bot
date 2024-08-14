@@ -44,6 +44,7 @@ import {
 } from '../utils.js';
 import { EmbeddedApplication, FullApplication } from '../../lib/interfaces/Application.js';
 import { AppFlagEmoji, UserFlagEmoji } from '../../lib/App.js';
+import { SearchedMember, MemberSearch, JoinSourceType } from '../../lib/structures/MemberSearch.js';
 
 export default class User extends Command {
   constructor() {
@@ -227,7 +228,7 @@ export default class User extends Command {
                 .setDisabled(!app.install_params),
               new ButtonBuilder()
                 .setLabel(localize('GENERIC.ADD_TO_SERVER'))
-                .setEmoji('🔗')
+                .setEmoji(client.useEmoji('invite'))
                 .setStyle(ButtonStyle.Link)
                 .setURL(
                   app.custom_install_url ||
@@ -247,11 +248,13 @@ export default class User extends Command {
           emojiFlags = flags
             .toArray()
             .map(f => {
-              const e = AppFlagEmoji[f];
+              const e = AppFlagEmoji[f] as AppFlagEmoji;
               return e && client.useEmoji(e);
             })
             .filter(v => v) as string[];
 
+        if (u?.flags.has(UserFlags.BotHTTPInteractions))
+          emojiFlags.unshift(client.useEmoji('slashCommand', 'botHTTPInteractions'));
         if (u?.system) {
           emojiFlags.unshift(
             client.useEmoji('official1') + client.useEmoji('official2') + client.useEmoji('official3'),
@@ -302,7 +305,7 @@ export default class User extends Command {
           );
         }
 
-        return { emb, rows };
+        return { embs: [emb], rows };
       },
       userInfoOpts = (u: DiscordUser, sM: string | null) => {
         const flags = u.system
@@ -313,8 +316,9 @@ export default class User extends Command {
               : [client.useEmoji('app')]
             : [];
 
-        for (const flag of u.flags.toArray()) {
-          const e = UserFlagEmoji[flag];
+        for (const f of u.flags.toArray()) {
+          const e = UserFlagEmoji[f] as UserFlagEmoji;
+          console.log(f, e);
           if (e) flags.push(client.useEmoji(e));
         }
 
@@ -354,9 +358,9 @@ export default class User extends Command {
           );
         }
 
-        return { emb, rows: [row] };
+        return { embs: [emb], rows: [row] };
       },
-      memberInfoOpts = (m: GuildMember, u: DiscordUser, sM: string | null) => {
+      memberInfoOpts = (m: GuildMember, s: SearchedMember, u: DiscordUser, sM?: string) => {
         client.log(util.inspect(m, { depth: null }));
         const mFlags = typeof m.flags === 'object' ? m.flags : new GuildMemberFlagsBitField(m.flags),
           flags = u?.bot
@@ -370,7 +374,7 @@ export default class User extends Command {
             : u.displayAvatarURL(imageOptions),
           banner = m.banner && client.rest.cdn.guildMemberBanner(guildId, u.id, m.banner, imageOptions);
 
-        if (u.id === guild?.ownerId) flags.push(client.useEmoji('serverOwner'));
+        if (u.id === guild?.ownerId) flags.push(client.useEmoji('owner'));
 
         const premimSince = m.premiumSince ?? (m as any as APIInteractionGuildMember).premium_since;
         if (premimSince) {
@@ -390,11 +394,17 @@ export default class User extends Command {
         if (mFlags.has(GuildMemberFlags.CompletedOnboarding)) flags.push(client.useEmoji('completedOnboarding'));
         else if (mFlags.has(GuildMemberFlags.StartedOnboarding)) flags.push(client.useEmoji('startedOnboarding'));
 
-        if (mFlags.has(1 << 6)) flags.push(client.useEmoji('completedHomeActions'));
-        else if (mFlags.has(1 << 5)) flags.push(client.useEmoji('startedHomeActions'));
+        if (mFlags.has(1 << 6)) flags.push(client.useEmoji('completedGuideActions'));
+        else if (mFlags.has(1 << 5)) flags.push(client.useEmoji('startedGuideActions'));
 
         if (mFlags.has(GuildMemberFlags.BypassesVerification)) flags.push(client.useEmoji('bypassedVerification'));
-        if (u.flags.has(UserFlags.Spammer)) flags.push(client.useEmoji('likelySpammer'));
+
+        if (s?.member.unusual_dm_activity_until > Date.now()) flags.push(client.useEmoji('suspiciousMessages'));
+        if (u.flags.has(UserFlags.Spammer)) flags.push(client.useEmoji(UserFlagEmoji.Spammer));
+        if (u.flags.has(UserFlags.Quarantined)) flags.push(client.useEmoji(UserFlagEmoji.Quarantined));
+
+        if (s?.member.mute) flags.push(client.useEmoji('microphoneMutedGuild'));
+        if (s?.member.deaf) flags.push(client.useEmoji('soundMutedGuild'));
 
         const addParams: Record<string, string> = {};
         if (typeof m.permissions !== 'object')
@@ -446,16 +456,52 @@ export default class User extends Command {
           mRoles = m.roles.cache?.filter(({ id }) => id !== guildId);
 
         client.log(typeof m.roles);
-
         const timeoutTimestamp =
           m.communicationDisabledUntilTimestamp ??
           Date.parse((m as any as APIInteractionGuildMember).communication_disabled_until);
 
         if (timeoutTimestamp > Date.now()) {
-          emb.spliceFields(3, 0, {
+          emb.addFields({
             inline: true,
             name: `${client.useEmoji('timeout')} ${localize('GENERIC.TIMEOUT_ENDS')}`,
             value: toUTS(timeoutTimestamp),
+          });
+        }
+
+        if (s?.join_source_type) {
+          let methodEmj = '';
+          switch (s.join_source_type) {
+            case JoinSourceType.BotInvite:
+              methodEmj = `${client.useEmoji('bot')} `;
+              break;
+            case JoinSourceType.ServerDiscovery:
+              methodEmj = `${client.useEmoji('discovery')} `;
+              break;
+            case JoinSourceType.StudentHub:
+              methodEmj = `${client.useEmoji('studentHub')} `;
+              break;
+            case JoinSourceType.Invite:
+            case JoinSourceType.VanityURL:
+              methodEmj = `${client.useEmoji('link')} `;
+              break;
+            case JoinSourceType.ManualVerification:
+              methodEmj = `${client.useEmoji('manualVerification')} `;
+              break;
+          }
+
+          let value = `${methodEmj}${
+            s.source_invite_code
+              ? `[\`${s.source_invite_code}\`](https://discord.gg/${s.source_invite_code})`
+              : `\`${localize(`USER.OPTIONS.INFO.MEMBER.JOIN_METHOD.${s.join_source_type}`)}\``
+          }`;
+
+          if (s.inviter_id)
+            value += `\n${client.useEmoji('invite')} **${localize('GENERIC.INVITED_BY')}:** <@${s.inviter_id}>`;
+
+          emb.addFields({
+            inline: true,
+            name: `${client.useEmoji('joinMethod')} ${localize('GENERIC.JOIN_METHOD')}`,
+            value,
           });
         }
 
@@ -481,7 +527,7 @@ export default class User extends Command {
           );
         }
 
-        return { emb, rows: [row] };
+        return { embs: [emb], rows: [row] };
       },
       appPermsOpts = (app: FullApplication, member: GuildMember, channel: GuildTextBasedChannel) => {
         if (!app.install_params)
@@ -491,37 +537,11 @@ export default class User extends Command {
           installPerms = new PermissionsBitField(app.install_params.permissions as `${bigint}`),
           integratedPerms = guild?.roles.botRoleFor?.(client.user)?.permissions ?? null,
           overwrittenPerms = channel?.permissionsFor?.(client.user) ?? null,
-          emb = embed({
-            title: `🔒 ${localize('APP.OPTIONS.PERMISSIONS.TITLE')}`,
-          })
-            .setAuthor({ iconURL, name: app.name })
-            .setDescription(
-              installPerms
-                .toArray()
-                .filter(p => p !== 'ManageEmojisAndStickers')
-                .map(
-                  p =>
-                    `${
-                      integratedPerms || overwrittenPerms
-                        ? integratedPerms?.has(p)
-                          ? client.useEmoji('check')
-                          : overwrittenPerms?.has(p)
-                            ? client.useEmoji('maybe')
-                            : client.useEmoji('no')
-                        : client.useEmoji('neutral')
-                    } ${localize(`PERM.${toUpperSnakeCase(p)}`)}`,
-                )
-                .sort((a, b) => a.localeCompare(b))
-                .join('\n'),
-            )
-            .addFields({
-              name: `📍 ${localize('GENERIC.LEGEND')}`,
-              value: `${client.useEmoji('check')} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.CHECK')}\n${client.useEmoji(
-                'maybe',
-              )} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.MAYBE')}\n${client.useEmoji('no')} ${localize(
-                'APP.OPTIONS.PERMISSIONS.LEGEND.NO',
-              )}\n${client.useEmoji('neutral')} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.NEUTRAL')}`,
-            }),
+          embs = [
+            embed({
+              title: `🔒 ${localize('APP.OPTIONS.PERMISSIONS.TITLE')}`,
+            }).setAuthor({ iconURL, name: app.name }),
+          ],
           rows =
             overwrittenPerms && member?.permissions.has?.(PermissionFlagsBits.ManageGuild)
               ? [
@@ -546,7 +566,49 @@ export default class User extends Command {
                 ]
               : [];
 
-        return { emb, rows };
+        {
+          const descriptions = [''];
+          let counter = 0;
+
+          for (const iP of installPerms
+            .toArray()
+            .filter(iP2 => iP2 !== 'ManageEmojisAndStickers')
+            .sort((a, b) => a.localeCompare(b))) {
+            const text = `${
+                integratedPerms || overwrittenPerms
+                  ? integratedPerms?.has(iP)
+                    ? client.useEmoji('check')
+                    : overwrittenPerms?.has(iP)
+                      ? client.useEmoji('maybe')
+                      : client.useEmoji('no')
+                  : client.useEmoji('neutral')
+              } ${localize(`PERM.${toUpperSnakeCase(iP)}`)}`,
+              descLength = descriptions[counter].length;
+
+            if ((descLength && descLength + 2) + text.length < 4096) {
+              descriptions[counter] += descLength ? `\n${text}` : text;
+            } else {
+              embs[counter++].setTimestamp(null).data.footer = null;
+              embs.push(embed());
+              descriptions.push(text);
+            }
+          }
+
+          console.log(descriptions);
+          console.log(embs.map(e => e.length));
+          descriptions.forEach((d, i) => embs[i].setDescription(d));
+
+          embs.at(-1).addFields({
+            name: `📍 ${localize('GENERIC.LEGEND')}`,
+            value: `${client.useEmoji('check')} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.CHECK')}\n${client.useEmoji(
+              'maybe',
+            )} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.MAYBE')}\n${client.useEmoji('no')} ${localize(
+              'APP.OPTIONS.PERMISSIONS.LEGEND.NO',
+            )}\n${client.useEmoji('neutral')} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.NEUTRAL')}`,
+          });
+        }
+
+        return { embs, rows };
       },
       switchRow = (u: DiscordUser, m: GuildMember, disable: string, noApp: boolean, noMember = false) => {
         const row = new ActionRowBuilder<ButtonBuilder>();
@@ -587,16 +649,26 @@ export default class User extends Command {
       },
       // TODO: bots can't access embedded activity
       getFullApplication = async (id: Snowflake) => {
-        const app = (Object.assign(
-            (await client.rest.get(`/applications/${id}`).catch(() => {})) || {},
-            await client.rest.get(`/applications/${id}/rpc`).catch(() => {}),
-          ) || {}) as FullApplication,
-          embeddedApp = (await client.rest
-            .get(`/applications/public?application_ids=${id}`)
-            .catch(() => {})) as EmbeddedApplication;
+        const app = await client.rest.get(`/applications/${id}`).catch(e => {
+            console.error(e);
+            return null;
+          }),
+          rpc = await client.rest.get(`/applications/${id}/rpc`).catch(e => {
+            console.error(e);
+            return null;
+          }),
+          fullApp = (Object.assign(app || {}, rpc || {}) || {}) as FullApplication,
+          embeddedApp = (await client.rest.get(`/applications/public?application_ids=${id}`).catch(e => {
+            console.error(e);
+            return null;
+          })) as EmbeddedApplication;
         client.log(util.inspect(app, { colors: true, depth: null }));
 
-        return { app: isEmpty(app) ? null : app, embeddedApp: isEmpty(embeddedApp) ? null : embeddedApp };
+        client.error(app);
+        client.error(rpc);
+        client.error(embeddedApp);
+
+        return { app: isEmpty(fullApp) ? null : fullApp, embeddedApp };
       };
 
     if (
@@ -621,6 +693,11 @@ export default class User extends Command {
           : (options.getUser('user') ?? user).fetch(true))) as DiscordUser | null,
         memberO = userO.id === user.id ? member : options.getMember('user'),
         sM = memberO && !memberO.user ? compressJSON(memberO) : null,
+        searchedMember = (
+          memberO && !sM
+            ? await client.memberSearch(guildId, { and_query: { user_id: { or_query: [userO.id] } } }).catch(() => null)
+            : null
+        )?.members[0] as SearchedMember,
         { app, embeddedApp } = await getFullApplication(appId || userO?.id);
 
       client.log(app);
@@ -643,7 +720,7 @@ export default class User extends Command {
           : !isUserInfoCmd && app
             ? appInfoOpts(app, embeddedApp, userO, sM)
             : memberO
-              ? memberInfoOpts(memberO, userO, sM)
+              ? memberInfoOpts(memberO, searchedMember, userO, sM)
               : userInfoOpts(userO, sM),
         noApp = !app && userO?.bot;
 
@@ -660,7 +737,7 @@ export default class User extends Command {
 
       await interaction.editReply({
         components: opts.rows,
-        embeds: [opts.emb],
+        embeds: opts.embs,
       });
 
       const suppressedWarnings = userData.suppressedWarnings ?? ({} as Record<Warnings, number>),
@@ -718,7 +795,9 @@ export default class User extends Command {
           return interaction.reply({
             components: settingsComponents(),
             embeds: [
-              embed({ title: `⚙️ ${localize('USER.OPTIONS.SETTINGS.TITLE')}` }).addFields(settingsFields(userData)),
+              embed({ title: `${client.useEmoji('cog')} ${localize('USER.OPTIONS.SETTINGS.TITLE')}` }).addFields(
+                settingsFields(userData),
+              ),
             ],
             ephemeral: true,
           });
@@ -756,6 +835,13 @@ export default class User extends Command {
             sM = new URLSearchParams(message.embeds.at(-1)?.footer?.iconURL).get('member'),
             memberO =
               userO.id === user.id ? member : guild?.members.cache.get(userO.id) || (sM ? decompressJSON(sM) : null),
+            searchedMember = (
+              memberO && !sM
+                ? await client
+                    .memberSearch(guildId, { and_query: { user_id: { or_query: [userO.id] } } })
+                    .catch(() => null)
+                : null
+            )?.members[0] as SearchedMember,
             memberButtonBlocked =
               !sM &&
               (message.components[0].components as ButtonComponent[])?.find(c => c.customId === 'user_member_info')
@@ -767,7 +853,7 @@ export default class User extends Command {
               : isApp && app
                 ? appInfoOpts(app, embeddedApp, userO, sM)
                 : isMember && memberO && !memberButtonBlocked
-                  ? memberInfoOpts(memberO, userO, sM)
+                  ? memberInfoOpts(memberO, searchedMember, userO, sM)
                   : userInfoOpts(userO, sM);
 
           if (!isPermsCmd && (memberO || userO.bot || memberButtonBlocked || noMember)) {
@@ -785,12 +871,12 @@ export default class User extends Command {
           if (!isPermsCmd && sameUser) {
             await interaction.update({
               components: opts.rows,
-              embeds: [opts.emb],
+              embeds: opts.embs,
             });
           } else {
             await interaction.reply({
               components: opts.rows,
-              embeds: [opts.emb],
+              embeds: opts.embs,
               ephemeral: true,
             });
           }
@@ -824,12 +910,12 @@ export default class User extends Command {
             if (sameUser) {
               await interaction.update({
                 components: opts.rows,
-                embeds: [opts.emb],
+                embeds: opts.embs,
               });
             } else {
               await interaction.reply({
                 components: opts.rows,
-                embeds: [opts.emb],
+                embeds: opts.embs,
                 ephemeral: true,
               });
             }
@@ -893,7 +979,9 @@ export default class User extends Command {
           return interaction.update({
             components: settingsComponents(),
             embeds: [
-              embed({ title: `⚙️ ${localize('USER.OPTIONS.SETTINGS.TITLE')}` }).addFields(settingsFields(userData)),
+              embed({ title: `${client.useEmoji('cog')} ${localize('USER.OPTIONS.SETTINGS.TITLE')}` }).addFields(
+                settingsFields(userData),
+              ),
             ],
           });
         }
@@ -948,12 +1036,12 @@ export default class User extends Command {
                   ? {
                       color: Colors.Yellow,
                       localizer: localize,
-                      title: `⚙️ ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.EDITING')}`,
+                      title: `${client.useEmoji('cog')} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.EDITING')}`,
                     }
                   : {
                       color: Colors.Green,
                       localizer: localize,
-                      title: `⚙️ ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.EDITED')}`,
+                      title: `${client.useEmoji('cog')} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.EDITED')}`,
                     },
               ).addFields(settingsFields(userData)),
             ],
@@ -1017,12 +1105,12 @@ export default class User extends Command {
                   ? {
                       color: Colors.Green,
                       localizer: localize,
-                      title: `⚙️ ${localize('USER.OPTIONS.SETTINGS.LOCALE.EDITED')}`,
+                      title: `${client.useEmoji('cog')} ${localize('USER.OPTIONS.SETTINGS.LOCALE.EDITED')}`,
                     }
                   : {
                       color: Colors.Yellow,
                       localizer: localize,
-                      title: `⚙️ ${localize('USER.OPTIONS.SETTINGS.LOCALE.EDITING')}`,
+                      title: `${client.useEmoji('cog')} ${localize('USER.OPTIONS.SETTINGS.LOCALE.EDITING')}`,
                     },
               ).addFields(settingsFields(userData)),
             ],

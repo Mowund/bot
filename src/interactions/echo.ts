@@ -107,7 +107,11 @@ export default class Echo extends Command {
     if (interaction.isChatInputCommand()) {
       const { client, embed, isEphemeral, localize } = args,
         { member, memberPermissions, options, user } = interaction,
-        contentO = options.getString('content')?.replaceAll('\\n', '\n').trim(),
+        contentO = options
+          .getString('content')
+          ?.replaceAll('\\n', '\n')
+          .replace(/<:(\w+):>/gi, (_, p1) => client.useEmoji(p1))
+          .trim(),
         descriptionO = options.getString('description')?.replaceAll('\\n', '\n').trim(),
         titleO = options.getString('title'),
         urlO = options.getString('url'),

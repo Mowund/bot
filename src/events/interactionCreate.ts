@@ -103,7 +103,7 @@ export default class InteractionCreateEvent extends Event {
                 new ActionRowBuilder<ButtonBuilder>().addComponents(
                   new ButtonBuilder()
                     .setLabel(localize('GENERIC.READD_TO_SERVER'))
-                    .setEmoji('🔗')
+                    .setEmoji(client.discordEmoji)
                     .setStyle(ButtonStyle.Link)
                     .setURL(
                       appInvite(client.user.id, {

@@ -38,6 +38,7 @@ import { addSearchParams, isEmpty, Overwrite, truncate } from '../src/utils.js';
 import { Command } from './structures/Command.js';
 import { DatabaseManager } from './managers/DatabaseManager.js';
 import { Experiment } from './interfaces/Experiment.js';
+import { MemberSearchQuery, MemberSearch } from './structures/MemberSearch.js';
 
 export class App extends Client<true> {
   allShardsReady: boolean;
@@ -78,6 +79,13 @@ export class App extends Client<true> {
     return super.login(token);
   }
 
+  async memberSearch(guildId: Snowflake, query: MemberSearchQuery) {
+    const result = (await this.rest.post(`/guilds/${guildId}/members-search`, {
+      body: query,
+    })) as MemberSearch;
+    return result;
+  }
+
   useEmoji<N extends string, C extends string = ''>(name: N, customName?: C) {
     const emoji = (this.appEmojis.get(name) || this.appEmojis.get('missing')) as Overwrite<
       APIEmoji,
@@ -89,6 +97,10 @@ export class App extends Client<true> {
     if (emoji.name !== name) return formatEmoji({ ...emoji, name });
     if (customName) return formatEmoji({ ...emoji, name: customName as typeof emoji.name });
     return formatEmoji(emoji);
+  }
+
+  get discordEmoji() {
+    return this.useEmoji(new Date().getMonth() === 9 ? 'discordHalloween' : 'discord');
   }
 
   localize = (phraseOrOptions: string | i18n.TranslateOptions, replace?: Record<string, any>) =>
@@ -280,10 +292,10 @@ export class App extends Client<true> {
   }
 
   /**
-   * @returns The bot static catalog or supported languages
-   * @param supportedLanguages Whether to return the supported languages instead of static catalog
+   * @returns The bot static catalog or supported locales
+   * @param supportedLocales Whether to return the supported locales instead of static catalog
    */
-  async getBotStaticCatalog(supportedLanguages = false) {
+  async getBotStaticCatalog(supportedLocales = false) {
     const folders = (
       await this.octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
         owner: 'Mowund',
@@ -293,7 +305,7 @@ export class App extends Client<true> {
     ).data as { name: string; path: string }[];
 
     let list: any;
-    if (supportedLanguages) {
+    if (supportedLocales) {
       list = [];
       for (const folder of folders) list.push(folder.name);
     } else {
@@ -380,7 +392,6 @@ export interface EmbedBuilderOptions {
 
 export enum UserFlagEmoji {
   ActiveDeveloper = 'activeDeveloper',
-  BotHTTPInteractions = 'slashCommand',
   BugHunterLevel1 = 'bugHunterLvl1',
   BugHunterLevel2 = 'bugHunterLvl2',
   CertifiedModerator = 'moderatorProgramsAlumni',
@@ -391,7 +402,7 @@ export enum UserFlagEmoji {
   Partner = 'partneredServerOwner',
   PremiumEarlySupporter = 'earlySupporter',
   Quarantined = 'quarantined',
-  Spammer = 'likelySpammer',
+  Spammer = 'unusualAccountActivity',
   Staff = 'discordEmployee',
   TeamPseudoUser = 'teamUser',
   VerifiedDeveloper = 'earlyVerifiedBotDeveloper',
