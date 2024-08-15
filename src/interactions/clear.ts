@@ -28,21 +28,21 @@ export default class Clear extends Command {
       {
         contexts: [InteractionContextType.Guild],
         defaultMemberPermissions: PermissionFlagsBits.ManageMessages,
-        description: 'CLEAR.DESCRIPTION',
+        description: 'DESC.CLEAR',
         integration_types: [ApplicationIntegrationType.GuildInstall],
-        name: 'CLEAR.NAME',
+        name: 'CMD.CLEAR',
         options: [
           {
-            description: 'CLEAR.OPTIONS.COUNT.DESCRIPTION',
+            description: 'CLEAR.DESC.COUNT',
             max_value: 100,
             min_value: 1,
-            name: 'CLEAR.OPTIONS.COUNT.NAME',
+            name: 'CMD.COUNT',
             required: true,
             type: ApplicationCommandOptionType.Integer,
           },
           {
-            description: 'CLEAR.OPTIONS.DELETE_PINNED.DESCRIPTION',
-            name: 'CLEAR.OPTIONS.DELETE_PINNED.NAME',
+            description: 'CLEAR.DESC.DELETE_PINNED',
+            name: 'CMD.DELETE_PINNED',
             type: ApplicationCommandOptionType.Boolean,
           },
         ],
@@ -84,7 +84,7 @@ export default class Clear extends Command {
 
       rows[0].addComponents(
         new ButtonBuilder()
-          .setLabel(localize('GENERIC.YES'))
+          .setLabel(localize('YES'))
           .setEmoji('✅')
           .setStyle(ButtonStyle.Success)
           .setCustomId('clear_delete'),

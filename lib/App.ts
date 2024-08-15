@@ -257,7 +257,7 @@ export class App extends Client<true> {
           ),
           options.addParams,
         ).href,
-        text: options.localizer(`GENERIC.${options.footer === 'interacted' ? 'INTERACTED_BY' : 'REQUESTED_BY'}`, {
+        text: options.localizer(`${options.footer === 'interacted' ? 'INTERACTED_BY' : 'REQUESTED_BY'}`, {
           userName:
             options.member?.displayName ??
             (options.member as any as APIInteractionGuildMember)?.nick ??
@@ -270,22 +270,22 @@ export class App extends Client<true> {
       case 'error':
         return emb
           .setColor(Colors.Red)
-          .setTitle(`${this.useEmoji('no')} ${options.title || options.localizer('GENERIC.ERROR')}`);
+          .setTitle(`${this.useEmoji('no')} ${options.title || options.localizer('ERROR.NOUN')}`);
       case 'loading':
         return emb
           .setColor(Colors.Blurple)
-          .setTitle(`${this.useEmoji('loading')} ${options.title || options.localizer('GENERIC.LOADING')}`);
+          .setTitle(`${this.useEmoji('loading')} ${options.title || options.localizer('LOADING')}`);
       case 'success':
         return emb
           .setColor(Colors.Green)
-          .setTitle(`${this.useEmoji('check')} ${options.title || options.localizer('GENERIC.SUCCESS')}`);
+          .setTitle(`${this.useEmoji('check')} ${options.title || options.localizer('SUCCESS')}`);
       case 'warning':
-        return emb.setColor(Colors.Yellow).setTitle(`⚠️ ${options.title || options.localizer('GENERIC.WARNING')}`);
+        return emb.setColor(Colors.Yellow).setTitle(`⚠️ ${options.title || options.localizer('WARNING')}`);
       case 'wip':
         return emb
           .setColor(Colors.Orange)
-          .setTitle(`🔨 ${options.title || options.localizer('GENERIC.WIP')}`)
-          .setDescription(options.localizer('GENERIC.WIP_COMMAND'));
+          .setTitle(`🔨 ${options.title || options.localizer('WIP')}`)
+          .setDescription(options.localizer('WIP_COMMAND'));
       default:
         return (options.title ? emb.setTitle(options.title) : emb).setColor(options.color ?? null);
     }

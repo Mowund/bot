@@ -28,7 +28,7 @@ export default class SuppressWarning extends Command {
       components: [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setLabel(localize('GENERIC.SUPPRESSED_WARNING'))
+            .setLabel(localize('SUPPRESSED_WARNING'))
             .setEmoji('🔇')
             .setStyle(ButtonStyle.Danger)
             .setCustomId('suppress-warning')

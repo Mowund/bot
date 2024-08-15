@@ -19,19 +19,19 @@ export default class Rollout extends Command {
     super([
       {
         contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
-        description: 'ROLLOUT.DESCRIPTION',
+        description: 'DESC.ROLLOUT',
         integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
-        name: 'ROLLOUT.NAME',
+        name: 'CMD.ROLLOUT',
         options: [
           {
             autocomplete: true,
-            description: 'ROLLOUT.OPTIONS.EXPERIMENT.DESCRIPTION',
-            name: 'ROLLOUT.OPTIONS.EXPERIMENT.NAME',
+            description: 'DESC.ROLLOUT_EXPERIMENT',
+            name: 'CMD.EXPERIMENT',
             type: ApplicationCommandOptionType.String,
           },
           {
-            description: 'ROLLOUT.OPTIONS.GUILD.DESCRIPTION',
-            name: 'ROLLOUT.OPTIONS.GUILD.NAME',
+            description: 'DESC.ROLLOUT_GUILD',
+            name: 'CMD.GUILD',
             type: ApplicationCommandOptionType.String,
           },
         ],
@@ -210,7 +210,7 @@ export default class Rollout extends Command {
           emb.setURL(`https://discordlookup.com/experiments/${experiment.data.id}`);
         emb.addFields({
           inline: true,
-          name: `🪪 ${localize('GENERIC.ID')}`,
+          name: `🪪 ${localize('ID')}`,
           value: `\`${experiment.data.id}\``,
         });
       }

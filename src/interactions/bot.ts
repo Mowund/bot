@@ -21,13 +21,13 @@ export default class Bot extends Command {
     super([
       {
         contexts: [InteractionContextType.Guild],
-        description: 'BOT.DESCRIPTION',
+        description: 'DESC.BOT',
         integration_types: [ApplicationIntegrationType.GuildInstall],
-        name: 'BOT.NAME',
+        name: 'CMD.BOT',
         options: [
           {
-            description: 'BOT.OPTIONS.INFO.DESCRIPTION',
-            name: 'BOT.OPTIONS.INFO.NAME',
+            description: 'DESC.BOT_INFO',
+            name: 'CMD.INFO',
             type: ApplicationCommandOptionType.Subcommand,
           },
         ],
@@ -54,59 +54,59 @@ export default class Bot extends Command {
             embs = [
               embed({
                 color: botMember?.displayColor || Colors.Blurple,
-                title: `${client.useEmoji('info')} ${localize('BOT.OPTIONS.INFO.TITLE')}`,
+                title: `${client.useEmoji('info')} ${localize('BOT.INFO.TITLE')}`,
               })
                 .setAuthor({ iconURL: client.user.displayAvatarURL(imageOptions), name: client.user.displayName })
                 .addFields(
                   {
                     inline: true,
-                    name: `${client.useEmoji('discovery')} ${localize('GENERIC.SERVERS')}`,
+                    name: `${client.useEmoji('discovery')} ${localize('SERVERS')}`,
                     value: client.allShardsReady
-                      ? `\`${localize('GENERIC.COUNT', {
+                      ? `\`${localize('COUNT', {
                           count: ((await client.shard.fetchClientValues('guilds.cache.size')) as number[]).reduce(
                             (acc, c) => acc + c,
                             0,
                           ),
                         })}\``
-                      : `${client.useEmoji('loading')} ${localize('GENERIC.LOADING')}`,
+                      : `${client.useEmoji('loading')} ${localize('LOADING')}`,
                   },
                   {
                     inline: true,
-                    name: `${client.useEmoji('members')} ${localize('GENERIC.MEMBERS')}`,
+                    name: `${client.useEmoji('members')} ${localize('MEMBERS')}`,
                     value: client.allShardsReady
-                      ? `\`${localize('GENERIC.COUNT', {
+                      ? `\`${localize('COUNT', {
                           count: (
                             await client.shard.broadcastEval(c =>
                               c.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0),
                             )
                           ).reduce((acc, c) => acc + c, 0),
                         })}\``
-                      : `${client.useEmoji('loading')} ${localize('GENERIC.LOADING')}`,
+                      : `${client.useEmoji('loading')} ${localize('LOADING')}`,
                   },
                   {
                     inline: true,
-                    name: `${client.useEmoji('apps')} ${localize('GENERIC.COMMANDS')} [${localize('GENERIC.COUNT', {
+                    name: `${client.useEmoji('apps')} ${localize('COMMANDS')} [${localize('COUNT', {
                       count: globalCommandCount.sum.all,
                     })}${
                       guildCommandCount.sum.all
-                        ? ` + ${localize('GENERIC.COUNT', {
+                        ? ` + ${localize('COUNT', {
                             count: guildCommandCount.sum.all,
                           })}`
                         : ''
                     }]`,
-                    value: `- ${client.useEmoji('slashCommand')} \`${localize('GENERIC.COUNT', {
+                    value: `- ${client.useEmoji('slashCommand')} \`${localize('COUNT', {
                       count: globalCommandCount.chatInput,
                     })}\`${
                       guildCommandCount.chatInput
-                        ? ` + \`${localize('GENERIC.COUNT', {
+                        ? ` + \`${localize('COUNT', {
                             count: guildCommandCount.chatInput,
                           })}\``
                         : ''
-                    }\n- ${client.useEmoji('contextMenuCommand')} \`${localize('GENERIC.COUNT', {
+                    }\n- ${client.useEmoji('contextMenuCommand')} \`${localize('COUNT', {
                       count: globalCommandCount.sum.contextMenu,
                     })}\`${
                       guildCommandCount.sum.contextMenu
-                        ? ` + \`${localize('GENERIC.COUNT', {
+                        ? ` + \`${localize('COUNT', {
                             count: guildCommandCount.sum.contextMenu,
                           })}\``
                         : ''
@@ -114,7 +114,7 @@ export default class Bot extends Command {
                   },
                   {
                     inline: true,
-                    name: `${client.useEmoji('ramMemory')} ${localize('BOT.OPTIONS.INFO.MEMORY_USAGE')}`,
+                    name: `${client.useEmoji('ramMemory')} ${localize('BOT.INFO.MEMORY_USAGE')}`,
                     value: `\`${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB\`/\`${(
                       process.memoryUsage().heapTotal /
                       1024 /
@@ -123,12 +123,12 @@ export default class Bot extends Command {
                   },
                   {
                     inline: true,
-                    name: `${client.useEmoji('discordJS')} ${localize('BOT.OPTIONS.INFO.DISCORDJS_VERSION')}`,
+                    name: `${client.useEmoji('discordJS')} ${localize('BOT.INFO.DISCORDJS_VERSION')}`,
                     value: `[\`${version}\`](https://discord.js.org)`,
                   },
                   {
                     inline: true,
-                    name: `${client.useEmoji('nodeJS')} ${localize('BOT.OPTIONS.INFO.NODEJS_VERSION')}`,
+                    name: `${client.useEmoji('nodeJS')} ${localize('BOT.INFO.NODEJS_VERSION')}`,
                     value: `[\`${process.versions.node}\`](https://nodejs.org)`,
                   },
                 ),
@@ -141,12 +141,12 @@ export default class Bot extends Command {
                   .setStyle(ButtonStyle.Link)
                   .setURL(pkg.repository.url),
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.SUPPORT_SERVER'))
+                  .setLabel(localize('SUPPORT_SERVER'))
                   .setEmoji(client.useEmoji('discord'))
                   .setStyle(ButtonStyle.Link)
                   .setURL(supportServer.invite),
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.ADD_TO_SERVER'))
+                  .setLabel(localize('ADD_TO_SERVER'))
                   .setEmoji(client.useEmoji('invite'))
                   .setStyle(ButtonStyle.Link)
                   .setURL(
@@ -158,22 +158,22 @@ export default class Bot extends Command {
           if (guild) {
             embs[0].addFields({
               inline: true,
-              name: `💎 ${localize('GENERIC.SHARD')}`,
-              value: `**${localize('GENERIC.CURRENT')}:** \`${
+              name: `💎 ${localize('SHARD')}`,
+              value: `**${localize('CURRENT')}:** \`${
                 ShardClientUtil.shardIdForGuildId(guildId, client.shard.count) + 1
-              }\`\n**${localize('GENERIC.TOTAL')}:** \`${client.shard.count}\` `,
+              }\`\n**${localize('TOTAL')}:** \`${client.shard.count}\` `,
             });
           }
 
           embs[0].addFields(
             {
               inline: true,
-              name: `🕑 ${localize('GENERIC.UPTIME')}`,
+              name: `🕑 ${localize('UPTIME')}`,
               value: `\`${msToTime(client.uptime)}\` | ${toUTS(Date.now() - client.uptime)}`,
             },
             {
               inline: true,
-              name: `📅 ${localize('GENERIC.CREATED')}`,
+              name: `📅 ${localize('CREATED')}`,
               value: toUTS(client.user.createdTimestamp),
             },
           );

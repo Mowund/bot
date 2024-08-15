@@ -13,13 +13,13 @@ export default class Kill extends Command {
     super([
       {
         contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
-        description: 'KILL.DESCRIPTION',
+        description: 'DESC.KILL',
         integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
-        name: 'KILL.NAME',
+        name: 'CMD.KILL',
         options: [
           {
-            description: 'KILL.OPTIONS.USER.DESCRIPTION',
-            name: 'KILL.OPTIONS.USER.NAME',
+            description: 'DESC.KILL_USER',
+            name: 'CMD.USER',
             type: ApplicationCommandOptionType.User,
           },
         ],

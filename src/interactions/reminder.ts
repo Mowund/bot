@@ -29,25 +29,25 @@ export default class Reminder extends Command {
     super([
       {
         contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
-        description: 'REMINDER.DESCRIPTION',
+        description: 'DESC.REMINDER',
         integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
-        name: 'REMINDER.NAME',
+        name: 'CMD.REMINDER',
         options: [
           {
-            description: 'REMINDER.OPTIONS.CREATE.DESCRIPTION',
-            name: 'REMINDER.OPTIONS.CREATE.NAME',
+            description: 'DESC.REMINDER_CREATE',
+            name: 'CMD.CREATE',
             options: [
               {
-                description: 'REMINDER.OPTIONS.CREATE.OPTIONS.CONTENT.DESCRIPTION',
+                description: 'REMINDER.CREATE.DESC.CONTENT',
                 max_length: 4000,
-                name: 'REMINDER.OPTIONS.CREATE.OPTIONS.CONTENT.NAME',
+                name: 'CMD.CONTENT',
                 required: true,
                 type: ApplicationCommandOptionType.String,
               },
               {
                 autocomplete: true,
-                description: 'REMINDER.OPTIONS.CREATE.OPTIONS.TIME.DESCRIPTION',
-                name: 'REMINDER.OPTIONS.CREATE.OPTIONS.TIME.NAME',
+                description: 'REMINDER.CREATE.DESC.TIME',
+                name: 'CMD.TIME',
                 required: true,
                 type: ApplicationCommandOptionType.String,
               },
@@ -55,8 +55,8 @@ export default class Reminder extends Command {
             type: ApplicationCommandOptionType.Subcommand,
           },
           {
-            description: 'REMINDER.OPTIONS.LIST.DESCRIPTION',
-            name: 'REMINDER.OPTIONS.LIST.NAME',
+            description: 'DESC.REMINDER_LIST',
+            name: 'CMD.LIST',
             type: ApplicationCommandOptionType.Subcommand,
           },
         ],
@@ -85,8 +85,8 @@ export default class Reminder extends Command {
                   input: msToTime(msTime),
                   time:
                     msTime > maxTime
-                      ? localize('GENERIC.TIME.YEARS', { count: maxTime / 365.25 / 24 / 60 / 60000 })
-                      : localize('GENERIC.TIME.MINUTES', { count: minTime / 60000 }),
+                      ? localize('TIME.YEARS', { count: maxTime / 365.25 / 24 / 60 / 60000 })
+                      : localize('TIME.MINUTES', { count: minTime / 60000 }),
                 })
               : msToTime(msTime),
           value: focused,
@@ -124,8 +124,8 @@ export default class Reminder extends Command {
                     input: msTime ? msToTime(msTime) : timeO,
                     time:
                       msTime > maxTime
-                        ? localize('GENERIC.TIME.YEARS', { count: maxTime / 365.25 / 24 / 60 / 60000 })
-                        : localize('GENERIC.TIME.MINUTES', { count: minTime / 60000 }),
+                        ? localize('TIME.YEARS', { count: maxTime / 365.25 / 24 / 60 / 60000 })
+                        : localize('TIME.MINUTES', { count: minTime / 60000 }),
                   }),
                 ),
               ],
@@ -146,22 +146,22 @@ export default class Reminder extends Command {
               .addFields(
                 {
                   inline: true,
-                  name: `🪪 ${localize('GENERIC.ID')}`,
+                  name: `🪪 ${localize('ID')}`,
                   value: `\`${reminder.id}\``,
                 },
                 {
-                  name: `📅 ${localize('GENERIC.TIMESTAMP')}`,
+                  name: `📅 ${localize('TIMESTAMP')}`,
                   value: `${localize('REMINDER.TIMESTAMP', { timestamp: toUTS(reminder.timestamp) })}\n${localize(
                     'REMINDER.CREATED_AT',
                     { timestamp: toUTS(SnowflakeUtil.timestampFrom(reminder.id)) },
                   )}`,
                 },
                 {
-                  name: `🔁 ${localize('GENERIC.NOT_RECURSIVE')}`,
+                  name: `🔁 ${localize('NOT_RECURSIVE')}`,
                   value:
                     reminder.msTime < minRecursiveTime
                       ? localize('REMINDER.RECURSIVE.DISABLED', {
-                          time: localize('GENERIC.TIME.MINUTES', { count: minRecursiveTime / 60000 }),
+                          time: localize('TIME.MINUTES', { count: minRecursiveTime / 60000 }),
                         })
                       : localize('REMINDER.RECURSIVE.OFF'),
                 },
@@ -175,7 +175,7 @@ export default class Reminder extends Command {
                 .setStyle(ButtonStyle.Primary)
                 .setCustomId('reminder_list'),
               new ButtonBuilder()
-                .setLabel(localize('GENERIC.EDIT'))
+                .setLabel(localize('EDIT'))
                 .setEmoji('📝')
                 .setStyle(ButtonStyle.Primary)
                 .setCustomId('reminder_edit'),
@@ -244,7 +244,7 @@ export default class Reminder extends Command {
       const reminderId =
         interaction instanceof StringSelectMenuInteraction
           ? interaction.values[0]
-          : urlArgs.get('reminderId') || getFieldValue(message.embeds[0], localize('GENERIC.ID'))?.replaceAll('`', '');
+          : urlArgs.get('reminderId') || getFieldValue(message.embeds[0], localize('ID'))?.replaceAll('`', '');
 
       let reminder = reminderId ? await userData.reminders.fetch({ reminderId }) : null,
         emb = embed(
@@ -261,11 +261,11 @@ export default class Reminder extends Command {
             .addFields(
               {
                 inline: true,
-                name: `🪪 ${localize('GENERIC.ID')}`,
+                name: `🪪 ${localize('ID')}`,
                 value: `\`${reminder.id}\``,
               },
               {
-                name: `📅 ${localize('GENERIC.TIMESTAMP')}`,
+                name: `📅 ${localize('TIMESTAMP')}`,
                 value: `${localize('REMINDER.TIMESTAMP', { timestamp: toUTS(reminder.timestamp) })}\n${localize(
                   'REMINDER.CREATED_AT',
                   { timestamp: toUTS(SnowflakeUtil.timestampFrom(reminder.id)) },
@@ -273,17 +273,17 @@ export default class Reminder extends Command {
               },
               reminder.isRecursive
                 ? {
-                    name: `🔁 ${localize('GENERIC.RECURSIVE')}`,
+                    name: `🔁 ${localize('RECURSIVE')}`,
                     value: localize('REMINDER.RECURSIVE.ON', {
                       timestamp: toUTS(reminder.timestamp + reminder.msTime),
                     }),
                   }
                 : {
-                    name: `🔁 ${localize('GENERIC.NOT_RECURSIVE')}`,
+                    name: `🔁 ${localize('NOT_RECURSIVE')}`,
                     value:
                       reminder.msTime < minRecursiveTime
                         ? localize('REMINDER.RECURSIVE.DISABLED', {
-                            time: localize('GENERIC.TIME.MINUTES', { count: minRecursiveTime / 60000 }),
+                            time: localize('TIME.MINUTES', { count: minRecursiveTime / 60000 }),
                           })
                         : localize('REMINDER.RECURSIVE.OFF'),
                   },
@@ -321,7 +321,7 @@ export default class Reminder extends Command {
                   .setCustomId('reminder_list'),
                 new ButtonBuilder()
                   .setEmoji('📝')
-                  .setLabel(localize('GENERIC.EDIT'))
+                  .setLabel(localize('EDIT'))
                   .setStyle(ButtonStyle.Primary)
                   .setCustomId('reminder_edit')
                   .setDisabled(!reminder),
@@ -396,13 +396,13 @@ export default class Reminder extends Command {
                 1,
                 reminder.isRecursive
                   ? {
-                      name: `🔁 ${localize('GENERIC.RECURSIVE')}`,
+                      name: `🔁 ${localize('RECURSIVE')}`,
                       value: localize('REMINDER.RECURSIVE.ON', {
                         timestamp: toUTS(reminder.timestamp + reminder.msTime),
                       }),
                     }
                   : {
-                      name: `🔁 ${localize('GENERIC.NOT_RECURSIVE')}`,
+                      name: `🔁 ${localize('NOT_RECURSIVE')}`,
                       value: localize('REMINDER.RECURSIVE.OFF'),
                     },
               )
@@ -413,12 +413,12 @@ export default class Reminder extends Command {
           rows.push(
             new ActionRowBuilder().addComponents(
               new ButtonBuilder()
-                .setLabel(localize('GENERIC.VIEW'))
+                .setLabel(localize('VIEW'))
                 .setEmoji('🔎')
                 .setStyle(ButtonStyle.Primary)
                 .setCustomId('reminder_view'),
               new ButtonBuilder()
-                .setLabel(localize(`GENERIC.${reminder.isRecursive ? 'RECURSIVE' : 'NOT_RECURSIVE'}`))
+                .setLabel(localize(`${reminder.isRecursive ? 'RECURSIVE' : 'NOT_RECURSIVE'}`))
                 .setEmoji('🔁')
                 .setStyle(reminder.isRecursive ? ButtonStyle.Success : ButtonStyle.Secondary)
                 .setCustomId('reminder_recursive')
@@ -426,12 +426,12 @@ export default class Reminder extends Command {
             ),
             new ActionRowBuilder().addComponents(
               new ButtonBuilder()
-                .setLabel(localize('GENERIC.CONTENT.EDIT'))
+                .setLabel(localize('CONTENT.EDIT'))
                 .setEmoji('✏️')
                 .setStyle(ButtonStyle.Secondary)
                 .setCustomId('reminder_edit_content'),
               new ButtonBuilder()
-                .setLabel(localize('GENERIC.DELETE'))
+                .setLabel(localize('DELETE'))
                 .setEmoji('🗑️')
                 .setStyle(ButtonStyle.Danger)
                 .setCustomId('reminder_delete'),
@@ -448,12 +448,12 @@ export default class Reminder extends Command {
           rows.push(
             new ActionRowBuilder().addComponents(
               new ButtonBuilder()
-                .setLabel(localize('GENERIC.BACK'))
+                .setLabel(localize('BACK'))
                 .setEmoji('↩️')
                 .setStyle(ButtonStyle.Primary)
                 .setCustomId('reminder_edit'),
               new ButtonBuilder()
-                .setLabel(localize('GENERIC.YES'))
+                .setLabel(localize('YES'))
                 .setEmoji('✅')
                 .setStyle(ButtonStyle.Success)
                 .setCustomId('reminder_delete_confirm'),
@@ -494,13 +494,13 @@ export default class Reminder extends Command {
         case 'reminder_edit_content': {
           return (interaction as ButtonInteraction).showModal(
             new ModalBuilder()
-              .setTitle(localize('GENERIC.CONTENT.EDITING'))
+              .setTitle(localize('CONTENT.EDITING'))
               .setCustomId('reminder_edit_content_submit')
               .addComponents(
                 new ActionRowBuilder<TextInputBuilder>().addComponents(
                   new TextInputBuilder()
                     .setCustomId('reminder_edit_content_input')
-                    .setLabel(localize('GENERIC.CONTENT.EDITING_LABEL'))
+                    .setLabel(localize('CONTENT.EDITING_LABEL'))
                     .setMinLength(1)
                     .setMaxLength(4000)
                     .setStyle(TextInputStyle.Paragraph)
@@ -530,7 +530,7 @@ export default class Reminder extends Command {
           return (interaction as ModalMessageModalSubmitInteraction).update({
             embeds: [
               emb
-                .setTitle(`🔔 ${localize('GENERIC.CONTENT.EDITED')}`)
+                .setTitle(`🔔 ${localize('CONTENT.EDITED')}`)
                 .setDescription(reminder.content)
                 .setColor(Colors.Green),
             ],

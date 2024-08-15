@@ -40,12 +40,12 @@ export default class ReminderFoundEvent extends Event {
       fields: APIEmbedField[] = [
         {
           inline: true,
-          name: `🪪 ${localize('GENERIC.ID')}`,
+          name: `🪪 ${localize('ID')}`,
           value: `\`${id}\``,
         },
         {
           inline: true,
-          name: `📅 ${localize('GENERIC.CREATED')}`,
+          name: `📅 ${localize('CREATED')}`,
           value: toUTS(idTimestamp),
         },
       ],
@@ -63,13 +63,13 @@ export default class ReminderFoundEvent extends Event {
 
       params.reminderId = recReminderId;
       fields.push({
-        name: `🔁 ${localize('GENERIC.RECURSIVE')}`,
+        name: `🔁 ${localize('RECURSIVE')}`,
         value: localize('REMINDER.RECURSIVE.ON', { timestamp: toUTS(recReminder.timestamp) }),
       });
 
       row.addComponents(
         new ButtonBuilder()
-          .setLabel(localize('GENERIC.EDIT'))
+          .setLabel(localize('EDIT'))
           .setEmoji('📝')
           .setStyle(ButtonStyle.Secondary)
           .setCustomId('reminder_edit'),

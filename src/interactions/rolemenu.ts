@@ -21,13 +21,13 @@ export default class RoleMenu extends Command {
       {
         contexts: [InteractionContextType.Guild],
         defaultMemberPermissions: PermissionFlagsBits.ManageRoles,
-        description: 'ROLEMENU.DESCRIPTION',
+        description: 'DESC.ROLEMENU',
         integration_types: [ApplicationIntegrationType.GuildInstall],
-        name: 'ROLEMENU.NAME',
+        name: 'CMD.ROLEMENU',
         options: [
           {
-            description: 'ROLEMENU.OPTIONS.CREATE.DESCRIPTION',
-            name: 'ROLEMENU.OPTIONS.CREATE.NAME',
+            description: 'DESC.ROLEMENU_CREATE',
+            name: 'CMD.CREATE',
             options: [
               {
                 channelTypes: [
@@ -39,20 +39,20 @@ export default class RoleMenu extends Command {
                   ChannelType.PrivateThread,
                   ChannelType.PublicThread,
                 ],
-                description: 'ROLEMENU.OPTIONS.CREATE.OPTIONS.CHANNEL.DESCRIPTION',
-                name: 'ROLEMENU.OPTIONS.CREATE.OPTIONS.CHANNEL.NAME',
+                description: 'ROLEMENU.CREATE.DESC.CHANNEL',
+                name: 'CMD.CHANNEL',
                 type: ApplicationCommandOptionType.Channel,
               },
             ],
             type: ApplicationCommandOptionType.Subcommand,
           },
           {
-            description: 'ROLEMENU.OPTIONS.EDIT.DESCRIPTION',
-            name: 'ROLEMENU.OPTIONS.EDIT.NAME',
+            description: 'DESC.ROLEMENU_EDIT',
+            name: 'CMD.EDIT',
             options: [
               {
-                description: 'ROLEMENU.OPTIONS.EDIT.OPTIONS.ID.DESCRIPTION',
-                name: 'ROLEMENU.OPTIONS.EDIT.OPTIONS.ID.NAME',
+                description: 'ROLEMENU.EDIT.DESC.ID',
+                name: 'CMD.ID',
                 type: ApplicationCommandOptionType.String,
               },
             ],

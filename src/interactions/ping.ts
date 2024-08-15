@@ -6,9 +6,9 @@ export default class Ping extends Command {
     super([
       {
         contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
-        description: 'PING.DESCRIPTION',
+        description: 'DESC.PING',
         integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
-        name: 'PING.NAME',
+        name: 'CMD.PING',
       },
     ]);
   }
@@ -34,10 +34,10 @@ export default class Ping extends Command {
 
     if (interaction.inGuild()) {
       emb.addFields({
-        name: `💎 ${localize('GENERIC.SHARD')}`,
-        value: `**${localize('GENERIC.CURRENT')}:** \`${
+        name: `💎 ${localize('SHARD')}`,
+        value: `**${localize('CURRENT')}:** \`${
           ShardClientUtil.shardIdForGuildId(guildId, client.shard.count) + 1
-        }\`\n**${localize('GENERIC.TOTAL')}:** \`${client.shard.count}\``,
+        }\`\n**${localize('TOTAL')}:** \`${client.shard.count}\``,
       });
     }
 

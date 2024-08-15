@@ -16,25 +16,25 @@ export default class Timeout extends Command {
       {
         contexts: [InteractionContextType.Guild],
         defaultMemberPermissions: PermissionFlagsBits.ModerateMembers,
-        description: 'TIMEOUT.DESCRIPTION',
+        description: 'DESC.TIMEOUT',
         integration_types: [ApplicationIntegrationType.GuildInstall],
-        name: 'TIMEOUT.NAME',
+        name: 'CMD.TIMEOUT',
         options: [
           {
-            description: 'TIMEOUT.OPTIONS.USER.DESCRIPTION',
-            name: 'TIMEOUT.OPTIONS.USER.NAME',
+            description: 'TIMEOUT.DESC.USER',
+            name: 'CMD.USER',
             required: true,
             type: ApplicationCommandOptionType.User,
           },
           {
             autocomplete: true,
-            description: 'TIMEOUT.OPTIONS.DURATION.DESCRIPTION',
-            name: 'TIMEOUT.OPTIONS.DURATION.NAME',
+            description: 'TIMEOUT.DESC.DURATION',
+            name: 'CMD.DURATION',
             type: ApplicationCommandOptionType.String,
           },
           {
-            description: 'TIMEOUT.OPTIONS.REASON.DESCRIPTION',
-            name: 'TIMEOUT.OPTIONS.REASON.NAME',
+            description: 'TIMEOUT.DESC.REASON',
+            name: 'CMD.REASON',
             type: ApplicationCommandOptionType.String,
           },
         ],
@@ -61,19 +61,19 @@ export default class Timeout extends Command {
                   ? localize('ERROR.INVALID.TIME_AUTOCOMPLETE', {
                       condition: 'greater',
                       input: msToTime(msTime),
-                      time: localize('GENERIC.TIME.DAYS', { count: 28 }),
+                      time: localize('TIME.DAYS', { count: 28 }),
                     })
                   : msToTime(msTime),
               value: focused,
             }
           : {
-              name: localize('TIMEOUT.OPTIONS.DURATION.DEFAULT', {
+              name: localize('TIMEOUT.DURATION.DEFAULT', {
                 default: acMember
                   ? acMember.communicationDisabledUntilTimestamp > Date.now()
                     ? 'unset'
                     : 'set'
                   : 'notMember',
-                time: localize('GENERIC.TIME.HOURS', { count: 1 }),
+                time: localize('TIME.HOURS', { count: 1 }),
               }),
               value: '',
             },
@@ -150,7 +150,7 @@ export default class Timeout extends Command {
               localize('ERROR.INVALID.TIME', {
                 condition: msTime && 'greater',
                 input: msTime ? msToTime(msTime) : durationO,
-                time: localize('GENERIC.TIME.DAYS', { count: 28 }),
+                time: localize('TIME.DAYS', { count: 28 }),
               }),
             ),
           ],

@@ -22,48 +22,48 @@ export default class Owner extends Command {
       [
         {
           defaultMemberPermissions: PermissionFlagsBits.Administrator,
-          description: 'OWNER.DESCRIPTION',
-          name: 'OWNER.NAME',
+          description: 'DESC.OWNER',
+          name: 'CMD.OWNER',
           options: [
             {
-              description: 'OWNER.OPTIONS.EVAL.DESCRIPTION',
-              name: 'OWNER.OPTIONS.EVAL.NAME',
+              description: 'DESC.OWNER_EVAL',
+              name: 'CMD.EVAL',
               options: [
                 {
-                  description: 'OWNER.OPTIONS.EVAL.OPTIONS.SCRIPT.DESCRIPTION',
-                  name: 'OWNER.OPTIONS.EVAL.OPTIONS.SCRIPT.NAME',
+                  description: 'OWNER.EVAL.DESC.SCRIPT',
+                  name: 'CMD.SCRIPT',
                   required: true,
                   type: ApplicationCommandOptionType.String,
                 },
                 {
-                  description: 'OWNER.OPTIONS.EVAL.OPTIONS.ASYNC.DESCRIPTION',
-                  name: 'OWNER.OPTIONS.EVAL.OPTIONS.ASYNC.NAME',
+                  description: 'OWNER.EVAL.DESC.ASYNC',
+                  name: 'CMD.ASYNC',
                   type: ApplicationCommandOptionType.Boolean,
                 },
                 {
-                  description: 'OWNER.OPTIONS.EVAL.OPTIONS.AWAIT.DESCRIPTION',
-                  name: 'OWNER.OPTIONS.EVAL.OPTIONS.AWAIT.NAME',
+                  description: 'OWNER.EVAL.DESC.AWAIT',
+                  name: 'CMD.AWAIT',
                   type: ApplicationCommandOptionType.Boolean,
                 },
               ],
               type: ApplicationCommandOptionType.Subcommand,
             },
             {
-              description: 'OWNER.OPTIONS.COMMAND.DESCRIPTION',
-              name: 'OWNER.OPTIONS.COMMAND.NAME',
+              description: 'DESC.OWNER_COMMAND',
+              name: 'CMD.COMMAND',
               options: [
                 {
-                  description: 'OWNER.OPTIONS.COMMAND.OPTIONS.UPDATE.DESCRIPTION',
-                  name: 'OWNER.OPTIONS.COMMAND.OPTIONS.UPDATE.NAME',
+                  description: 'OWNER.COMMAND.DESC.UPDATE',
+                  name: 'CMD.UPDATE',
                   options: [
                     {
-                      description: 'OWNER.OPTIONS.COMMAND.OPTIONS.UPDATE.OPTIONS.ID.DESCRIPTION',
-                      name: 'OWNER.OPTIONS.COMMAND.OPTIONS.UPDATE.OPTIONS.ID.NAME',
+                      description: 'OWNER.COMMAND.UPDATE.DESC.ID',
+                      name: 'CMD.ID',
                       type: ApplicationCommandOptionType.String,
                     },
                     {
-                      description: 'OWNER.OPTIONS.COMMAND.OPTIONS.UPDATE.OPTIONS.GUILD.DESCRIPTION',
-                      name: 'OWNER.OPTIONS.COMMAND.OPTIONS.UPDATE.OPTIONS.GUILD.NAME',
+                      description: 'OWNER.COMMAND.UPDATE.DESC.GUILD',
+                      name: 'CMD.GUILD',
                       type: ApplicationCommandOptionType.String,
                     },
                   ],
@@ -73,38 +73,38 @@ export default class Owner extends Command {
               type: ApplicationCommandOptionType.SubcommandGroup,
             },
             {
-              description: 'OWNER.OPTIONS.LOCALIZATION.DESCRIPTION',
-              name: 'OWNER.OPTIONS.LOCALIZATION.NAME',
+              description: 'DESC.OWNER_LOCALIZATION',
+              name: 'CMD.LOCALIZATION',
               options: [
                 {
-                  description: 'OWNER.OPTIONS.LOCALIZATION.OPTIONS.UPDATE.DESCRIPTION',
-                  name: 'OWNER.OPTIONS.LOCALIZATION.OPTIONS.UPDATE.NAME',
+                  description: 'OWNER.LOCALIZATION.DESC.UPDATE',
+                  name: 'CMD.UPDATE',
                   type: ApplicationCommandOptionType.Subcommand,
                 },
               ],
               type: ApplicationCommandOptionType.SubcommandGroup,
             },
             {
-              description: 'OWNER.OPTIONS.SHARD.DESCRIPTION',
-              name: 'OWNER.OPTIONS.SHARD.NAME',
+              description: 'DESC.OWNER_SHARD',
+              name: 'CMD.SHARD',
               options: [
                 {
-                  description: 'OWNER.OPTIONS.SHARD.OPTIONS.RESPAWN_ALL.DESCRIPTION',
-                  name: 'OWNER.OPTIONS.SHARD.OPTIONS.RESPAWN_ALL.NAME',
+                  description: 'OWNER.SHARD.DESC.RESPAWN_ALL',
+                  name: 'CMD.RESPAWN_ALL',
                   options: [
                     {
-                      description: 'OWNER.OPTIONS.SHARD.OPTIONS.RESPAWN_ALL.OPTIONS.SHARD_DELAY.DESCRIPTION',
-                      name: 'OWNER.OPTIONS.SHARD.OPTIONS.RESPAWN_ALL.OPTIONS.SHARD_DELAY.NAME',
+                      description: 'OWNER.SHARD.RESPAWN_ALL.DESC.SHARD_DELAY',
+                      name: 'CMD.SHARD_DELAY',
                       type: ApplicationCommandOptionType.Integer,
                     },
                     {
-                      description: 'OWNER.OPTIONS.SHARD.OPTIONS.RESPAWN_ALL.OPTIONS.RESPAWN_DELAY.DESCRIPTION',
-                      name: 'OWNER.OPTIONS.SHARD.OPTIONS.RESPAWN_ALL.OPTIONS.RESPAWN_DELAY.NAME',
+                      description: 'OWNER.SHARD.RESPAWN_ALL.DESC.RESPAWN_DELAY',
+                      name: 'CMD.RESPAWN_DELAY',
                       type: ApplicationCommandOptionType.Integer,
                     },
                     {
-                      description: 'OWNER.OPTIONS.SHARD.OPTIONS.RESPAWN_ALL.OPTIONS.TIMEOUT.DESCRIPTION',
-                      name: 'OWNER.OPTIONS.SHARD.OPTIONS.RESPAWN_ALL.OPTIONS.TIMEOUT.NAME',
+                      description: 'OWNER.SHARD.RESPAWN_ALL.DESC.TIMEOUT',
+                      name: 'CMD.TIMEOUT',
                       type: ApplicationCommandOptionType.Integer,
                     },
                   ],
@@ -166,7 +166,7 @@ export default class Owner extends Command {
             embeds: [
               embed({ type: 'success' })
                 .setDescription(`\`\`\`ts\n${utils.truncate(evaled, 4087)}\`\`\``)
-                .addFields({ name: localize('GENERIC.TYPE'), value: `\`\`\`ts\n${evaledType}\`\`\`` }),
+                .addFields({ name: localize('TYPE'), value: `\`\`\`ts\n${evaledType}\`\`\`` }),
             ],
           });
         } catch (err) {
@@ -174,7 +174,7 @@ export default class Owner extends Command {
           return interaction.editReply({
             embeds: [
               embed({ type: 'error' }).addFields({
-                name: localize('GENERIC.OUTPUT'),
+                name: localize('OUTPUT'),
                 value: `\`\`\`js\n${err}\`\`\``,
               }),
             ],
@@ -281,10 +281,10 @@ export default class Owner extends Command {
                     (gOnly ? o.guildId : !o.guildId)
                       ? `**${
                           o.type === ApplicationCommandType.Message
-                            ? localize('GENERIC.MESSAGE')
+                            ? localize('MESSAGE')
                             : o.type === ApplicationCommandType.User
-                              ? localize('GENERIC.USER')
-                              : localize('GENERIC.CHAT')
+                              ? localize('USER.NOUN')
+                              : localize('CHAT')
                         }**: \`${o.name}\``
                       : '',
                   )
@@ -295,11 +295,11 @@ export default class Owner extends Command {
               delCmdGuild = cmdMap(delCmds, true);
 
             if (updCmds.size) {
-              const e = embed({ title: localize('OWNER.OPTIONS.COMMAND.COMMANDS.UPDATED'), type: 'success' });
+              const e = embed({ title: localize('OWNER.COMMAND.COMMANDS.UPDATED'), type: 'success' });
               if (updCmdGlobal) {
                 e.addFields({
                   inline: true,
-                  name: localize('OWNER.OPTIONS.COMMAND.COMMANDS.GLOBAL'),
+                  name: localize('OWNER.COMMAND.COMMANDS.GLOBAL'),
                   value: updCmdGlobal,
                 });
               }
@@ -308,19 +308,19 @@ export default class Owner extends Command {
                 e.addFields({
                   inline: true,
                   name: guild
-                    ? localize('OWNER.OPTIONS.COMMAND.COMMANDS.SPECIFIED_GUILD', { guildName: guild.name })
-                    : localize('OWNER.OPTIONS.COMMAND.COMMANDS.GUILD'),
+                    ? localize('OWNER.COMMAND.COMMANDS.SPECIFIED_GUILD', { guildName: guild.name })
+                    : localize('OWNER.COMMAND.COMMANDS.GUILD'),
                   value: updCmdGuild,
                 });
               }
               embs.push(e);
             }
             if (delCmds.size) {
-              const e = embed({ color: Colors.Red, title: `🗑️ ${localize('OWNER.OPTIONS.COMMAND.COMMANDS.DELETED')}` });
+              const e = embed({ color: Colors.Red, title: `🗑️ ${localize('OWNER.COMMAND.COMMANDS.DELETED')}` });
               if (delCmdGlobal) {
                 e.addFields({
                   inline: true,
-                  name: localize('OWNER.OPTIONS.COMMAND.COMMANDS.GLOBAL'),
+                  name: localize('OWNER.COMMAND.COMMANDS.GLOBAL'),
                   value: delCmdGlobal,
                 });
               }
@@ -329,8 +329,8 @@ export default class Owner extends Command {
                 e.addFields({
                   inline: true,
                   name: guild
-                    ? localize('OWNER.OPTIONS.COMMAND.COMMANDS.SPECIFIED_GUILD', { guildName: guild.name })
-                    : localize('OWNER.OPTIONS.COMMAND.COMMANDS.GUILD'),
+                    ? localize('OWNER.COMMAND.COMMANDS.SPECIFIED_GUILD', { guildName: guild.name })
+                    : localize('OWNER.COMMAND.COMMANDS.GUILD'),
                   value: delCmdGuild,
                 });
               }
@@ -340,7 +340,7 @@ export default class Owner extends Command {
             return interaction.editReply({
               embeds: embs.length
                 ? embs
-                : [embed({ type: 'warning' }).setDescription(localize('OWNER.OPTIONS.COMMAND.NO_UPDATE'))],
+                : [embed({ type: 'warning' }).setDescription(localize('OWNER.COMMAND.NO_UPDATE'))],
             });
           }
         }
@@ -350,7 +350,7 @@ export default class Owner extends Command {
         switch (options.getSubcommand()) {
           case 'update': {
             await interaction.editReply({
-              embeds: [embed({ type: 'loading' }).setDescription(localize('OWNER.OPTIONS.LOCALIZATION.UPDATING'))],
+              embeds: [embed({ type: 'loading' }).setDescription(localize('OWNER.LOCALIZATION.UPDATING'))],
             });
 
             await client.updateLocalizations();
@@ -379,7 +379,7 @@ export default class Owner extends Command {
             await client.application.editRoleConnectionMetadataRecords(metadata);
 
             return interaction.editReply({
-              embeds: [embed({ type: 'success' }).setDescription(localize('OWNER.OPTIONS.LOCALIZATION.UPDATED'))],
+              embeds: [embed({ type: 'success' }).setDescription(localize('OWNER.LOCALIZATION.UPDATED'))],
             });
           }
         }
@@ -393,7 +393,7 @@ export default class Owner extends Command {
               timeoutO = options.getInteger('timeout') ?? 30000;
 
             await interaction.editReply({
-              embeds: [embed({ type: 'warning' }).setDescription(localize('OWNER.OPTIONS.SHARD.RESPAWNING'))],
+              embeds: [embed({ type: 'warning' }).setDescription(localize('OWNER.SHARD.RESPAWNING'))],
             });
 
             return client.shard.respawnAll({

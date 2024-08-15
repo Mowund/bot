@@ -102,7 +102,7 @@ export default class InteractionCreateEvent extends Event {
             ? [
                 new ActionRowBuilder<ButtonBuilder>().addComponents(
                   new ButtonBuilder()
-                    .setLabel(localize('GENERIC.READD_TO_SERVER'))
+                    .setLabel(localize('READD_TO_SERVER'))
                     .setEmoji(client.discordEmoji)
                     .setStyle(ButtonStyle.Link)
                     .setURL(
@@ -119,7 +119,7 @@ export default class InteractionCreateEvent extends Event {
           embeds: [
             new EmbedBuilder()
               .setColor(Colors.Red)
-              .setTitle(`❌ ${localize('GENERIC.ERROR')}`)
+              .setTitle(`❌ ${localize('ERROR.NOUN')}`)
               .setDescription(localize(`ERROR.NO_BOT_SCOPE.${isManager ? 'MANAGER' : 'MEMBER'}`)),
           ],
           ephemeral: true,

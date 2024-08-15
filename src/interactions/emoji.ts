@@ -34,25 +34,25 @@ export default class Emoji extends Command {
     super([
       {
         contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
-        description: 'EMOJI.DESCRIPTION',
+        description: 'DESC.EMOJI',
         integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
-        name: 'EMOJI.NAME',
+        name: 'CMD.EMOJI',
         options: [
           {
-            description: 'EMOJI.OPTIONS.ADD.DESCRIPTION',
-            name: 'EMOJI.OPTIONS.ADD.NAME',
+            description: 'DESC.EMOJI_ADD',
+            name: 'CMD.ADD',
             options: [
               {
-                description: 'EMOJI.OPTIONS.ADD.OPTIONS.IMAGE.DESCRIPTION',
-                name: 'EMOJI.OPTIONS.ADD.OPTIONS.IMAGE.NAME',
+                description: 'EMOJI.ADD.DESC.IMAGE',
+                name: 'CMD.IMAGE',
                 required: true,
                 type: ApplicationCommandOptionType.Attachment,
               },
               {
-                description: 'EMOJI.OPTIONS.ADD.OPTIONS.NAME.DESCRIPTION',
+                description: 'EMOJI.ADD.DESC.NAME',
                 maxLength: 32,
                 minLength: 2,
-                name: 'EMOJI.OPTIONS.ADD.OPTIONS.NAME.NAME',
+                name: 'CMD.NAME',
                 required: true,
                 type: ApplicationCommandOptionType.String,
               },
@@ -60,12 +60,12 @@ export default class Emoji extends Command {
             type: ApplicationCommandOptionType.Subcommand,
           },
           {
-            description: 'EMOJI.OPTIONS.INFO.DESCRIPTION',
-            name: 'EMOJI.OPTIONS.INFO.NAME',
+            description: 'DESC.EMOJI_INFO',
+            name: 'CMD.INFO',
             options: [
               {
-                description: 'EMOJI.OPTIONS.INFO.OPTIONS.EMOJI.DESCRIPTION',
-                name: 'EMOJI.OPTIONS.INFO.OPTIONS.EMOJI.NAME',
+                description: 'EMOJI.INFO.DESC.EMOJI',
+                name: 'CMD.EMOJI',
                 required: true,
                 type: ApplicationCommandOptionType.String,
               },
@@ -260,7 +260,7 @@ export default class Emoji extends Command {
 
       const emb = embed();
       if (parsedEmoji.id || anyEmj)
-        emb.addFields({ inline: true, name: `📛 ${localize('GENERIC.NAME')}`, value: `\`${emjName}\`` });
+        emb.addFields({ inline: true, name: `📛 ${localize('NAME')}`, value: `\`${emjName}\`` });
 
       emb
         .setTitle(
@@ -277,27 +277,37 @@ export default class Emoji extends Command {
               }`,
             ),
         )
-        .addFields({
-          inline: true,
-          name: `🪪 ${localize(`GENERIC.${emjCodePoint ? 'CODEPOINT' : 'ID'}`)}`,
-          value: `\`${emjCodePoint ?? emjId}\``,
-        })
         .setThumbnail(emjURL)
         .setColor(Colors.Green)
         .setTimestamp(Date.now());
 
-      if (emjCodePoint || parsedEmoji.id || anyEmj) {
+      if (emjCodePoint) {
         emb.addFields({
           inline: true,
-          name: `${client.useEmoji('mention')} ${localize('GENERIC.MENTION')}`,
-          value: `\`<${imageType === 'gif' ? 'a' : ''}:${emjName}:${emjId}>\``,
+          name: `🪪 ${localize('CODEPOINT')}`,
+          value: `\`${emjCodePoint}\``,
         });
-      }
-
-      if (!emjCodePoint) {
         emb.addFields({
           inline: true,
-          name: `📅 ${localize('GENERIC.CREATED')}`,
+          name: `${client.useEmoji('mention')} ${localize('MENTION')}`,
+          value: `\`${emjName}\``,
+        });
+      } else {
+        emb.addFields({
+          inline: true,
+          name: `🪪 ${localize('ID')}`,
+          value: `\`${emjId}\``,
+        });
+        if (parsedEmoji.id || anyEmj) {
+          emb.addFields({
+            inline: true,
+            name: `${client.useEmoji('mention')} ${localize('MENTION')}`,
+            value: `\`<${imageType === 'gif' ? 'a' : ''}:${emjName}:${emjId}>\``,
+          });
+        }
+        emb.addFields({
+          inline: true,
+          name: `📅 ${localize('CREATED')}`,
           value: toUTS(SnowflakeUtil.timestampFrom(emjId)),
         });
       }
@@ -311,20 +321,20 @@ export default class Emoji extends Command {
 
           emb.addFields({
             inline: true,
-            name: `${client.useEmoji(integration.type)} ${localize('GENERIC.MANAGED_BY')}`,
+            name: `${client.useEmoji(integration.type)} ${localize('MANAGED_BY')}`,
             value: `<@${integration.userId || integration.user.id}>`,
           });
           editBtnVsby = 1;
         } else {
           emb.addFields({
             inline: true,
-            name: `${client.useEmoji('user')} ${localize('GENERIC.AUTHOR')}`,
+            name: `${client.useEmoji('user')} ${localize('AUTHOR')}`,
             value: `<@${shardEmj?.[0]?.author || (await emj.fetchAuthor()).id}>`,
           });
         }
 
         emb.addFields({
-          name: `${client.useEmoji('role')} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
+          name: `${client.useEmoji('role')} ${localize('ROLES.NOUN')} [${localize('COUNT', {
             count: shardEmj?.[1]?.length ?? emj.roles?.cache.size,
           })}]`,
           value:
@@ -363,7 +373,7 @@ export default class Emoji extends Command {
       if (editBtnVsby) {
         rows[0].addComponents(
           new ButtonBuilder()
-            .setLabel(localize('GENERIC.EDIT'))
+            .setLabel(localize('EDIT'))
             .setEmoji('📝')
             .setStyle(ButtonStyle.Primary)
             .setCustomId('emoji_edit')
@@ -401,7 +411,7 @@ export default class Emoji extends Command {
       }
       const oldEmbs = message.embeds,
         emjURL = oldEmbs[0].thumbnail.url,
-        emjCodePoint = getFieldValue(oldEmbs[0], localize('GENERIC.CODEPOINT'))?.replaceAll('`', '');
+        emjCodePoint = getFieldValue(oldEmbs[0], localize('CODEPOINT'))?.replaceAll('`', '');
 
       let { customId } = interaction,
         emb = embed({ footer: 'interacted' }),
@@ -409,8 +419,8 @@ export default class Emoji extends Command {
         emj = guild?.emojis.cache.get(emjId);
 
       const emjDisplay = emj && appPermissions.has(PermissionFlagsBits.UseExternalEmojis) ? `${emj} ` : '',
-        emjMention = emj ? `\`${emj}\`` : getFieldValue(oldEmbs[0], localize('GENERIC.MENTION')),
-        emjName = emj?.name ?? getFieldValue(oldEmbs[0], localize('GENERIC.NAME'))?.replaceAll('`', '');
+        emjMention = emj ? `\`${emj}\`` : getFieldValue(oldEmbs[0], localize('MENTION')),
+        emjName = emj?.name ?? getFieldValue(oldEmbs[0], localize('NAME'))?.replaceAll('`', '');
 
       if (emj) {
         emjId = emj.id;
@@ -437,14 +447,14 @@ export default class Emoji extends Command {
         ),
       ];
 
-      if (emjName) emb.addFields({ inline: true, name: `📛 ${localize('GENERIC.NAME')}`, value: `\`${emjName}\`` });
+      if (emjName) emb.addFields({ inline: true, name: `📛 ${localize('NAME')}`, value: `\`${emjName}\`` });
 
       emb
         .setColor(Colors.Yellow)
         .setTitle(emjDisplay + localize('EMOJI.EDITING'))
         .addFields({
           inline: true,
-          name: `🪪 ${localize(`GENERIC.${emjCodePoint ? 'CODEPOINT' : 'ID'}`)}`,
+          name: `🪪 ${localize(`${emjCodePoint ? 'CODEPOINT' : 'ID'}`)}`,
           value: `\`${emjCodePoint ?? emjId}\``,
         })
         .setThumbnail(emjURL)
@@ -453,25 +463,25 @@ export default class Emoji extends Command {
       if (emjMention) {
         emb.addFields({
           inline: true,
-          name: `${client.useEmoji('mention')} ${localize('GENERIC.MENTION')}`,
+          name: `${client.useEmoji('mention')} ${localize('MENTION')}`,
           value: emjMention,
         });
       }
       if (!emjCodePoint) {
         emb.addFields({
           inline: true,
-          name: `📅 ${localize('GENERIC.CREATED')}`,
+          name: `📅 ${localize('CREATED')}`,
           value: toUTS(SnowflakeUtil.timestampFrom(emjId)),
         });
       }
       if (emj) {
         emb.addFields({
           inline: true,
-          name: `${client.useEmoji('user')} ${localize('GENERIC.AUTHOR')}`,
+          name: `${client.useEmoji('user')} ${localize('AUTHOR')}`,
           value: `${await emj.fetchAuthor()}`,
         });
         emb.addFields({
-          name: `${client.useEmoji('role')} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
+          name: `${client.useEmoji('role')} ${localize('ROLES.NOUN')} [${localize('COUNT', {
             count: emj.roles.cache.size,
           })}]`,
           value:
@@ -553,31 +563,31 @@ export default class Emoji extends Command {
               .addFields(
                 {
                   inline: true,
-                  name: `📛 ${localize('GENERIC.NAME')}`,
+                  name: `📛 ${localize('NAME')}`,
                   value: `\`${emj.name}\``,
                 },
                 {
                   inline: true,
-                  name: `🪪 ${localize('GENERIC.ID')}`,
+                  name: `🪪 ${localize('ID')}`,
                   value: `\`${emj.id}\``,
                 },
                 {
                   inline: true,
-                  name: `${client.useEmoji('mention')} ${localize('GENERIC.MENTION')}`,
+                  name: `${client.useEmoji('mention')} ${localize('MENTION')}`,
                   value: `\`${emj}\``,
                 },
                 {
                   inline: true,
-                  name: `📅 ${localize('GENERIC.CREATED')}`,
+                  name: `📅 ${localize('CREATED')}`,
                   value: toUTS(emj.createdTimestamp),
                 },
                 {
                   inline: true,
-                  name: `${client.useEmoji('user')} ${localize('GENERIC.AUTHOR')}`,
+                  name: `${client.useEmoji('user')} ${localize('AUTHOR')}`,
                   value: `${await emj.fetchAuthor()}`,
                 },
                 {
-                  name: `${client.useEmoji('role')} ${localize('GENERIC.ROLES.ROLES')} [0]`,
+                  name: `${client.useEmoji('role')} ${localize('ROLES.NOUN')} [0]`,
                   value: '@everyone',
                 },
               );
@@ -586,24 +596,24 @@ export default class Emoji extends Command {
             components: [
               new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.VIEW'))
+                  .setLabel(localize('VIEW'))
                   .setEmoji('🔎')
                   .setStyle(ButtonStyle.Primary)
                   .setCustomId('emoji_view'),
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.RENAME'))
+                  .setLabel(localize('RENAME'))
                   .setEmoji('✏️')
                   .setStyle(ButtonStyle.Secondary)
                   .setCustomId('emoji_rename'),
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.ROLES.EDIT'))
+                  .setLabel(localize('ROLES.EDIT'))
                   .setEmoji('📜')
                   .setStyle(ButtonStyle.Secondary)
                   .setCustomId('emoji_edit_roles'),
               ),
               new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.DELETE'))
+                  .setLabel(localize('DELETE'))
                   .setEmoji('🗑️')
                   .setStyle(ButtonStyle.Danger)
                   .setCustomId('emoji_edit_delete'),
@@ -643,7 +653,7 @@ export default class Emoji extends Command {
           if (editBtnVsby) {
             rows[0].addComponents(
               new ButtonBuilder()
-                .setLabel(localize('GENERIC.EDIT'))
+                .setLabel(localize('EDIT'))
                 .setEmoji('📝')
                 .setStyle(ButtonStyle.Primary)
                 .setCustomId('emoji_edit')
@@ -676,12 +686,12 @@ export default class Emoji extends Command {
             components: [
               new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.BACK'))
+                  .setLabel(localize('BACK'))
                   .setEmoji('↩️')
                   .setStyle(ButtonStyle.Primary)
                   .setCustomId('emoji_edit'),
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.YES'))
+                  .setLabel(localize('YES'))
                   .setEmoji('✅')
                   .setStyle(ButtonStyle.Success)
                   .setCustomId('emoji_edit_delete_confirm'),
@@ -759,12 +769,12 @@ export default class Emoji extends Command {
 
           emb.spliceFields(0, 1, {
             inline: true,
-            name: `📛 ${localize('GENERIC.NAME')}`,
+            name: `📛 ${localize('NAME')}`,
             value: `\`${emj.name}\``,
           });
           emb.spliceFields(2, 1, {
             inline: true,
-            name: `${client.useEmoji('mention')} ${localize('GENERIC.MENTION')}`,
+            name: `${client.useEmoji('mention')} ${localize('MENTION')}`,
             value: `\`${emj}\``,
           });
 
@@ -792,39 +802,39 @@ export default class Emoji extends Command {
 
             if (isRemove) {
               emj = await emj.roles.remove(roles);
-              title = localize('GENERIC.ROLES.REMOVING', {
+              title = localize('ROLES.REMOVING', {
                 count: emjRoles.size - emj.roles.cache.size,
               });
               emb.setColor(Colors.Red);
             } else {
               emj = await emj.roles.add(roles);
-              title = localize('GENERIC.ROLES.ADDING', {
+              title = localize('ROLES.ADDING', {
                 count: emj.roles.cache.size - emjRoles.size,
               });
               emb.setColor(Colors.Green);
             }
 
             emb.spliceFields(5, 1, {
-              name: `${client.useEmoji('role')} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
+              name: `${client.useEmoji('role')} ${localize('ROLES.NOUN')} [${localize('COUNT', {
                 count: emj.roles.cache.size,
               })}]`,
               value: collMap(emj.roles.cache) || '@everyone',
             });
           } else if (customId === 'emoji_reset_roles') {
             emj = await emj.roles.set([]);
-            title = localize('GENERIC.ROLES.RESET');
+            title = localize('ROLES.RESET');
             emb.setColor(Colors.Red).spliceFields(5, 1, {
-              name: `${client.useEmoji('role')} ${localize('GENERIC.ROLES.ROLES')} [0]`,
+              name: `${client.useEmoji('role')} ${localize('ROLES.NOUN')} [0]`,
               value: '@everyone',
             });
           } else if (isEdit) {
-            title = localize('GENERIC.ROLES.EDITING');
+            title = localize('ROLES.EDITING');
             emb.setColor(Colors.Orange);
           } else if (isRemove) {
-            title = localize('GENERIC.ROLES.REMOVING', { count: 0 });
+            title = localize('ROLES.REMOVING', { count: 0 });
             emb.setColor(Colors.Red);
           } else {
-            title = localize('GENERIC.ROLES.ADDING', { count: 0 });
+            title = localize('ROLES.ADDING', { count: 0 });
             emb.setColor(Colors.Green);
           }
 
@@ -832,12 +842,12 @@ export default class Emoji extends Command {
             components: [
               new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.BACK'))
+                  .setLabel(localize('BACK'))
                   .setEmoji('↩️')
                   .setStyle(ButtonStyle.Primary)
                   .setCustomId('emoji_edit'),
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.ROLES.RESET'))
+                  .setLabel(localize('ROLES.RESET'))
                   .setEmoji('🔄')
                   .setStyle(ButtonStyle.Primary)
                   .setCustomId('emoji_reset_roles')
@@ -845,13 +855,13 @@ export default class Emoji extends Command {
               ),
               new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.ROLES.ADD'))
+                  .setLabel(localize('ROLES.ADD'))
                   .setEmoji('➕')
                   .setStyle(ButtonStyle.Success)
                   .setCustomId('emoji_add_roles')
                   .setDisabled(!isEdit && !isRemove),
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.ROLES.REMOVE'))
+                  .setLabel(localize('ROLES.REMOVE'))
                   .setEmoji('➖')
                   .setStyle(ButtonStyle.Danger)
                   .setCustomId('emoji_remove_roles')
@@ -860,13 +870,7 @@ export default class Emoji extends Command {
               new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(
                 new RoleSelectMenuBuilder()
                   .setPlaceholder(
-                    localize(
-                      isEdit
-                        ? 'GENERIC.ROLES.SELECT.DEFAULT'
-                        : isRemove
-                          ? 'GENERIC.ROLES.SELECT.REMOVE'
-                          : 'GENERIC.ROLES.SELECT.ADD',
-                    ),
+                    localize(isEdit ? 'ROLES.SELECT.DEFAULT' : isRemove ? 'ROLES.SELECT.REMOVE' : 'ROLES.SELECT.ADD'),
                   )
                   .setMinValues(1)
                   .setMaxValues(25)

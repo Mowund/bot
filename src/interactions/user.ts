@@ -44,7 +44,7 @@ import {
 } from '../utils.js';
 import { EmbeddedApplication, FullApplication } from '../../lib/interfaces/Application.js';
 import { AppFlagEmoji, UserFlagEmoji } from '../../lib/App.js';
-import { SearchedMember, MemberSearch, JoinSourceType } from '../../lib/structures/MemberSearch.js';
+import { SearchedMember, JoinSourceType } from '../../lib/structures/MemberSearch.js';
 
 export default class User extends Command {
   constructor() {
@@ -52,49 +52,49 @@ export default class User extends Command {
       {
         contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
         integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
-        name: 'USER.OPTIONS.INFO.VIEW_INFO',
+        name: 'USER.INFO.VIEW_INFO',
         type: ApplicationCommandType.User,
       },
       {
         contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
-        description: 'USER.DESCRIPTION',
+        description: 'DESC.USER',
         integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
-        name: 'USER.NAME',
+        name: 'CMD.USER',
         options: [
           {
-            description: 'USER.OPTIONS.INFO.DESCRIPTION',
-            name: 'USER.OPTIONS.INFO.NAME',
+            description: 'DESC.USER_INFO',
+            name: 'CMD.INFO',
             options: [
               {
-                description: 'USER.OPTIONS.INFO.OPTIONS.USER.DESCRIPTION',
-                name: 'USER.OPTIONS.INFO.OPTIONS.USER.NAME',
+                description: 'USER.INFO.DESC.USER',
+                name: 'CMD.USER',
                 type: ApplicationCommandOptionType.User,
               },
             ],
             type: ApplicationCommandOptionType.Subcommand,
           },
           {
-            description: 'USER.OPTIONS.SETTINGS.DESCRIPTION',
-            name: 'USER.OPTIONS.SETTINGS.NAME',
+            description: 'DESC.USER_SETTINGS',
+            name: 'CMD.SETTINGS',
             type: ApplicationCommandOptionType.Subcommand,
           },
         ],
       },
       {
         contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
-        description: 'APP.DESCRIPTION',
+        description: 'DESC.APP',
         integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
-        name: 'APP.NAME',
+        name: 'CMD.APP',
         options: [
           {
-            description: 'APP.OPTIONS.INFO.DESCRIPTION',
-            name: 'APP.OPTIONS.INFO.NAME',
+            description: 'DESC.APP_INFO',
+            name: 'CMD.INFO',
             options: [
               {
-                description: 'APP.OPTIONS.INFO.OPTIONS.APP.DESCRIPTION',
+                description: 'APP.INFO.DESC.APP',
                 max_length: 23,
                 min_length: 17,
-                name: 'APP.OPTIONS.INFO.OPTIONS.APP.NAME',
+                name: 'CMD.APP',
                 required: true,
                 type: ApplicationCommandOptionType.String,
               },
@@ -102,14 +102,14 @@ export default class User extends Command {
             type: ApplicationCommandOptionType.Subcommand,
           },
           {
-            description: 'APP.OPTIONS.PERMISSIONS.DESCRIPTION',
-            name: 'APP.OPTIONS.PERMISSIONS.NAME',
+            description: 'DESC.APP_PERMISSIONS',
+            name: 'CMD.PERMISSIONS',
             options: [
               {
-                description: 'APP.OPTIONS.INFO.OPTIONS.APP.DESCRIPTION',
+                description: 'APP.INFO.DESC.APP',
                 max_length: 23,
                 min_length: 17,
-                name: 'APP.OPTIONS.INFO.OPTIONS.APP.NAME',
+                name: 'CMD.APP',
                 required: true,
                 type: ApplicationCommandOptionType.String,
               },
@@ -130,12 +130,12 @@ export default class User extends Command {
     const settingsComponents = () => [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setLabel(localize('USER.OPTIONS.SETTINGS.EPHEMERAL.EDIT'))
+            .setLabel(localize('USER.SETTINGS.EPHEMERAL.EDIT'))
             .setEmoji('📝')
             .setStyle(ButtonStyle.Primary)
             .setCustomId('user_settings_ephemeral'),
           new ButtonBuilder()
-            .setLabel(localize('USER.OPTIONS.SETTINGS.LOCALE.EDIT'))
+            .setLabel(localize('USER.SETTINGS.LOCALE.EDIT'))
             .setEmoji('📝')
             .setStyle(ButtonStyle.Primary)
             .setCustomId('user_settings_locale'),
@@ -144,30 +144,30 @@ export default class User extends Command {
       settingsFields = (data: UserData) => [
         {
           inline: true,
-          name: `${localize('GENERIC.LOCALE.EMOJI')} ${localize('USER.OPTIONS.SETTINGS.LOCALE.NAME')}`,
-          value: localize('GENERIC.LOCALE.NAME'),
+          name: `${localize('LOCALE.EMOJI')} ${localize('USER.SETTINGS.LOCALE.NAME')}`,
+          value: localize('LOCALE.NAME'),
         },
         data?.ephemeralResponses
           ? {
               inline: true,
-              name: `${client.useEmoji('check')} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.RESPONSES.NAME')}`,
-              value: localize('USER.OPTIONS.SETTINGS.EPHEMERAL.RESPONSES.ENABLED'),
+              name: `${client.useEmoji('check')} ${localize('USER.SETTINGS.EPHEMERAL.RESPONSES.NAME')}`,
+              value: localize('USER.SETTINGS.EPHEMERAL.RESPONSES.ENABLED'),
             }
           : {
               inline: true,
-              name: `${client.useEmoji('no')} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.RESPONSES.NAME')}`,
-              value: localize('USER.OPTIONS.SETTINGS.EPHEMERAL.RESPONSES.DISABLED'),
+              name: `${client.useEmoji('no')} ${localize('USER.SETTINGS.EPHEMERAL.RESPONSES.NAME')}`,
+              value: localize('USER.SETTINGS.EPHEMERAL.RESPONSES.DISABLED'),
             },
         data?.ignoreEphemeralRoles
           ? {
               inline: true,
-              name: `${client.useEmoji('check')} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME')}`,
-              value: localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.ENABLED'),
+              name: `${client.useEmoji('check')} ${localize('USER.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME')}`,
+              value: localize('USER.SETTINGS.EPHEMERAL.IGNORE_ROLES.ENABLED'),
             }
           : {
               inline: true,
-              name: `${client.useEmoji('no')} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME')}`,
-              value: localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.DISABLED'),
+              name: `${client.useEmoji('no')} ${localize('USER.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME')}`,
+              value: localize('USER.SETTINGS.EPHEMERAL.IGNORE_ROLES.DISABLED'),
             },
       ],
       appInfoOpts = (app: FullApplication, embeddedApp: EmbeddedApplication, u: DiscordUser, sM: string | null) => {
@@ -176,58 +176,58 @@ export default class User extends Command {
           emb = embed({
             addParams: sM ? { member: sM } : {},
             color: Colors.Blurple,
-            title: `${client.useEmoji('info')} ${localize('APP.OPTIONS.INFO.TITLE')}`,
+            title: `${client.useEmoji('info')} ${localize('APP.INFO.TITLE')}`,
           })
             .setAuthor({ iconURL, name: app.name })
             .setThumbnail(iconURL)
             .addFields(
-              { inline: true, name: `🪪 ${localize('GENERIC.ID')}`, value: `\`${app.id}\`` },
+              { inline: true, name: `🪪 ${localize('ID')}`, value: `\`${app.id}\`` },
               {
                 inline: true,
-                name: `📅 ${localize('GENERIC.CREATED')}`,
+                name: `📅 ${localize('CREATED')}`,
                 value: toUTS(SnowflakeUtil.timestampFrom(app.id)),
               },
               {
                 inline: true,
-                name: `🏷️ ${localize('GENERIC.TAGS')}`,
-                value: app.tags?.map((t: string) => `\`${t}\``).join(', ') || localize('GENERIC.NONE'),
+                name: `🏷️ ${localize('TAGS')}`,
+                value: app.tags?.map((t: string) => `\`${t}\``).join(', ') || localize('NONE'),
               },
               {
                 inline: true,
-                name: `${client.useEmoji('bot')} ${localize('GENERIC.BOT')}`,
-                value: `${app.bot_public ? client.useEmoji('check') : client.useEmoji('no')} ${localize('GENERIC.PUBLIC_BOT')}\n${
+                name: `${client.useEmoji('bot')} ${localize('BOT.NOUN')}`,
+                value: `${app.bot_public ? client.useEmoji('check') : client.useEmoji('no')} ${localize('PUBLIC_BOT')}\n${
                   app.bot_require_code_grant ? client.useEmoji('check') : client.useEmoji('no')
-                } ${localize('GENERIC.REQUIRES_CODE_GRANT')}\n${
+                } ${localize('REQUIRES_CODE_GRANT')}\n${
                   flags.has(ApplicationFlags.GatewayMessageContent)
                     ? client.useEmoji('check')
                     : flags.has(ApplicationFlags.GatewayMessageContentLimited)
                       ? client.useEmoji('maybe')
                       : client.useEmoji('no')
-                } ${localize('GENERIC.INTENT.MESSAGE_CONTENT')}\n${
+                } ${localize('INTENT.MESSAGE_CONTENT')}\n${
                   flags.has(ApplicationFlags.GatewayGuildMembers)
                     ? client.useEmoji('check')
                     : flags.has(ApplicationFlags.GatewayGuildMembersLimited)
                       ? client.useEmoji('maybe')
                       : client.useEmoji('no')
-                } ${localize('GENERIC.INTENT.SERVER_MEMBERS')}\n${
+                } ${localize('INTENT.SERVER_MEMBERS')}\n${
                   flags.has(ApplicationFlags.GatewayPresence)
                     ? client.useEmoji('check')
                     : flags.has(ApplicationFlags.GatewayPresenceLimited)
                       ? client.useEmoji('maybe')
                       : client.useEmoji('no')
-                } ${localize('GENERIC.INTENT.PRESENCE')}`,
+                } ${localize('INTENT.PRESENCE')}`,
               },
             ),
           rows = [
             new ActionRowBuilder<ButtonBuilder>().addComponents(
               new ButtonBuilder()
-                .setLabel(localize('GENERIC.PERMISSIONS'))
+                .setLabel(localize('PERMISSIONS'))
                 .setEmoji('🔒')
                 .setStyle(ButtonStyle.Secondary)
                 .setCustomId('user_app_permissions')
                 .setDisabled(!app.install_params),
               new ButtonBuilder()
-                .setLabel(localize('GENERIC.ADD_TO_SERVER'))
+                .setLabel(localize('ADD_TO_SERVER'))
                 .setEmoji(client.useEmoji('invite'))
                 .setStyle(ButtonStyle.Link)
                 .setURL(
@@ -238,11 +238,7 @@ export default class User extends Command {
                     }),
                 )
                 .setDisabled(!app.bot_public),
-              new ButtonBuilder()
-                .setLabel(localize('GENERIC.ICON'))
-                .setEmoji('🖼️')
-                .setStyle(ButtonStyle.Link)
-                .setURL(iconURL),
+              new ButtonBuilder().setLabel(localize('ICON')).setEmoji('🖼️').setStyle(ButtonStyle.Link).setURL(iconURL),
             ),
           ],
           emojiFlags = flags
@@ -289,7 +285,7 @@ export default class User extends Command {
         if (app.privacy_policy_url) {
           rows[1].addComponents(
             new ButtonBuilder()
-              .setLabel(localize('GENERIC.PRIVACY_POLICY'))
+              .setLabel(localize('PRIVACY_POLICY'))
               .setEmoji(client.useEmoji('privacySettings'))
               .setStyle(ButtonStyle.Link)
               .setURL(app.privacy_policy_url),
@@ -298,7 +294,7 @@ export default class User extends Command {
         if (app.terms_of_service_url) {
           rows[1].addComponents(
             new ButtonBuilder()
-              .setLabel(localize('GENERIC.TERMS_OF_SERVICE'))
+              .setLabel(localize('TERMS_OF_SERVICE'))
               .setEmoji('📜')
               .setStyle(ButtonStyle.Link)
               .setURL(app.terms_of_service_url),
@@ -325,7 +321,7 @@ export default class User extends Command {
         const emb = embed({
             addParams: sM ? { member: sM } : {},
             color: u.accentColor || Colors.Blurple,
-            title: `${client.useEmoji('info')} ${localize('USER.OPTIONS.INFO.USER.TITLE')}`,
+            title: `${client.useEmoji('info')} ${localize('USER.INFO.USER.TITLE')}`,
           })
             .setAuthor({
               iconURL: u.displayAvatarURL(imageOptions),
@@ -335,12 +331,12 @@ export default class User extends Command {
             .setThumbnail(u.displayAvatarURL(imageOptions))
             .setDescription(`${u} ${flags.join(' ')}`)
             .addFields(
-              { inline: true, name: `🪪 ${localize('GENERIC.ID')}`, value: `\`${u.id}\`` },
-              { inline: true, name: `📅 ${localize('GENERIC.CREATED')}`, value: toUTS(u.createdTimestamp) },
+              { inline: true, name: `🪪 ${localize('ID')}`, value: `\`${u.id}\`` },
+              { inline: true, name: `📅 ${localize('CREATED')}`, value: toUTS(u.createdTimestamp) },
             ),
           row = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
-              .setLabel(localize('GENERIC.AVATAR'))
+              .setLabel(localize('AVATAR'))
               .setEmoji('🖼️')
               .setStyle(ButtonStyle.Link)
               .setURL(u.displayAvatarURL(imageOptions)),
@@ -348,13 +344,9 @@ export default class User extends Command {
 
         if (u.banner) {
           const banner = u.bannerURL(imageOptions);
-          emb.addFields({ name: `🖼️ ${localize('GENERIC.BANNER')}`, value: '\u200B' }).setImage(banner);
+          emb.addFields({ name: `🖼️ ${localize('BANNER')}`, value: '\u200B' }).setImage(banner);
           row.addComponents(
-            new ButtonBuilder()
-              .setLabel(localize('GENERIC.BANNER'))
-              .setEmoji('🖼️')
-              .setStyle(ButtonStyle.Link)
-              .setURL(banner),
+            new ButtonBuilder().setLabel(localize('BANNER')).setEmoji('🖼️').setStyle(ButtonStyle.Link).setURL(banner),
           );
         }
 
@@ -413,7 +405,7 @@ export default class User extends Command {
         const emb = embed({
             addParams: sM ? { member: sM } : {},
             color: m.displayColor || u.accentColor || Colors.Blurple,
-            title: `${client.useEmoji('info')} ${localize('USER.OPTIONS.INFO.MEMBER.TITLE')}`,
+            title: `${client.useEmoji('info')} ${localize('USER.INFO.MEMBER.TITLE')}`,
           })
             .setAuthor({
               iconURL: avatar,
@@ -423,35 +415,31 @@ export default class User extends Command {
             .setThumbnail(avatar)
             .setDescription(`${u} ${flags.join(' ')}`)
             .addFields(
-              { inline: true, name: `🪪 ${localize('GENERIC.ID')}`, value: `\`${u.id}\`` },
+              { inline: true, name: `🪪 ${localize('ID')}`, value: `\`${u.id}\`` },
               {
                 inline: true,
-                name: `📅 ${localize('GENERIC.CREATED')}`,
+                name: `📅 ${localize('CREATED')}`,
                 value: toUTS(u.createdTimestamp),
               },
               {
                 inline: true,
                 name: m.pending
                   ? rejoined
-                    ? `${client.useEmoji('pendingRejoin')} ${localize('USER.OPTIONS.INFO.MEMBER.REJOINED_PENDING')}`
-                    : `${client.useEmoji('pendingJoin')} ${localize('USER.OPTIONS.INFO.MEMBER.JOINED_PENDING')}`
+                    ? `${client.useEmoji('pendingRejoin')} ${localize('USER.INFO.MEMBER.REJOINED_PENDING')}`
+                    : `${client.useEmoji('pendingJoin')} ${localize('USER.INFO.MEMBER.JOINED_PENDING')}`
                   : rejoined
-                    ? `${client.useEmoji('rejoin')} ${localize('USER.OPTIONS.INFO.MEMBER.REJOINED')}`
-                    : `${client.useEmoji('join')} ${localize('USER.OPTIONS.INFO.MEMBER.JOINED')}`,
+                    ? `${client.useEmoji('rejoin')} ${localize('USER.INFO.MEMBER.REJOINED')}`
+                    : `${client.useEmoji('join')} ${localize('USER.INFO.MEMBER.JOINED')}`,
                 value: toUTS(m.joinedTimestamp ?? Date.parse((m as any as APIInteractionGuildMember).joined_at)),
               },
             ),
           row = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
-              .setLabel(localize('GENERIC.PERMISSIONS'))
+              .setLabel(localize('PERMISSIONS'))
               .setEmoji('🔒')
               .setStyle(ButtonStyle.Secondary)
               .setCustomId('user_member_permissions'),
-            new ButtonBuilder()
-              .setLabel(localize('GENERIC.AVATAR'))
-              .setEmoji('🖼️')
-              .setStyle(ButtonStyle.Link)
-              .setURL(avatar),
+            new ButtonBuilder().setLabel(localize('AVATAR')).setEmoji('🖼️').setStyle(ButtonStyle.Link).setURL(avatar),
           ),
           mRoles = m.roles.cache?.filter(({ id }) => id !== guildId);
 
@@ -463,7 +451,7 @@ export default class User extends Command {
         if (timeoutTimestamp > Date.now()) {
           emb.addFields({
             inline: true,
-            name: `${client.useEmoji('timeout')} ${localize('GENERIC.TIMEOUT_ENDS')}`,
+            name: `${client.useEmoji('timeout')} ${localize('TIMEOUT_ENDS')}`,
             value: toUTS(timeoutTimestamp),
           });
         }
@@ -492,22 +480,21 @@ export default class User extends Command {
           let value = `${methodEmj}${
             s.source_invite_code
               ? `[\`${s.source_invite_code}\`](https://discord.gg/${s.source_invite_code})`
-              : `\`${localize(`USER.OPTIONS.INFO.MEMBER.JOIN_METHOD.${s.join_source_type}`)}\``
+              : `\`${localize(`USER.INFO.MEMBER.JOIN_METHOD.${s.join_source_type}`)}\``
           }`;
 
-          if (s.inviter_id)
-            value += `\n${client.useEmoji('invite')} **${localize('GENERIC.INVITED_BY')}:** <@${s.inviter_id}>`;
+          if (s.inviter_id) value += `\n${client.useEmoji('invite')} **${localize('INVITED_BY')}:** <@${s.inviter_id}>`;
 
           emb.addFields({
             inline: true,
-            name: `${client.useEmoji('joinMethod')} ${localize('GENERIC.JOIN_METHOD')}`,
+            name: `${client.useEmoji('joinMethod')} ${localize('JOIN_METHOD')}`,
             value,
           });
         }
 
         if (mRoles?.size ?? (m as any as APIInteractionGuildMember).roles.length) {
           emb.addFields({
-            name: `${client.useEmoji('role')} ${localize('GENERIC.ROLES.ROLES')} [${localize('GENERIC.COUNT', {
+            name: `${client.useEmoji('role')} ${localize('ROLES.NOUN')} [${localize('COUNT', {
               count: mRoles?.size ?? (m as any as APIInteractionGuildMember).roles.length,
             })}]`,
             value: mRoles
@@ -517,13 +504,9 @@ export default class User extends Command {
         }
 
         if (banner) {
-          emb.addFields({ name: `🖼️ ${localize('GENERIC.BANNER')}`, value: '\u200B' }).setImage(banner);
+          emb.addFields({ name: `🖼️ ${localize('BANNER')}`, value: '\u200B' }).setImage(banner);
           row.addComponents(
-            new ButtonBuilder()
-              .setLabel(localize('GENERIC.BANNER'))
-              .setEmoji('🖼️')
-              .setStyle(ButtonStyle.Link)
-              .setURL(banner),
+            new ButtonBuilder().setLabel(localize('BANNER')).setEmoji('🖼️').setStyle(ButtonStyle.Link).setURL(banner),
           );
         }
 
@@ -539,7 +522,7 @@ export default class User extends Command {
           overwrittenPerms = channel?.permissionsFor?.(client.user) ?? null,
           embs = [
             embed({
-              title: `🔒 ${localize('APP.OPTIONS.PERMISSIONS.TITLE')}`,
+              title: `🔒 ${localize('APP.PERMISSIONS.TITLE')}`,
             }).setAuthor({ iconURL, name: app.name }),
           ],
           rows =
@@ -547,7 +530,7 @@ export default class User extends Command {
               ? [
                   new ActionRowBuilder<ButtonBuilder>().addComponents(
                     new ButtonBuilder()
-                      .setLabel(localize('GENERIC.FIX_PERMISSIONS'))
+                      .setLabel(localize('FIX_PERMISSIONS'))
                       .setEmoji('⚒️')
                       .setStyle(ButtonStyle.Link)
                       .setURL(
@@ -599,12 +582,12 @@ export default class User extends Command {
           descriptions.forEach((d, i) => embs[i].setDescription(d));
 
           embs.at(-1).addFields({
-            name: `📍 ${localize('GENERIC.LEGEND')}`,
-            value: `${client.useEmoji('check')} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.CHECK')}\n${client.useEmoji(
+            name: `📍 ${localize('LEGEND')}`,
+            value: `${client.useEmoji('check')} ${localize('APP.PERMISSIONS.LEGEND.CHECK')}\n${client.useEmoji(
               'maybe',
-            )} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.MAYBE')}\n${client.useEmoji('no')} ${localize(
-              'APP.OPTIONS.PERMISSIONS.LEGEND.NO',
-            )}\n${client.useEmoji('neutral')} ${localize('APP.OPTIONS.PERMISSIONS.LEGEND.NEUTRAL')}`,
+            )} ${localize('APP.PERMISSIONS.LEGEND.MAYBE')}\n${client.useEmoji('no')} ${localize(
+              'APP.PERMISSIONS.LEGEND.NO',
+            )}\n${client.useEmoji('neutral')} ${localize('APP.PERMISSIONS.LEGEND.NEUTRAL')}`,
           });
         }
 
@@ -617,7 +600,7 @@ export default class User extends Command {
         if (u.bot) {
           row.addComponents(
             new ButtonBuilder()
-              .setLabel(localize('GENERIC.APP'))
+              .setLabel(localize('APP.NOUN'))
               .setEmoji(client.useEmoji('bot'))
               .setStyle(noApp ? ButtonStyle.Danger : ButtonStyle.Primary)
               .setCustomId('user_app_info')
@@ -627,7 +610,7 @@ export default class User extends Command {
         if (m || noMember) {
           row.addComponents(
             new ButtonBuilder()
-              .setLabel(localize('GENERIC.MEMBER'))
+              .setLabel(localize('MEMBER'))
               .setEmoji(client.useEmoji('members'))
               .setStyle(noMember || (m && !m.user) ? ButtonStyle.Danger : ButtonStyle.Primary)
               .setCustomId('user_member_info')
@@ -637,7 +620,7 @@ export default class User extends Command {
         if (m || noMember || u.bot) {
           row.addComponents(
             new ButtonBuilder()
-              .setLabel(localize('GENERIC.USER'))
+              .setLabel(localize('USER.NOUN'))
               .setEmoji(client.useEmoji('user'))
               .setStyle(ButtonStyle.Primary)
               .setCustomId('user_info')
@@ -753,7 +736,7 @@ export default class User extends Command {
               ? [
                   new ActionRowBuilder<ButtonBuilder>().addComponents(
                     new ButtonBuilder()
-                      .setLabel(localize('GENERIC.SUPPRESS_WARNING'))
+                      .setLabel(localize('SUPPRESS_WARNING'))
                       .setEmoji('🔇')
                       .setStyle(ButtonStyle.Secondary)
                       .setCustomId('suppress-warning'),
@@ -795,7 +778,7 @@ export default class User extends Command {
           return interaction.reply({
             components: settingsComponents(),
             embeds: [
-              embed({ title: `${client.useEmoji('cog')} ${localize('USER.OPTIONS.SETTINGS.TITLE')}` }).addFields(
+              embed({ title: `${client.useEmoji('cog')} ${localize('USER.SETTINGS.TITLE')}` }).addFields(
                 settingsFields(userData),
               ),
             ],
@@ -828,10 +811,9 @@ export default class User extends Command {
           const isPermsCmd = customId === 'user_app_permissions',
             isApp = customId.startsWith('user_app'),
             isMember = customId === 'user_member_info',
-            userO = await client.users.fetch(
-              getFieldValue(message.embeds[0], localize('GENERIC.ID'))?.replaceAll('`', ''),
-              { force: true },
-            ),
+            userO = await client.users.fetch(getFieldValue(message.embeds[0], localize('ID'))?.replaceAll('`', ''), {
+              force: true,
+            }),
             sM = new URLSearchParams(message.embeds.at(-1)?.footer?.iconURL).get('member'),
             memberO =
               userO.id === user.id ? member : guild?.members.cache.get(userO.id) || (sM ? decompressJSON(sM) : null),
@@ -890,7 +872,7 @@ export default class User extends Command {
         }
         case 'user_member_permissions': {
           const userO = await client.users.fetch(
-              getFieldValue(message.embeds[0], localize('GENERIC.ID'))?.replaceAll('`', ''),
+              getFieldValue(message.embeds[0], localize('ID'))?.replaceAll('`', ''),
               { force: true },
             ),
             sM = new URLSearchParams(message.embeds.at(-1)?.footer?.iconURL).get('member'),
@@ -931,7 +913,7 @@ export default class User extends Command {
               : userO.displayAvatarURL(imageOptions),
             emb = embed({
               color: memberO?.displayColor || userO.accentColor || Colors.Blurple,
-              title: `🔒 ${localize('GENERIC.PERMISSIONS')}`,
+              title: `🔒 ${localize('PERMISSIONS')}`,
             })
               .setAuthor({
                 iconURL: avatar,
@@ -947,24 +929,24 @@ export default class User extends Command {
                   .filter(p => p !== 'ManageEmojisAndStickers')
                   .map(p => `\`${localize(`PERM.${toUpperSnakeCase(p)}`)}\``)
                   .sort((a, b) => a.localeCompare(b))
-                  .join(', ') || `**${localize('GENERIC.NONE')}**`,
+                  .join(', ') || `**${localize('NONE')}**`,
               );
 
           if (memberO?.guild) {
             emb.addFields(
               {
                 inline: true,
-                name: `${client.useEmoji('highestRole')} ${localize('GENERIC.HIGHEST_ROLE')}`,
+                name: `${client.useEmoji('highestRole')} ${localize('HIGHEST_ROLE')}`,
                 value: memberO.roles.highest?.toString() || '@everyone',
               },
               {
                 inline: true,
-                name: `${client.useEmoji('hoistRole')} ${localize('GENERIC.HOIST_ROLE')}`,
+                name: `${client.useEmoji('hoistRole')} ${localize('HOIST_ROLE')}`,
                 value: memberO.roles.hoist?.toString() || '@everyone',
               },
               {
                 inline: true,
-                name: `${client.useEmoji('colorRole')} ${localize('GENERIC.COLOR_ROLE')}`,
+                name: `${client.useEmoji('colorRole')} ${localize('COLOR_ROLE')}`,
                 value: memberO.roles.color?.toString() || '@everyone',
               },
             );
@@ -979,7 +961,7 @@ export default class User extends Command {
           return interaction.update({
             components: settingsComponents(),
             embeds: [
-              embed({ title: `${client.useEmoji('cog')} ${localize('USER.OPTIONS.SETTINGS.TITLE')}` }).addFields(
+              embed({ title: `${client.useEmoji('cog')} ${localize('USER.SETTINGS.TITLE')}` }).addFields(
                 settingsFields(userData),
               ),
             ],
@@ -1000,30 +982,30 @@ export default class User extends Command {
             components: [
               new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.BACK'))
+                  .setLabel(localize('BACK'))
                   .setEmoji('↩️')
                   .setStyle(ButtonStyle.Primary)
                   .setCustomId('user_settings'),
                 userData?.ephemeralResponses
                   ? new ButtonBuilder()
-                      .setLabel(localize('GENERIC.EPHEMERAL'))
+                      .setLabel(localize('EPHEMERAL'))
                       .setEmoji('👁️')
                       .setStyle(ButtonStyle.Success)
                       .setCustomId('user_settings_ephemeral_toggle')
                   : new ButtonBuilder()
-                      .setLabel(localize('GENERIC.NOT_EPHEMERAL'))
+                      .setLabel(localize('NOT_EPHEMERAL'))
                       .setEmoji('👁️')
                       .setStyle(ButtonStyle.Secondary)
                       .setCustomId('user_settings_ephemeral_toggle'),
                 userData?.ignoreEphemeralRoles
                   ? new ButtonBuilder()
-                      .setLabel(localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME'))
+                      .setLabel(localize('USER.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME'))
                       .setEmoji(client.useEmoji('role'))
                       .setStyle(ButtonStyle.Success)
                       .setCustomId('user_settings_ephemeral_role_override')
                       .setDisabled(userData?.ephemeralResponses)
                   : new ButtonBuilder()
-                      .setLabel(localize('USER.OPTIONS.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME'))
+                      .setLabel(localize('USER.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME'))
                       .setEmoji(client.useEmoji('role'))
                       .setStyle(ButtonStyle.Secondary)
                       .setDisabled(userData?.ephemeralResponses)
@@ -1036,12 +1018,12 @@ export default class User extends Command {
                   ? {
                       color: Colors.Yellow,
                       localizer: localize,
-                      title: `${client.useEmoji('cog')} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.EDITING')}`,
+                      title: `${client.useEmoji('cog')} ${localize('USER.SETTINGS.EPHEMERAL.EDITING')}`,
                     }
                   : {
                       color: Colors.Green,
                       localizer: localize,
-                      title: `${client.useEmoji('cog')} ${localize('USER.OPTIONS.SETTINGS.EPHEMERAL.EDITED')}`,
+                      title: `${client.useEmoji('cog')} ${localize('USER.SETTINGS.EPHEMERAL.EDITED')}`,
                     },
               ).addFields(settingsFields(userData)),
             ],
@@ -1068,16 +1050,16 @@ export default class User extends Command {
         // eslint-disable-next-line no-fallthrough
         case 'user_settings_locale': {
           const selectMenu = new StringSelectMenuBuilder()
-            .setPlaceholder(localize('USER.OPTIONS.SETTINGS.LOCALE.SELECT_PLACEHOLDER'))
+            .setPlaceholder(localize('USER.SETTINGS.LOCALE.SELECT_PLACEHOLDER'))
             .setCustomId('user_settings_locale_submit');
 
           selectMenu.addOptions(
             supportedLocales
               .map((r: string) => ({
                 default: r === userData.locale,
-                description: (r === defaultLocale ? `(${localize('GENERIC.DEFAULT')}) ` : '') + r,
-                emoji: client.localize({ locale: r, phrase: 'GENERIC.LOCALE.EMOJI' }),
-                label: client.localize({ locale: r, phrase: 'GENERIC.LOCALE.NAME' }),
+                description: (r === defaultLocale ? `(${localize('DEFAULT')}) ` : '') + r,
+                emoji: client.localize({ locale: r, phrase: 'LOCALE.EMOJI' }),
+                label: client.localize({ locale: r, phrase: 'LOCALE.NAME' }),
                 value: r,
               }))
               .sort((a, b) => a.label.normalize().localeCompare(b.label.normalize())),
@@ -1087,12 +1069,12 @@ export default class User extends Command {
             components: [
               new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
-                  .setLabel(localize('GENERIC.BACK'))
+                  .setLabel(localize('BACK'))
                   .setEmoji('↩️')
                   .setStyle(ButtonStyle.Primary)
                   .setCustomId('user_settings'),
                 new ButtonBuilder()
-                  .setLabel(userData.autoLocale ? localize('GENERIC.AUTOMATIC') : localize('GENERIC.NOT_AUTOMATIC'))
+                  .setLabel(userData.autoLocale ? localize('AUTOMATIC') : localize('NOT_AUTOMATIC'))
                   .setEmoji(client.useEmoji('bot'))
                   .setStyle(userData.autoLocale ? ButtonStyle.Success : ButtonStyle.Secondary)
                   .setCustomId('user_settings_locale_auto'),
@@ -1105,12 +1087,12 @@ export default class User extends Command {
                   ? {
                       color: Colors.Green,
                       localizer: localize,
-                      title: `${client.useEmoji('cog')} ${localize('USER.OPTIONS.SETTINGS.LOCALE.EDITED')}`,
+                      title: `${client.useEmoji('cog')} ${localize('USER.SETTINGS.LOCALE.EDITED')}`,
                     }
                   : {
                       color: Colors.Yellow,
                       localizer: localize,
-                      title: `${client.useEmoji('cog')} ${localize('USER.OPTIONS.SETTINGS.LOCALE.EDITING')}`,
+                      title: `${client.useEmoji('cog')} ${localize('USER.SETTINGS.LOCALE.EDITING')}`,
                     },
               ).addFields(settingsFields(userData)),
             ],
