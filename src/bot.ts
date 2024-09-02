@@ -75,203 +75,194 @@ client.on('ready', async () => {
     let delCmds = new Collection<Snowflake, ApplicationCommand>(appCmds);
     client.globalCommandCount = client.countCommands(appCmds);
 
-    {
-      // Fetch emojis
-      const emojisData = await client.application.emojis.fetch();
-      client.log(client.chalk.yellow('Fetched emojis'));
-
-      if (client.isMainShard) {
-        // Update emojis
-        const emjFilePath = new URL('../../src/emojis.json', import.meta.url),
-          emjColl = new Collection(
-            Object.entries(
-              JSON.parse(readFileSync(emjFilePath, 'utf8')) as Record<
-                string,
-                `<:${string}:${string}>` | `<a:${string}:${string}>`
-              >,
-            ),
-          ).mapValues(x => parseEmoji(x) as ApplicationEmoji | PartialEmoji),
-          mergedColl = emjColl
-            .merge(
-              client.application.emojis.cache,
-              x => ({ keep: true, value: x }),
-              y => ({ keep: true, value: y }),
-              x => ({ keep: true, value: x }),
-            )
-            .sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
-
-        if (
-          mergedColl.some(
-            x => !emjColl.has(x.name) || x.id !== client.application.emojis.cache.find(e => e.name === x.name)?.id,
+    if (client.isMainShard) {
+      // Update emojis
+      const emjFilePath = new URL('../../src/emojis.json', import.meta.url),
+        emjColl = new Collection(
+          Object.entries(
+            JSON.parse(readFileSync(emjFilePath, 'utf8')) as Record<
+              string,
+              `<:${string}:${string}>` | `<a:${string}:${string}>`
+            >,
+          ),
+        ).mapValues(x => parseEmoji(x) as ApplicationEmoji | PartialEmoji),
+        mergedColl = emjColl
+          .merge(
+            client.application.emojis.cache,
+            x => ({ keep: true, value: x }),
+            y => ({ keep: true, value: y }),
+            x => ({ keep: true, value: x }),
           )
-        ) {
-          client.log(client.chalk.yellow('Updating emojis...'));
+          .sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
 
-          const updatedEntries = await mergedColl.reduce(
-            async (accPromise: Promise<[string, `<:${string}:${string}>` | `<a:${string}:${string}>`][]>, emj) => {
-              const acc = await accPromise,
-                { id, name } = emj,
-                emjFormatted = formatEmoji(emj),
-                emjJSON = emjColl.get(name),
-                emjJSONTimestamp = emjJSON?.id ? SnowflakeUtil.timestampFrom(emjJSON.id) : 0,
-                emjApp =
-                  client.application.emojis.cache.find(e => e.name === name) || client.application.emojis.cache.get(id),
-                emjAppTimestamp = emjApp?.id ? SnowflakeUtil.timestampFrom(emjApp.id) : 0,
-                emojiUrl = `https://cdn.discordapp.com/emojis/${emj.id}.${emj.animated ? 'gif' : 'png'}?size=${imageOptions.size}`;
+      if (
+        mergedColl.some(
+          x => !emjColl.has(x.name) || x.id !== client.application.emojis.cache.find(e => e.name === x.name)?.id,
+        )
+      ) {
+        client.log(client.chalk.yellow('Updating emojis...'));
 
-              if (emjAppTimestamp > emjJSONTimestamp) {
-                if (emjJSON) {
-                  const emjAppFormatted = formatEmoji(emjApp);
-                  acc.push([name, emjAppFormatted]);
-                  if (isDev)
-                    client.log(client.chalk.green(`Updated ${client.chalk.gray(emjAppFormatted)} emoji from JSON`));
-                } else if (!acc.find(([n]) => n === name)) {
-                  acc.push([name, emjFormatted]);
-                  if (isDev) {
-                    client.log(client.chalk.green(`Added ${client.chalk.gray(emjFormatted)} emoji to JSON`));
-                  } else {
-                    await client.application.emojis.delete(emjApp.id);
-                    client.application.emojis.delete(name);
-                    client.log(client.chalk.red(`Deleted ${client.chalk.gray(formatEmoji(emjApp))} emoji from app`));
-                  }
-                }
-              } else if (emjAppTimestamp === emjJSONTimestamp) {
-                if (name !== emjApp.name) {
-                  const emjAppFormatted = formatEmoji(emjApp);
-                  client.log(
-                    client.chalk.blue(
-                      `Renamed ${client.chalk.gray(emjFormatted)} to ${client.chalk.gray(emjAppFormatted)} from JSON`,
-                    ),
-                  );
-                  acc.push([emjApp.name, emjAppFormatted]);
+        const updatedEntries = await mergedColl.reduce(
+          async (accPromise: Promise<[string, `<:${string}:${string}>` | `<a:${string}:${string}>`][]>, emj) => {
+            const acc = await accPromise,
+              { id, name } = emj,
+              emjFormatted = formatEmoji(emj),
+              emjJSON = emjColl.get(name),
+              emjJSONTimestamp = emjJSON?.id ? SnowflakeUtil.timestampFrom(emjJSON.id) : 0,
+              emjApp =
+                client.application.emojis.cache.find(e => e.name === name) || client.application.emojis.cache.get(id),
+              emjAppTimestamp = emjApp?.id ? SnowflakeUtil.timestampFrom(emjApp.id) : 0,
+              emojiUrl = `https://cdn.discordapp.com/emojis/${emj.id}.${emj.animated ? 'gif' : 'png'}?size=${imageOptions.size}`;
+
+            if (emjAppTimestamp > emjJSONTimestamp) {
+              if (emjJSON) {
+                const emjAppFormatted = formatEmoji(emjApp);
+                acc.push([name, emjAppFormatted]);
+                if (isDev)
+                  client.log(client.chalk.green(`Updated ${client.chalk.gray(emjAppFormatted)} emoji from JSON`));
+              } else if (!acc.find(([n]) => n === name)) {
+                acc.push([name, emjFormatted]);
+                if (isDev) {
+                  client.log(client.chalk.green(`Added ${client.chalk.gray(emjFormatted)} emoji to JSON`));
                 } else {
-                  acc.push([name, emjFormatted]);
+                  await client.application.emojis.delete(emjApp.id);
+                  client.application.emojis.delete(name);
+                  client.log(client.chalk.red(`Deleted ${client.chalk.gray(formatEmoji(emjApp))} emoji from app`));
                 }
+              }
+            } else if (emjAppTimestamp === emjJSONTimestamp) {
+              if (name !== emjApp.name) {
+                const emjAppFormatted = formatEmoji(emjApp);
+                client.log(
+                  client.chalk.blue(
+                    `Renamed ${client.chalk.gray(emjFormatted)} to ${client.chalk.gray(emjAppFormatted)} from JSON`,
+                  ),
+                );
+                acc.push([emjApp.name, emjAppFormatted]);
               } else {
-                try {
-                  if (emjApp) {
-                    await client.application.emojis.delete(emjApp.id);
-                    client.log(client.chalk.red(`Deleted ${client.chalk.gray(formatEmoji(emjApp))} emoji from app`));
-                  }
+                acc.push([name, emjFormatted]);
+              }
+            } else {
+              try {
+                if (emjApp) {
+                  await client.application.emojis.delete(emjApp.id);
+                  client.log(client.chalk.red(`Deleted ${client.chalk.gray(formatEmoji(emjApp))} emoji from app`));
+                }
 
-                  client.log(
-                    client.chalk.blue(
-                      `Fetching emoji ${client.chalk.gray(emjFormatted)} from ${client.chalk.gray(emojiUrl)}`,
-                    ),
-                  );
+                client.log(
+                  client.chalk.blue(
+                    `Fetching emoji ${client.chalk.gray(emjFormatted)} from ${client.chalk.gray(emojiUrl)}`,
+                  ),
+                );
 
-                  const resolveAndCreateEmoji = async (
-                      url: string,
-                      mismatches = 0,
-                    ): Promise<ApplicationEmoji | null> => {
-                      try {
-                        const { data: imageData } = await resolveFile(url),
-                          newEmoji = await client.application.emojis.create({
-                            attachment: imageData,
-                            name,
-                          }),
-                          { data: newImageData } = await resolveFile(
-                            `https://cdn.discordapp.com/emojis/${newEmoji.id}.${newEmoji.animated ? 'gif' : 'png'}?size=${imageOptions.size}`,
+                const resolveAndCreateEmoji = async (url: string, mismatches = 0): Promise<ApplicationEmoji | null> => {
+                    try {
+                      const { data: imageData } = await resolveFile(url),
+                        newEmoji = await client.application.emojis.create({
+                          attachment: imageData,
+                          name,
+                        }),
+                        { data: newImageData } = await resolveFile(
+                          `https://cdn.discordapp.com/emojis/${newEmoji.id}.${newEmoji.animated ? 'gif' : 'png'}?size=${imageOptions.size}`,
+                        ),
+                        { equal } = await looksSame(imageData, newImageData);
+
+                      if (!equal) {
+                        await client.application.emojis.delete(newEmoji.id);
+                        return resolveAndCreateEmoji(url, mismatches + 1);
+                      }
+                      if (mismatches) {
+                        client.log(
+                          client.chalk.magenta(
+                            `Fixed duplicated image for emoji ${client.chalk.gray(emjFormatted)} (${mismatches} attempts)`,
                           ),
-                          { equal } = await looksSame(imageData, newImageData);
+                        );
+                      }
 
-                        if (!equal) {
-                          await client.application.emojis.delete(newEmoji.id);
-                          return resolveAndCreateEmoji(url, mismatches + 1);
-                        }
-                        if (mismatches) {
+                      return newEmoji;
+                    } catch (err) {
+                      if (err.code === RESTJSONErrorCodes.InvalidFormBodyOrContentType) {
+                        const newUrl = await decreaseSizeCDN(url, { initialSize: 256, maxSize: 256000 });
+                        if (newUrl !== url) {
                           client.log(
-                            client.chalk.magenta(
-                              `Fixed duplicated image for emoji ${client.chalk.gray(emjFormatted)} (${mismatches} attempts)`,
+                            client.chalk.blue(
+                              `Refetching emoji ${client.chalk.gray(emjFormatted)} from ${client.chalk.gray(url)}`,
                             ),
                           );
                         }
-
-                        return newEmoji;
-                      } catch (err) {
-                        if (err.code === RESTJSONErrorCodes.InvalidFormBodyOrContentType) {
-                          const newUrl = await decreaseSizeCDN(url, { initialSize: 256, maxSize: 256000 });
-                          if (newUrl !== url) {
-                            client.log(
-                              client.chalk.blue(
-                                `Refetching emoji ${client.chalk.gray(emjFormatted)} from ${client.chalk.gray(url)}`,
-                              ),
-                            );
-                          }
-                          return resolveAndCreateEmoji(newUrl, mismatches);
-                        }
-
-                        client.error(`Error creating emoji: `, err);
-                        return null;
+                        return resolveAndCreateEmoji(newUrl, mismatches);
                       }
-                    },
-                    newEmoji = await resolveAndCreateEmoji(emojiUrl);
 
-                  if (newEmoji) {
-                    client.log(client.chalk.green(`Added ${client.chalk.gray(formatEmoji(newEmoji))} emoji to app`));
-                    acc.push([name, formatEmoji(newEmoji)]);
-                  }
-                } catch (err) {
-                  client.error(client.chalk.red(`Error adding emoji ${client.chalk.gray(emjFormatted)}:`, err));
+                      client.error(`Error creating emoji: `, err);
+                      return null;
+                    }
+                  },
+                  newEmoji = await resolveAndCreateEmoji(emojiUrl);
+
+                if (newEmoji) {
+                  client.log(client.chalk.green(`Added ${client.chalk.gray(formatEmoji(newEmoji))} emoji to app`));
+                  acc.push([name, formatEmoji(newEmoji)]);
                 }
+              } catch (err) {
+                client.error(client.chalk.red(`Error adding emoji ${client.chalk.gray(emjFormatted)}:`, err));
               }
-
-              return acc;
-            },
-            Promise.resolve([] as [string, `<:${string}:${string}>` | `<a:${string}:${string}>`][]),
-          );
-
-          if (isDev) {
-            writeFileSync(
-              emjFilePath,
-              JSON.stringify(
-                Object.fromEntries(updatedEntries.sort((a, b) => a[0].localeCompare(b[0], 'en', { numeric: true }))),
-                null,
-                2,
-              ),
-            );
-          }
-
-          // TODO: Finish updating to use the new API
-          // Update emojis in other shards
-          await client.shard.broadcastEval(async (c: App) => {
-            if (!c.isMainShard && c.application) {
-              await c.application.emojis.fetch();
-              c.log(c.chalk.yellow('Updated emojis'));
             }
-          });
 
-          client.log(client.chalk.yellow('Finished updating emojis'));
+            return acc;
+          },
+          Promise.resolve([] as [string, `<:${string}:${string}>` | `<a:${string}:${string}>`][]),
+        );
+
+        if (isDev) {
+          writeFileSync(
+            emjFilePath,
+            JSON.stringify(
+              Object.fromEntries(updatedEntries.sort((a, b) => a[0].localeCompare(b[0], 'en', { numeric: true }))),
+              null,
+              2,
+            ),
+          );
         }
 
-        await (async function updateData() {
-          await client.updateExperiments();
-          setTimeout(updateData, 300000);
-        })();
+        // TODO: Finish updating to use the new API
+        // Update emojis in other shards
+        await client.shard.broadcastEval(async (c: App) => {
+          if (!c.isMainShard && c.application) {
+            await c.application.emojis.fetch();
+            c.log(c.chalk.yellow('Updated emojis'));
+          }
+        });
 
-        const metadata = [
-          {
-            description: 'ROLE_CONNECTION.LEVEL.DESCRIPTION',
-            key: 'level',
-            name: 'ROLE_CONNECTION.LEVEL.NAME',
-            type: 2,
-          },
-          {
-            description: 'ROLE_CONNECTION.MOWANS.DESCRIPTION',
-            key: 'mowans',
-            name: 'ROLE_CONNECTION.MOWANS.NAME',
-            type: 2,
-          },
-          {
-            description: 'ROLE_CONNECTION.PLAYING_SINCE.DESCRIPTION',
-            key: 'playingsince',
-            name: 'ROLE_CONNECTION.PLAYING_SINCE.NAME',
-            type: 6,
-          },
-        ];
-        for (const d of metadata) client.localizeData(d);
-        await client.application.editRoleConnectionMetadataRecords(metadata);
+        client.log(client.chalk.yellow('Finished updating emojis'));
       }
+
+      await (async function updateData() {
+        await client.updateExperiments();
+        setTimeout(updateData, 300000);
+      })();
+
+      const metadata = [
+        {
+          description: 'ROLE_CONNECTION.LEVEL.DESCRIPTION',
+          key: 'level',
+          name: 'ROLE_CONNECTION.LEVEL.NAME',
+          type: 2,
+        },
+        {
+          description: 'ROLE_CONNECTION.MOWANS.DESCRIPTION',
+          key: 'mowans',
+          name: 'ROLE_CONNECTION.MOWANS.NAME',
+          type: 2,
+        },
+        {
+          description: 'ROLE_CONNECTION.PLAYING_SINCE.DESCRIPTION',
+          key: 'playingsince',
+          name: 'ROLE_CONNECTION.PLAYING_SINCE.NAME',
+          type: 6,
+        },
+      ];
+      for (const d of metadata) client.localizeData(d);
+      await client.application.editRoleConnectionMetadataRecords(metadata);
     }
 
     for (const file of readdirSync(path.join(__dirname, '/interactions')).filter(f => f.endsWith('.js'))) {
