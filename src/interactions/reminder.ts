@@ -30,7 +30,7 @@ export default class Reminder extends Command {
       {
         contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
         description: 'DESC.REMINDER',
-        integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
+        integrationTypes: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
         name: 'CMD.REMINDER',
         options: [
           {
@@ -232,8 +232,8 @@ export default class Reminder extends Command {
         urlArgs = new URLSearchParams(message.embeds.at(-1)?.footer?.iconURL);
 
       if (
-        !(message.interactionMetadata?.user.id === user.id || urlArgs.get('messageOwners') === user.id) &&
-        !(!message.interactionMetadata && isList)
+        !(message.interaction?.user.id === user.id || urlArgs.get('messageOwners') === user.id) &&
+        !(!message.interaction && isList)
       ) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
@@ -248,7 +248,7 @@ export default class Reminder extends Command {
 
       let reminder = reminderId ? await userData.reminders.fetch({ reminderId }) : null,
         emb = embed(
-          message.interactionMetadata?.user.id === client.user.id || !message.interactionMetadata
+          message.interaction?.user.id === client.user.id || !message.interaction
             ? { addParams: { messageOwners: user.id }, footer: 'interacted' }
             : { footer: 'interacted' },
         );

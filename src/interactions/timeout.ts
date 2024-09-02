@@ -17,7 +17,7 @@ export default class Timeout extends Command {
         contexts: [InteractionContextType.Guild],
         defaultMemberPermissions: PermissionFlagsBits.ModerateMembers,
         description: 'DESC.TIMEOUT',
-        integration_types: [ApplicationIntegrationType.GuildInstall],
+        integrationTypes: [ApplicationIntegrationType.GuildInstall],
         name: 'CMD.TIMEOUT',
         options: [
           {

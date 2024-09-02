@@ -22,7 +22,7 @@ export default class RoleMenu extends Command {
         contexts: [InteractionContextType.Guild],
         defaultMemberPermissions: PermissionFlagsBits.ManageRoles,
         description: 'DESC.ROLEMENU',
-        integration_types: [ApplicationIntegrationType.GuildInstall],
+        integrationTypes: [ApplicationIntegrationType.GuildInstall],
         name: 'CMD.ROLEMENU',
         options: [
           {

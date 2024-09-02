@@ -21,7 +21,7 @@ export default class Clear extends Command {
       {
         contexts: [InteractionContextType.Guild],
         defaultMemberPermissions: PermissionFlagsBits.ManageMessages,
-        integration_types: [ApplicationIntegrationType.GuildInstall],
+        integrationTypes: [ApplicationIntegrationType.GuildInstall],
         name: 'CLEAR.DELETE_AFTER_THIS',
         type: ApplicationCommandType.Message,
       },
@@ -29,7 +29,7 @@ export default class Clear extends Command {
         contexts: [InteractionContextType.Guild],
         defaultMemberPermissions: PermissionFlagsBits.ManageMessages,
         description: 'DESC.CLEAR',
-        integration_types: [ApplicationIntegrationType.GuildInstall],
+        integrationTypes: [ApplicationIntegrationType.GuildInstall],
         name: 'CMD.CLEAR',
         options: [
           {
@@ -120,7 +120,7 @@ export default class Clear extends Command {
     if (interaction.isButton()) {
       const { customId, message } = interaction;
 
-      if (message.interactionMetadata.user.id !== user.id) {
+      if (message.interaction.user.id !== user.id) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
           ephemeral: true,

@@ -20,7 +20,7 @@ export default class Rollout extends Command {
       {
         contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
         description: 'DESC.ROLLOUT',
-        integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
+        integrationTypes: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
         name: 'CMD.ROLLOUT',
         options: [
           {

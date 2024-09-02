@@ -51,14 +51,14 @@ export default class User extends Command {
     super([
       {
         contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
-        integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
+        integrationTypes: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
         name: 'USER.INFO.VIEW_INFO',
         type: ApplicationCommandType.User,
       },
       {
         contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
         description: 'DESC.USER',
-        integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
+        integrationTypes: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
         name: 'CMD.USER',
         options: [
           {
@@ -83,7 +83,7 @@ export default class User extends Command {
       {
         contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
         description: 'DESC.APP',
-        integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
+        integrationTypes: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
         name: 'CMD.APP',
         options: [
           {
@@ -364,7 +364,7 @@ export default class User extends Command {
           avatar = m.avatar
             ? client.rest.cdn.guildMemberAvatar(guildId, u.id, m.avatar, imageOptions)
             : u.displayAvatarURL(imageOptions),
-          banner = m.banner && client.rest.cdn.guildMemberBanner(guildId, u.id, m.banner, imageOptions);
+          banner = null; // m.banner && client.rest.cdn.guildMemberBanner(guildId, u.id, m.banner, imageOptions);
 
         if (u.id === guild?.ownerId) flags.push(client.useEmoji('owner'));
 
@@ -792,9 +792,9 @@ export default class User extends Command {
       const { channel, customId, member, message } = interaction,
         sameUser =
           (channel && message.reference ? await channel.messages.fetch(message.reference.messageId) : message)
-            .interactionMetadata.user.id === user.id;
+            .interaction.user.id === user.id;
       client.log(message.reference);
-      client.log(message.interactionMetadata);
+      client.log(message.interaction);
 
       if (!sameUser && customId.startsWith('user_settings')) {
         return interaction.reply({

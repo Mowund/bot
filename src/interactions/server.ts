@@ -33,7 +33,7 @@ export default class Server extends Command {
       {
         contexts: [InteractionContextType.Guild],
         description: 'DESC.SERVER',
-        integration_types: [ApplicationIntegrationType.GuildInstall],
+        integrationTypes: [ApplicationIntegrationType.GuildInstall],
         name: 'CMD.SERVER',
         options: [
           {
@@ -76,7 +76,7 @@ export default class Server extends Command {
           {
             inline: true,
             name: `👁️ ${localize('SERVER.SETTINGS.ALLOW_NON_EPHEMERAL.NAME')}`,
-            value: `**${localize('CHANNELS.CHANNELS')}:** ${
+            value: `**${localize('CHANNELS.NOUN')}:** ${
               channels.length ? channels : localize('ALL')
             }\n**${localize('ROLES.NOUN')}:** ${roles.length ? roles : localize('ALL')}`,
           },
@@ -230,7 +230,7 @@ export default class Server extends Command {
                 })}`}`,
               },
               {
-                name: `${client.useEmoji('browseChannels')} ${localize('CHANNELS.CHANNELS')} [${localize('COUNT', {
+                name: `${client.useEmoji('browseChannels')} ${localize('CHANNELS.NOUN')} [${localize('COUNT', {
                   count: guild.channels.cache.size,
                 })} / ${localize('COUNT', {
                   count: 1500,
@@ -379,7 +379,7 @@ export default class Server extends Command {
       const { message } = interaction,
         { customId } = interaction;
 
-      if (message.interactionMetadata.user.id !== user.id) {
+      if (message.interaction.user.id !== user.id) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
           ephemeral: true,

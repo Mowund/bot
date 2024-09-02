@@ -22,7 +22,7 @@ export default class Bot extends Command {
       {
         contexts: [InteractionContextType.Guild],
         description: 'DESC.BOT',
-        integration_types: [ApplicationIntegrationType.GuildInstall],
+        integrationTypes: [ApplicationIntegrationType.GuildInstall],
         name: 'CMD.BOT',
         options: [
           {
