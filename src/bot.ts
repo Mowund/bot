@@ -14,7 +14,6 @@ import {
   Collection,
   Snowflake,
   ApplicationCommand,
-  APIEmoji,
   parseEmoji,
   formatEmoji,
   RESTJSONErrorCodes,
@@ -22,6 +21,7 @@ import {
   PartialEmoji,
   resolveFile,
   resolveBase64,
+  ApplicationEmoji,
 } from 'discord.js';
 import cs from 'console-stamp';
 import looksSame from 'looks-same';
@@ -77,10 +77,7 @@ client.on('ready', async () => {
 
     {
       // Fetch emojis
-      const emojisData = (await client.rest.get(`/applications/${client.application.id}/emojis`)) as {
-        items: APIEmoji[];
-      };
-      emojisData.items.forEach(e => client.appEmojis.set(e.name, e));
+      const emojisData = await client.application.emojis.fetch();
       client.log(client.chalk.yellow('Fetched emojis'));
 
       if (client.isMainShard) {
@@ -93,17 +90,21 @@ client.on('ready', async () => {
                 `<:${string}:${string}>` | `<a:${string}:${string}>`
               >,
             ),
-          ).mapValues(x => parseEmoji(x) as APIEmoji | PartialEmoji),
+          ).mapValues(x => parseEmoji(x) as ApplicationEmoji | PartialEmoji),
           mergedColl = emjColl
             .merge(
-              client.appEmojis,
+              client.application.emojis.cache,
               x => ({ keep: true, value: x }),
               y => ({ keep: true, value: y }),
               x => ({ keep: true, value: x }),
             )
             .sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
 
-        if (mergedColl.some(x => !emjColl.has(x.name) || x.id !== client.appEmojis.get(x.name)?.id)) {
+        if (
+          mergedColl.some(
+            x => !emjColl.has(x.name) || x.id !== client.application.emojis.cache.find(e => e.name === x.name)?.id,
+          )
+        ) {
           client.log(client.chalk.yellow('Updating emojis...'));
 
           const updatedEntries = await mergedColl.reduce(
@@ -113,7 +114,8 @@ client.on('ready', async () => {
                 emjFormatted = formatEmoji(emj),
                 emjJSON = emjColl.get(name),
                 emjJSONTimestamp = emjJSON?.id ? SnowflakeUtil.timestampFrom(emjJSON.id) : 0,
-                emjApp = client.appEmojis.get(name) || client.appEmojis.find(e => e.id === id),
+                emjApp =
+                  client.application.emojis.cache.find(e => e.name === name) || client.application.emojis.cache.get(id),
                 emjAppTimestamp = emjApp?.id ? SnowflakeUtil.timestampFrom(emjApp.id) : 0,
                 emojiUrl = `https://cdn.discordapp.com/emojis/${emj.id}.${emj.animated ? 'gif' : 'png'}?size=${imageOptions.size}`;
 
@@ -128,8 +130,8 @@ client.on('ready', async () => {
                   if (isDev) {
                     client.log(client.chalk.green(`Added ${client.chalk.gray(emjFormatted)} emoji to JSON`));
                   } else {
-                    await client.rest.delete(`/applications/${client.application.id}/emojis/${emjApp.id}`);
-                    client.appEmojis.delete(name);
+                    await client.application.emojis.delete(emjApp.id);
+                    client.application.emojis.delete(name);
                     client.log(client.chalk.red(`Deleted ${client.chalk.gray(formatEmoji(emjApp))} emoji from app`));
                   }
                 }
@@ -148,7 +150,7 @@ client.on('ready', async () => {
               } else {
                 try {
                   if (emjApp) {
-                    await client.rest.delete(`/applications/${client.application.id}/emojis/${emjApp.id}`);
+                    await client.application.emojis.delete(emjApp.id);
                     client.log(client.chalk.red(`Deleted ${client.chalk.gray(formatEmoji(emjApp))} emoji from app`));
                   }
 
@@ -158,19 +160,23 @@ client.on('ready', async () => {
                     ),
                   );
 
-                  const resolveAndCreateEmoji = async (url: string, mismatches = 0): Promise<APIEmoji | null> => {
+                  const resolveAndCreateEmoji = async (
+                      url: string,
+                      mismatches = 0,
+                    ): Promise<ApplicationEmoji | null> => {
                       try {
                         const { data: imageData } = await resolveFile(url),
-                          newEmoji = (await client.rest.post(`/applications/${client.application.id}/emojis`, {
-                            body: { image: resolveBase64(imageData), name },
-                          })) as APIEmoji,
+                          newEmoji = await client.application.emojis.create({
+                            attachment: imageData,
+                            name,
+                          }),
                           { data: newImageData } = await resolveFile(
                             `https://cdn.discordapp.com/emojis/${newEmoji.id}.${newEmoji.animated ? 'gif' : 'png'}?size=${imageOptions.size}`,
                           ),
                           { equal } = await looksSame(imageData, newImageData);
 
                         if (!equal) {
-                          await client.rest.delete(`/applications/${client.application.id}/emojis/${newEmoji.id}`);
+                          await client.application.emojis.delete(newEmoji.id);
                           return resolveAndCreateEmoji(url, mismatches + 1);
                         }
                         if (mismatches) {
@@ -202,7 +208,6 @@ client.on('ready', async () => {
                     newEmoji = await resolveAndCreateEmoji(emojiUrl);
 
                   if (newEmoji) {
-                    client.appEmojis.set(name, newEmoji);
                     client.log(client.chalk.green(`Added ${client.chalk.gray(formatEmoji(newEmoji))} emoji to app`));
                     acc.push([name, formatEmoji(newEmoji)]);
                   }
@@ -227,17 +232,11 @@ client.on('ready', async () => {
             );
           }
 
+          // TODO: Finish updating to use the new API
           // Update emojis in other shards
           await client.shard.broadcastEval(async (c: App) => {
             if (!c.isMainShard && c.application) {
-              const eD = (await c.rest.get(`/applications/${c.application.id}/emojis`)) as {
-                items: APIEmoji[];
-              };
-              eD.items.forEach(e => {
-                c.log(e.name, c.appEmojis.get(e.name));
-                c.appEmojis.set(e.name, e);
-                c.log(e.name, c.appEmojis.get(e.name));
-              });
+              await c.application.emojis.fetch();
               c.log(c.chalk.yellow('Updated emojis'));
             }
           });

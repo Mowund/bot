@@ -5,11 +5,11 @@ import { Buffer } from 'node:buffer';
 import util from 'node:util';
 import { Octokit } from '@octokit/core';
 import {
-  APIEmoji,
   APIInteractionGuildMember,
   ApplicationCommand,
   ApplicationCommandOptionType,
   ApplicationCommandType,
+  ApplicationEmoji,
   Client,
   ClientOptions,
   Collection,
@@ -42,7 +42,6 @@ import { MemberSearchQuery, MemberSearch } from './structures/MemberSearch.js';
 
 export class App extends Client<true> {
   allShardsReady: boolean;
-  appEmojis: Collection<string, APIEmoji>;
   chalk: ChalkInstance;
   commands: Collection<string, Command>;
   database: DatabaseManager;
@@ -63,7 +62,6 @@ export class App extends Client<true> {
     });
 
     this.allShardsReady = false;
-    this.appEmojis = new Collection();
     this.chalk = new Chalk({ level: 3 });
     this.commands = new Collection();
     this.database = new DatabaseManager(this);
@@ -87,8 +85,9 @@ export class App extends Client<true> {
   }
 
   useEmoji<N extends string, C extends string = ''>(name: N, customName?: C) {
-    const emoji = (this.appEmojis.get(name) || this.appEmojis.get('missing')) as Overwrite<
-      APIEmoji,
+    const emoji = (this.application.emojis.cache.find(e => e.name === name) ||
+      this.application.emojis.cache.find(e => e.name === 'missing')) as Overwrite<
+      ApplicationEmoji,
       {
         name: C extends '' ? N : C;
       }
