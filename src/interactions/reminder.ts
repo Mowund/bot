@@ -232,8 +232,8 @@ export default class Reminder extends Command {
         urlArgs = new URLSearchParams(message.embeds.at(-1)?.footer?.iconURL);
 
       if (
-        !(message.interaction?.user.id === user.id || urlArgs.get('messageOwners') === user.id) &&
-        !(!message.interaction && isList)
+        !(message.interactionMetadata?.user.id === user.id || urlArgs.get('messageOwners') === user.id) &&
+        !(!message.interactionMetadata && isList)
       ) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
@@ -248,7 +248,7 @@ export default class Reminder extends Command {
 
       let reminder = reminderId ? await userData.reminders.fetch({ reminderId }) : null,
         emb = embed(
-          message.interaction?.user.id === client.user.id || !message.interaction
+          message.interactionMetadata?.user.id === client.user.id || !message.interactionMetadata
             ? { addParams: { messageOwners: user.id }, footer: 'interacted' }
             : { footer: 'interacted' },
         );

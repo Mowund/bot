@@ -354,6 +354,7 @@ export default class User extends Command {
       },
       memberInfoOpts = (m: GuildMember, s: SearchedMember, u: DiscordUser, sM?: string) => {
         client.log(util.inspect(m, { depth: null }));
+        // TODO: add missing flags
         const mFlags = typeof m.flags === 'object' ? m.flags : new GuildMemberFlagsBitField(m.flags),
           flags = u?.bot
             ? u.flags.has(UserFlags.VerifiedBot)
@@ -792,9 +793,9 @@ export default class User extends Command {
       const { channel, customId, member, message } = interaction,
         sameUser =
           (channel && message.reference ? await channel.messages.fetch(message.reference.messageId) : message)
-            .interaction.user.id === user.id;
+            .interactionMetadata.user.id === user.id;
       client.log(message.reference);
-      client.log(message.interaction);
+      client.log(message.interactionMetadata);
 
       if (!sameUser && customId.startsWith('user_settings')) {
         return interaction.reply({

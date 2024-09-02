@@ -29,7 +29,7 @@ export default class DeleteResponse extends Command {
       messageO.author.id !== client.user.id ||
       (messageO.inGuild() &&
         !(
-          messageO.interaction?.user.id === user.id ||
+          messageO.interactionMetadata?.user.id === user.id ||
           new URLSearchParams(messageO.embeds.at(-1)?.footer?.iconURL)
             .get('messageOwners')
             ?.split('-')

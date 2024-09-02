@@ -403,7 +403,7 @@ export default class Emoji extends Command {
     if (interaction.isButton() || interaction.isModalSubmit() || interaction.isRoleSelectMenu()) {
       const { message } = interaction;
 
-      if (message.interaction.user.id !== user.id) {
+      if (message.interactionMetadata.user.id !== user.id) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
           ephemeral: true,

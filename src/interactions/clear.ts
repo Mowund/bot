@@ -120,7 +120,7 @@ export default class Clear extends Command {
     if (interaction.isButton()) {
       const { customId, message } = interaction;
 
-      if (message.interaction.user.id !== user.id) {
+      if (message.interactionMetadata.user.id !== user.id) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
           ephemeral: true,

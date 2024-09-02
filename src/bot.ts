@@ -20,7 +20,6 @@ import {
   SnowflakeUtil,
   PartialEmoji,
   resolveFile,
-  resolveBase64,
   ApplicationEmoji,
 } from 'discord.js';
 import cs from 'console-stamp';
@@ -74,6 +73,10 @@ client.on('ready', async () => {
     const appCmds = await client.application.commands.fetch({ withLocalizations: true });
     let delCmds = new Collection<Snowflake, ApplicationCommand>(appCmds);
     client.globalCommandCount = client.countCommands(appCmds);
+
+    // Fetch emojis
+    await client.application.emojis.fetch();
+    client.log(client.chalk.yellow('Fetched emojis'));
 
     if (client.isMainShard) {
       // Update emojis
@@ -224,7 +227,6 @@ client.on('ready', async () => {
           );
         }
 
-        // TODO: Finish updating to use the new API
         // Update emojis in other shards
         await client.shard.broadcastEval(async (c: App) => {
           if (!c.isMainShard && c.application) {
