@@ -114,7 +114,7 @@ client.on('ready', async () => {
               emjJSONTimestamp = emjJSON?.id ? SnowflakeUtil.timestampFrom(emjJSON.id) : 0,
               emjApp =
                 client.application.emojis.cache.find(e => e.name === name) || client.application.emojis.cache.get(id),
-              emjAppTimestamp = emjApp?.id ? SnowflakeUtil.timestampFrom(emjApp.id) : 0,
+              emjAppTimestamp = emjApp?.createdTimestamp ?? 0,
               emojiUrl = `https://cdn.discordapp.com/emojis/${emj.id}.${emj.animated ? 'gif' : 'png'}?size=${imageOptions.size}`;
 
             if (emjAppTimestamp > emjJSONTimestamp) {

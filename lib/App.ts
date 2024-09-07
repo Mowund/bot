@@ -121,39 +121,66 @@ export class App extends Client<true> {
     if ('choices' in data) for (const ch of data.choices) this.localizeData(ch);
   }
 
-  fetchGuild(guild: Snowflake) {
-    return this.guilds.cache.get(guild) || this.guilds.fetch({ force: true, guild }).catch(() => null) || null;
-  }
-
-  async fetchGuildGlobally(guildOrInvite: Snowflake | InviteResolvable | GuildTemplateResolvable) {
-    let invite: Invite;
-    const template: GuildTemplate = await this.fetchGuildTemplate(guildOrInvite).catch(() => null);
-
-    if (template) {
-      if (template.guild) return template.guild;
-      guildOrInvite = template.guildId;
-    } else {
-      if (guildOrInvite) invite = await this.fetchInvite(guildOrInvite).catch(() => null);
-      if (invite) guildOrInvite = invite.guild.id;
-    }
-
-    let guild: Guild | (InviteGuild & Widget & GuildPreview) = await this.fetchGuild(guildOrInvite),
+  async fetchGuildGlobally<I extends boolean = false, W extends boolean = false>(
+    guildOrInvite: Snowflake | InviteResolvable | GuildTemplateResolvable,
+    mergeWidget?: W,
+    _intersectMergedTyping?: I,
+  ) {
+    const results: {
+      guild: Guild;
+      invite: Invite;
+      mergedGuild: I extends true
+        ? W extends true
+          ? Guild | InviteGuild | GuildPreview | Widget
+          : Guild | InviteGuild | GuildPreview
+        : W extends true
+          ? Guild & InviteGuild & GuildPreview & Widget
+          : Guild & InviteGuild & GuildPreview;
+      preview: GuildPreview;
+      template: GuildTemplate;
       widget: Widget;
+    } = {
+      guild: null,
+      invite: null,
+      mergedGuild: null,
+      preview: null,
+      template: null,
+      widget: null,
+    };
 
-    if (!invite && !guild) {
-      widget = await this.fetchGuildWidget(guildOrInvite).catch(() => null);
-      if (widget?.instantInvite) invite = await this.fetchInvite(widget.instantInvite);
+    results.template = await this.fetchGuildTemplate(guildOrInvite).catch(() => null);
+
+    if (results.template) {
+      if (results.template.guild) {
+        (results.mergedGuild as Guild) = results.guild = results.template.guild;
+        return results;
+      }
+      guildOrInvite = results.template.guildId;
+    } else {
+      if (guildOrInvite) results.invite = await this.fetchInvite(guildOrInvite).catch(() => null);
+      if (results.invite) guildOrInvite = results.invite.guild.id;
     }
 
-    guild ||= Object.assign(
-      invite?.guild || {},
-      widget || {},
-      await this.fetchGuildPreview(guildOrInvite).catch(() => {}),
-    ) as InviteGuild & Widget & GuildPreview;
+    results.guild = await this.guilds.fetch(guildOrInvite).catch(() => null);
 
-    if (isEmpty(guild)) guild = null;
+    if (!results.invite && !results.guild) {
+      results.widget = await this.fetchGuildWidget(guildOrInvite).catch(() => null);
+      if (results.widget?.instantInvite) results.invite = await this.fetchInvite(results.widget.instantInvite);
+    }
 
-    return guild;
+    results.preview = await this.fetchGuildPreview(guildOrInvite).catch(() => null);
+
+    results.mergedGuild = Object.assign(
+      results.invite?.guild || {},
+      mergeWidget ? results.widget || {} : {},
+      results.preview || {},
+    ) as typeof results.mergedGuild;
+
+    if (isEmpty(results.mergedGuild)) results.mergedGuild = null;
+
+    console.log(results);
+
+    return results;
   }
 
   async updateLocalizations() {

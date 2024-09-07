@@ -141,7 +141,7 @@ export default class Owner extends Command {
       });
     }
 
-    const guild = await client.fetchGuild(guildO);
+    const guild = guildO && (await client.guilds.fetch(guildO).catch(() => null));
 
     if (guildO && !guild) {
       return interaction.editReply({
