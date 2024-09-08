@@ -18,7 +18,6 @@ import {
   GuildEmoji,
   GuildPreviewEmoji,
   SnowflakeUtil,
-  Guild,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { imageOptions, premiumLimits } from '../defaults.js';
@@ -51,9 +50,8 @@ export default class Server extends Command {
       await interaction.deferReply({ ephemeral: isEphemeral });
       const { options } = interaction,
         guildO = options.getString('guild'),
-        guild =
-          (!guildO && interaction.guild) ||
-          (await client.fetchGuildGlobally(guildO ?? interaction.guildId, true)).mergedGuild;
+        global = await client.fetchGuildGlobally(guildO ?? interaction.guildId, true),
+        { mergedGuild: guild } = global;
 
       if (!guild) {
         return interaction.editReply({
@@ -178,17 +176,25 @@ export default class Server extends Command {
             count: guild.maximumMembers,
           })}** ${localize('MAXIMUM')}`,
         });
-      } else if ('approximateMemberCount' in guild) {
+      } else if (global.invite) {
         emb.spliceFields(2, 0, {
           inline: true,
           name: `${client.useEmoji('members')} ${localize('MEMBERS')} [${localize('COUNT', {
-            count: guild.approximateMemberCount,
+            count: global.invite.memberCount,
           })}]`,
           value: `**${client.useEmoji('statusOnline')} ${localize('COUNT', {
-            count: guild.approximatePresenceCount,
+            count: global.invite.presenceCount,
           })}** ${localize('ONLINE')}\n${client.useEmoji('statusOffline')} **${localize('COUNT', {
-            count: guild.approximateMemberCount - guild.approximatePresenceCount,
+            count: global.invite.memberCount - global.invite.presenceCount,
           })}** ${localize('OFFLINE')}`,
+        });
+      } else if ('presenceCount' in guild) {
+        emb.spliceFields(2, 0, {
+          inline: true,
+          name: `${client.useEmoji('members')} ${localize('MEMBERS')}`,
+          value: `**${client.useEmoji('statusOnline')} ${localize('COUNT', {
+            count: guild.presenceCount,
+          })}** ${localize('ONLINE')}`,
         });
       }
 
