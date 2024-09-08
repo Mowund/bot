@@ -354,7 +354,6 @@ export default class User extends Command {
       },
       memberInfoOpts = (m: GuildMember, s: SearchedMember, u: DiscordUser, sM?: string) => {
         client.log(util.inspect(m, { depth: null }));
-        // TODO: add missing flags
         const mFlags = typeof m.flags === 'object' ? m.flags : new GuildMemberFlagsBitField(m.flags),
           flags = u?.bot
             ? u.flags.has(UserFlags.VerifiedBot)
@@ -391,6 +390,14 @@ export default class User extends Command {
         else if (mFlags.has(1 << 5)) flags.push(client.useEmoji('startedGuideActions'));
 
         if (mFlags.has(GuildMemberFlags.BypassesVerification)) flags.push(client.useEmoji('bypassedVerification'));
+
+        if (mFlags.has(GuildMemberFlags.IsGuest)) flags.push(client.useEmoji('user', 'guest'));
+        
+        if (mFlags.has(GuildMemberFlags.DmSettingsUpsellAcknowledged))
+          flags.push(client.useEmoji('settingsInfo', 'dmSettingsUpsellAcknowledged'));
+
+        if (mFlags.has(GuildMemberFlags.AutomodQuarantinedUsernameOrGuildNickname))
+          flags.push(client.useEmoji('automodded', 'quarantinedName'));
 
         if (s?.member.unusual_dm_activity_until > Date.now()) flags.push(client.useEmoji('suspiciousMessages'));
         if (u.flags.has(UserFlags.Spammer)) flags.push(client.useEmoji(UserFlagEmoji.Spammer));
