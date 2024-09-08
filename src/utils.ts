@@ -198,6 +198,19 @@ export const appFetch = async (input: RequestInfo, init?: RequestInit) => {
   }
 };
 
+export const bufferFetch = async (input: RequestInfo, init?: RequestInit): Promise<Buffer | null> => {
+  try {
+    const res = await fetch(input, init),
+      arrayBuffer = await res.arrayBuffer();
+
+    console.log(res.type);
+    return Buffer.from(arrayBuffer);
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+};
+
 /**
  * Search for an embed field with its name and return its value
  * @returns {string} The value of the field

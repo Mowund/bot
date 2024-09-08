@@ -148,54 +148,54 @@ export default class Server extends Command {
         });
       }
 
-      if ('memberCount' in guild) {
-        emb.addFields({
-          inline: true,
-          name: `${client.useEmoji('members')} ${localize('MEMBERS')} [${localize('COUNT', {
-            count: guild.memberCount,
-          })}]`,
-          value: `**${client.useEmoji('statusOnline')} ${localize('COUNT', {
-            count: guild.members.cache.filter(
-              m =>
-                m.presence &&
-                !([PresenceUpdateStatus.Idle, PresenceUpdateStatus.DoNotDisturb] as PresenceStatus[]).includes(
-                  m.presence.status,
-                ) &&
-                !m.presence.activities.some(a => a.type === ActivityType.Streaming),
-            ).size,
-          })}** ${localize('ONLINE')}\n${client.useEmoji('statusIdle')} **${localize('COUNT', {
-            count: guild.members.cache.filter(m => m.presence?.status === PresenceUpdateStatus.Idle).size,
-          })}** ${localize('IDLE')}\n${client.useEmoji('statusDND')} **${localize('COUNT', {
-            count: guild.members.cache.filter(m => m.presence?.status === PresenceUpdateStatus.DoNotDisturb).size,
-          })}** ${localize('DO_NOT_DISTURB')}\n${client.useEmoji('statusStreaming')} **${localize('COUNT', {
-            count: guild.members.cache.filter(m => m.presence?.activities.some(a => a.type === ActivityType.Streaming))
-              .size,
-          })}** ${localize('STREAMING')}\n${client.useEmoji('statusOffline')} **${localize('COUNT', {
-            count: guild.memberCount - guild.members.cache.filter(m => m.presence).size,
-          })}** ${localize('OFFLINE')}\n- **${localize('COUNT', {
-            count: guild.maximumMembers,
-          })}** ${localize('MAXIMUM')}`,
-        });
-      } else if (global.invite) {
-        emb.spliceFields(2, 0, {
-          inline: true,
-          name: `${client.useEmoji('members')} ${localize('MEMBERS')} [${localize('COUNT', {
-            count: global.invite.memberCount,
-          })}]`,
-          value: `**${client.useEmoji('statusOnline')} ${localize('COUNT', {
-            count: global.invite.presenceCount,
-          })}** ${localize('ONLINE')}\n${client.useEmoji('statusOffline')} **${localize('COUNT', {
-            count: global.invite.memberCount - global.invite.presenceCount,
-          })}** ${localize('OFFLINE')}`,
-        });
-      } else if ('presenceCount' in guild) {
-        emb.spliceFields(2, 0, {
-          inline: true,
-          name: `${client.useEmoji('members')} ${localize('MEMBERS')}`,
-          value: `**${client.useEmoji('statusOnline')} ${localize('COUNT', {
-            count: guild.presenceCount,
-          })}** ${localize('ONLINE')}`,
-        });
+      {
+        const memberCount =
+            ('memberCount' in guild && guild.memberCount) ||
+            global.invite?.memberCount ||
+            ('approximateMemberCount' in guild && guild.approximateMemberCount),
+          presenceCount =
+            global.invite?.presenceCount ||
+            ('presenceCount' in guild && guild.presenceCount) ||
+            ('approximatePresenceCount' in guild && guild.approximatePresenceCount),
+          onlineCount =
+            'members' in guild && 'cache' in guild.members
+              ? guild.members.cache.filter(
+                  m =>
+                    m.presence &&
+                    !([PresenceUpdateStatus.Idle, PresenceUpdateStatus.DoNotDisturb] as PresenceStatus[]).includes(
+                      m.presence.status,
+                    ) &&
+                    !m.presence.activities.some(a => a.type === ActivityType.Streaming),
+                ).size
+              : presenceCount;
+        let value = `${client.useEmoji('statusOnline')} **${localize('COUNT', { count: onlineCount })}** ${localize('ONLINE')}`;
+
+        if ('members' in guild && 'cache' in guild.members) {
+          const idleCount = guild.members?.cache
+              ? guild.members.cache.filter(m => m.presence?.status === PresenceUpdateStatus.Idle).size
+              : 0,
+            dndCount = guild.members?.cache
+              ? guild.members.cache.filter(m => m.presence?.status === PresenceUpdateStatus.DoNotDisturb).size
+              : 0,
+            streamingCount = guild.members?.cache
+              ? guild.members.cache.filter(m => m.presence?.activities.some(a => a.type === ActivityType.Streaming))
+                  .size
+              : 0;
+          value += `\n${client.useEmoji('statusIdle')} **${localize('COUNT', { count: idleCount })}** ${localize('IDLE')}`;
+          value += `\n${client.useEmoji('statusDND')} **${localize('COUNT', { count: dndCount })}** ${localize('DO_NOT_DISTURB')}`;
+          value += `\n${client.useEmoji('statusStreaming')} **${localize('COUNT', { count: streamingCount })}** ${localize('STREAMING')}`;
+        }
+
+        if (memberCount)
+          value += `\n${client.useEmoji('statusOffline')} **${localize('COUNT', { count: memberCount - presenceCount })}** ${localize('OFFLINE')}`;
+
+        if ('maximumMembers' in guild)
+          value += `\n- **${localize('COUNT', { count: guild.maximumMembers })}** ${localize('MAXIMUM')}`;
+
+        const name = `${client.useEmoji('members')} ${localize('MEMBERS')}${memberCount ? ` [${localize('COUNT', { count: memberCount })}]` : ''}`;
+
+        if ('members' in guild && 'cache' in guild.members) emb.addFields({ inline: true, name, value });
+        else emb.spliceFields(2, 0, { inline: true, name, value });
       }
 
       if ('systemChannelFlags' in guild) {

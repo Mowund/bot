@@ -350,6 +350,17 @@ export default class User extends Command {
           );
         }
 
+        if (u.avatarDecorationData) {
+          const decoration = u.avatarDecorationURL(imageOptions);
+          row.addComponents(
+            new ButtonBuilder()
+              .setLabel(localize('DECORATION'))
+              .setEmoji('🖼️')
+              .setStyle(ButtonStyle.Link)
+              .setURL(decoration),
+          );
+        }
+
         return { embs: [emb], rows: [row] };
       },
       memberInfoOpts = (m: GuildMember, s: SearchedMember, u: DiscordUser, sM?: string) => {

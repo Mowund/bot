@@ -156,9 +156,13 @@ export class App extends Client<true> {
       if (results.invite) guildOrInvite = results.invite.guild.id;
     }
 
-    results.guild = await this.guilds.fetch(guildOrInvite).catch(() => null);
+    results.guild = await this.guilds.fetch({ force: true, guild: guildOrInvite }).catch(() => null);
+    if (results.guild) {
+      (results.mergedGuild as Guild) = results.guild;
+      return results;
+    }
 
-    if (!results.invite && !results.guild) {
+    if (!results.invite) {
       results.widget = await this.fetchGuildWidget(guildOrInvite).catch(() => null);
       if (results.widget?.instantInvite) results.invite = await this.fetchInvite(results.widget.instantInvite);
     }

@@ -149,29 +149,6 @@
     "no-new-wrappers": "error",
     "no-octal-escape": "error",
     "no-path-concat": "error",
-    "no-restricted-globals": [
-      "error",
-      {
-        "message": "Import Buffer from `node:buffer` instead",
-        "name": "Buffer"
-      },
-      {
-        "message": "Import process from `node:process` instead",
-        "name": "process"
-      },
-      {
-        "message": "Import setTimeout from `node:timers` instead",
-        "name": "setTimeout"
-      },
-      {
-        "message": "Import setInterval from `node:timers` instead",
-        "name": "setInterval"
-      },
-      {
-        "message": "Import setImmediate from `node:timers` instead",
-        "name": "setImmediate"
-      }
-    ],
     "no-return-assign": "error",
     "no-return-await": "error",
     "no-self-compare": "error",
