@@ -73,7 +73,7 @@ export default class Rollout extends Command {
 
       await interaction.deferReply({ ephemeral: isEphemeral });
 
-      const guild = (await client.fetchGuildGlobally(guildO ?? interaction.guildId, true)).mergedGuild;
+      const guild = (await client.fetchGuildGlobally(guildO ?? interaction.guildId)).mergedGuild;
 
       if (guildO && !guild) {
         return interaction.editReply({

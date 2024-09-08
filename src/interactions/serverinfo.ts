@@ -17,6 +17,8 @@ import {
   Snowflake,
   GuildEmoji,
   GuildPreviewEmoji,
+  SnowflakeUtil,
+  Guild,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { imageOptions, premiumLimits } from '../defaults.js';
@@ -51,7 +53,7 @@ export default class Server extends Command {
         guildO = options.getString('guild'),
         guild =
           (!guildO && interaction.guild) ||
-          (await client.fetchGuildGlobally(guildO ?? interaction.guildId, false, true)).mergedGuild;
+          (await client.fetchGuildGlobally(guildO ?? interaction.guildId, true)).mergedGuild;
 
       if (!guild) {
         return interaction.editReply({
@@ -67,7 +69,7 @@ export default class Server extends Command {
         premiumLimit = 'premiumTier' in guild ? premiumLimits[guild.premiumTier] : null,
         rows = [new ActionRowBuilder<ButtonBuilder>()];
 
-      if (guild.icon) {
+      if ('icon' in guild && guild.icon) {
         const icon = client.rest.cdn.icon(guild.id, guild.icon, imageOptions);
         emb.setThumbnail(icon).setAuthor({ iconURL: icon, name: guild.name });
         rows[0].addComponents(
@@ -88,7 +90,7 @@ export default class Server extends Command {
       emb.addFields({
         inline: true,
         name: `📅 ${localize('CREATED')}`,
-        value: toUTS(guild.createdTimestamp),
+        value: toUTS('createdTimestamp' in guild ? guild.createdTimestamp : SnowflakeUtil.timestampFrom(guild.id)),
       });
 
       if ('roles' in guild) {
@@ -148,7 +150,7 @@ export default class Server extends Command {
         });
       }
 
-      if ('maximumMembers' in guild) {
+      if ('memberCount' in guild) {
         emb.addFields({
           inline: true,
           name: `${client.useEmoji('members')} ${localize('MEMBERS')} [${localize('COUNT', {
@@ -175,6 +177,18 @@ export default class Server extends Command {
           })}** ${localize('OFFLINE')}\n- **${localize('COUNT', {
             count: guild.maximumMembers,
           })}** ${localize('MAXIMUM')}`,
+        });
+      } else if ('approximateMemberCount' in guild) {
+        emb.spliceFields(2, 0, {
+          inline: true,
+          name: `${client.useEmoji('members')} ${localize('MEMBERS')} [${localize('COUNT', {
+            count: guild.approximateMemberCount,
+          })}]`,
+          value: `**${client.useEmoji('statusOnline')} ${localize('COUNT', {
+            count: guild.approximatePresenceCount,
+          })}** ${localize('ONLINE')}\n${client.useEmoji('statusOffline')} **${localize('COUNT', {
+            count: guild.approximateMemberCount - guild.approximatePresenceCount,
+          })}** ${localize('OFFLINE')}`,
         });
       }
 
@@ -257,7 +271,7 @@ export default class Server extends Command {
         });
       }
 
-      if ('channels' in guild) {
+      if ('channels' in guild && 'cache' in guild.channels) {
         emb.addFields({
           inline: false,
           name: `${client.useEmoji('browseChannels')} ${localize('CHANNELS.NOUN')} [${localize('COUNT', {
@@ -315,12 +329,16 @@ export default class Server extends Command {
 
       if ('verified' in guild && guild.verified) badges.push(client.useEmoji('verified'));
       if ('partnered' in guild && guild.partnered) badges.push(client.useEmoji('partnered'));
-      if (badges.length) description += `${badges.join(' ')}${guild.description ? '\n' : ''}`;
-      if (guild.description) description += guild.description;
 
-      if (description.length) emb.setDescription(description);
+      if ('description' in guild) {
+        if (badges.length) description += `${badges.join(' ')}${guild.description ? '\n' : ''}`;
+        if (guild.description) description += guild.description;
+
+        if (description.length) emb.setDescription(description);
+      }
 
       if (
+        'icon' in guild &&
         guild.icon &&
         'banner' in guild &&
         guild.banner &&
@@ -336,7 +354,7 @@ export default class Server extends Command {
         );
       }
 
-      if (guild.splash) {
+      if ('splash' in guild && guild.splash) {
         const splash = client.rest.cdn.splash(guild.id, guild.splash, imageOptions);
         rows
           .at(-1)

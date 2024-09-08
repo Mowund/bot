@@ -392,7 +392,7 @@ export default class User extends Command {
         if (mFlags.has(GuildMemberFlags.BypassesVerification)) flags.push(client.useEmoji('bypassedVerification'));
 
         if (mFlags.has(GuildMemberFlags.IsGuest)) flags.push(client.useEmoji('user', 'guest'));
-        
+
         if (mFlags.has(GuildMemberFlags.DmSettingsUpsellAcknowledged))
           flags.push(client.useEmoji('settingsInfo', 'dmSettingsUpsellAcknowledged'));
 

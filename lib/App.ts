@@ -121,21 +121,16 @@ export class App extends Client<true> {
     if ('choices' in data) for (const ch of data.choices) this.localizeData(ch);
   }
 
-  async fetchGuildGlobally<I extends boolean = false, W extends boolean = false>(
+  async fetchGuildGlobally<I extends boolean = false>(
     guildOrInvite: Snowflake | InviteResolvable | GuildTemplateResolvable,
-    mergeWidget?: W,
     _intersectMergedTyping?: I,
   ) {
     const results: {
       guild: Guild;
       invite: Invite;
       mergedGuild: I extends true
-        ? W extends true
-          ? Guild | InviteGuild | GuildPreview | Widget
-          : Guild | InviteGuild | GuildPreview
-        : W extends true
-          ? Guild & InviteGuild & GuildPreview & Widget
-          : Guild & InviteGuild & GuildPreview;
+        ? Guild | InviteGuild | GuildPreview | Widget
+        : Guild & InviteGuild & GuildPreview & Widget;
       preview: GuildPreview;
       template: GuildTemplate;
       widget: Widget;
@@ -172,13 +167,11 @@ export class App extends Client<true> {
 
     results.mergedGuild = Object.assign(
       results.invite?.guild || {},
-      mergeWidget ? results.widget || {} : {},
+      results.widget || {},
       results.preview || {},
     ) as typeof results.mergedGuild;
 
     if (isEmpty(results.mergedGuild)) results.mergedGuild = null;
-
-    console.log(results);
 
     return results;
   }
