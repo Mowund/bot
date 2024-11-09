@@ -1,9 +1,6 @@
-/* eslint-disable @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars */
-
-import { firestore } from 'firebase-admin';
-import { CachedManager, Collection, Snowflake, User } from 'discord.js';
+import { CachedManager, Snowflake, User } from 'discord.js';
 import { App } from '../App.js';
-import { removeEmpty, SearchOptions, testConditions } from '../../src/utils.js';
+import { DataClassProperties } from '../../src/utils.js';
 import { UserData, UserDataSetOptions } from '../structures/UserData.js';
 
 export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDatabaseResolvable> {
@@ -17,34 +14,40 @@ export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDa
     const id = this.resolveId(user);
     if (!id) throw new Error('Invalid user type: UsersDatabaseResolvable');
 
-    const db = this.client.firestore.collection('users').doc(id),
+    const db = this.client.mongo.db('Mowund').collection('users'),
       oldData =
-        (this.cache.get(id) ||
-          (((await db.get()) as firestore.DocumentSnapshot<firestore.DocumentData>)?.data() as UserData | undefined)) ??
-        null,
-      newData = oldData ? data : Object.assign(data, { id });
+        (this.cache.get(id) || ((await db.findOne({ _id: id as any })) as unknown as DataClassProperties<UserData>)) ??
+        null;
 
-    await db.set(removeEmpty(newData), { merge });
+    if (merge) await db.updateOne({ _id: id as any }, { $set: data }, { upsert: true });
+    else await db.replaceOne({ _id: id as any }, { $set: data }, { upsert: true });
+
     await this.client.database.cacheDelete('users', id);
-    return this.cache.set(id, new UserData(this.client, Object.assign(Object.create(oldData || {}), newData))).get(id);
+    return this.cache
+      .set(id, new UserData(this.client, Object.assign(Object.create(oldData || {}), data, { _id: id })))
+      .get(id);
   }
 
   async fetch(id: Snowflake, { cache = true, force = false } = {}) {
     const existing = this.cache.get(id);
     if (!force && existing) return existing;
 
-    let data = (await this.client.firestore.collection('users').doc(id).get()).data() as UserData | undefined;
-    if (!data) return;
+    const rawData = (await this.client.mongo
+      .db('Mowund')
+      .collection('users')
+      .findOne({ _id: id as any })) as unknown as DataClassProperties<UserData>;
+    if (!rawData) return;
 
-    data = new UserData(this.client, Object.assign(Object.create(data), data));
+    const data = new UserData(this.client, Object.assign(Object.create(rawData)));
     if (cache) {
       await this.client.database.cacheDelete('users', id);
       this.cache.set(id, data);
     }
+
     return data;
   }
 
-  async find(search: SearchOptions[][], { cache = true, returnCache = false } = {}) {
+  /* async find(search: SearchOptions[][], { cache = true, returnCache = false } = {}) {
     const existing = this.cache.filter(r => testConditions(search, r));
     if (returnCache && existing.size) return existing;
 
@@ -52,7 +55,7 @@ export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDa
     let db: firestore.Query<firestore.DocumentData> = this.client.firestore.collection('users');
 
     for (const x of search) {
-      x.forEach(y => (db = db.where(y.field, y.operator, y.target)));
+      x.forEach(y => (db = this.client.mongo.db('Mowund').where(y.field, y.operator, y.target)));
       for (const z of (await db.get()).docs) {
         const d = z.data();
         data.set(z.id, new UserData(this.client, Object.assign(Object.create(d), d)));
@@ -67,13 +70,16 @@ export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDa
     }
 
     return data;
-  }
+  }*/
 
   async delete(user: UsersDatabaseResolvable) {
     const id = this.resolveId(user);
     if (!id) throw new Error('Invalid user type: UsersDatabaseResolvable');
 
-    await this.client.firestore.collection('users').doc(id).delete();
+    await this.client.mongo
+      .db('Mowund')
+      .collection('users')
+      .deleteOne({ _id: id as any });
     return this.client.database.cacheDelete('users', id);
   }
 }

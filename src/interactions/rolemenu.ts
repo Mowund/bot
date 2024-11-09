@@ -10,6 +10,7 @@ import {
   StringSelectMenuBuilder,
   ApplicationIntegrationType,
   InteractionContextType,
+  MessageFlags,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { botOwners } from '../defaults.js';
@@ -71,7 +72,7 @@ export default class RoleMenu extends Command {
       const { options } = interaction,
         channelO = (options.getChannel('channel') ?? interaction.channel) as GuildTextBasedChannel;
 
-      await interaction.deferReply({ ephemeral: isEphemeral });
+      await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });
 
       if (!botOwners.includes(user.id)) {
         return interaction.editReply({
@@ -126,7 +127,7 @@ export default class RoleMenu extends Command {
 
       switch (customId) {
         case 'rolemenu_giverole': {
-          await interaction.deferReply({ ephemeral: true });
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
           let roles = new Collection<string, Role>();
           for (let rId of values) {

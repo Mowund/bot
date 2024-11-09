@@ -11,6 +11,7 @@ import {
   PermissionFlagsBits,
   ApplicationIntegrationType,
   InteractionContextType,
+  MessageFlags,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { botOwners } from '../defaults.js';
@@ -62,7 +63,10 @@ export default class Clear extends Command {
         countO = (options as CommandInteractionOptionResolver)?.getInteger('count') ?? 100,
         delPinsO = (options as CommandInteractionOptionResolver)?.getBoolean('delete-pinned'),
         messageO = (options as CommandInteractionOptionResolver)?.getMessage('message'),
-        msg = await interaction.deferReply({ ephemeral: isEphemeral, fetchReply: true });
+        msg = await interaction.deferReply({
+          fetchReply: true,
+          flags: isEphemeral ? MessageFlags.Ephemeral : undefined,
+        });
 
       if (!memberPermissions?.has(PermissionFlagsBits.ManageMessages) && !botOwners.includes(user.id)) {
         return interaction.editReply({
@@ -123,7 +127,7 @@ export default class Clear extends Command {
       if (message.interactionMetadata.user.id !== user.id) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 

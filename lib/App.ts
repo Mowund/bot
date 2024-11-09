@@ -27,12 +27,13 @@ import {
   InviteResolvable,
   Routes,
   Snowflake,
+  SnowflakeUtil,
   User,
   Widget,
 } from 'discord.js';
-import firebase, { firestore } from 'firebase-admin';
 import i18n, { GlobalCatalog, I18n } from 'i18n';
 import { Chalk, ChalkInstance } from 'chalk';
+import { MongoClient } from 'mongodb';
 import { defaultLocale, imageOptions, supportServer } from '../src/defaults.js';
 import { addSearchParams, isEmpty, Overwrite, truncate } from '../src/utils.js';
 import { Command } from './structures/Command.js';
@@ -46,34 +47,31 @@ export class App extends Client<true> {
   commands: Collection<string, Command>;
   database: DatabaseManager;
   experiments: { data: Experiment[]; lastUpdated: number };
-  firestore: firestore.Firestore;
   globalCommandCount: { chatInput: number; message: number; sum: { all: number; contextMenu: number }; user: number };
   i18n: I18n;
+  mongo: MongoClient;
   octokit: Octokit;
   supportedLocales: string[];
-  readonly isMainShard: boolean;
-  readonly shardId: number;
+  isMainShard: boolean;
+  shardId: number;
 
   constructor(options: ClientOptions) {
     super(options);
-
-    firebase.initializeApp({
-      credential: firebase.credential.cert(JSON.parse(process.env.FIREBASE_TOKEN)),
-    });
 
     this.allShardsReady = false;
     this.chalk = new Chalk({ level: 3 });
     this.commands = new Collection();
     this.database = new DatabaseManager(this);
-    this.firestore = firebase.firestore();
     this.i18n = i18n;
-    this.isMainShard = this.shard.ids[0] === 0;
-    this.shardId = this.shard.ids[0] + 1;
+    this.mongo = new MongoClient(process.env.MONGO_URI!, {
+      pkFactory: { createPk: () => SnowflakeUtil.generate().toString() },
+    });
   }
 
   async login(token?: string) {
     this.octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
     await this.updateLocalizations();
+
     return super.login(token);
   }
 

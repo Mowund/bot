@@ -32,41 +32,36 @@
     "chalk": "^5.3.0",
     "console-stamp": "^3.1.2",
     "copyfiles": "^2.4.1",
-    "discord.js": "14.16.2-dev.1725667851-8a74f144a",
+    "discord.js": "15.0.0-dev.1730981100-c97310681",
     "dotenv-extended": "^2.9.0",
-    "eslint": "^8.57.0",
+    "eslint": "^8.57.1",
     "fast-fuzzy": "^1.12.0",
-    "firebase-admin": "^12.4.0",
+    "firebase-admin": "^12.7.0",
     "git": "^0.1.5",
     "i18n": "^0.15.1",
     "looks-same": "^9.0.1",
     "math.js": "^1.1.46",
+    "mongodb": "^6.10.0",
     "murmurhash": "^2.0.1",
     "parse-duration": "^1.1.0",
     "rimraf": "^6.0.1",
     "tinycolor2": "^1.6.0",
     "twemoji-parser": "^14.0.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.6.3"
   },
   "devDependencies": {
-    "@stylistic/eslint-plugin": "^2.7.2",
+    "@stylistic/eslint-plugin": "^2.10.1",
     "@types/i18n": "^0.13.12",
     "@types/tinycolor2": "^1.4.6",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.30.0",
+    "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-json": "^3.1.0",
     "eslint-plugin-json-format": "^2.0.1",
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-sort-destructure-keys": "^2.0.0",
     "prettier": "^3.3.3"
-  },
-  "overrides": {
-    "discord-api-types": "latest"
-  },
-  "resolutions": {
-    "discord-api-types": "latest"
   },
   "engines": {
     "node": "20"

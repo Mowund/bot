@@ -1,4 +1,3 @@
-import util from 'node:util';
 import {
   ActionRowBuilder,
   ApplicationCommandOptionType,
@@ -18,9 +17,9 @@ import {
   TextInputStyle,
   ApplicationIntegrationType,
   InteractionContextType,
+  MessageFlags,
 } from 'discord.js';
 import parseDur from 'parse-duration';
-import chalk from 'chalk';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { disableComponents, getFieldValue, msToTime, toUTS, truncate } from '../utils.js';
 
@@ -73,8 +72,8 @@ export default class Reminder extends Command {
       rows = [];
 
     if (interaction.isAutocomplete()) {
-      const focused = interaction.options.getFocused(),
-        msTime = parseDur(focused);
+      const { value } = interaction.options.getFocused(),
+        msTime = parseDur(value);
 
       return interaction.respond([
         {
@@ -89,7 +88,7 @@ export default class Reminder extends Command {
                       : localize('TIME.MINUTES', { count: minTime / 60000 }),
                 })
               : msToTime(msTime),
-          value: focused,
+          value,
         },
       ]);
     }
@@ -111,7 +110,7 @@ export default class Reminder extends Command {
           if (!contentO) {
             return interaction.reply({
               embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.REMINDER.EMPTY_CONTENT'))],
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
           }
 
@@ -129,17 +128,15 @@ export default class Reminder extends Command {
                   }),
                 ),
               ],
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
           }
 
-          await interaction.deferReply({ ephemeral: isEphemeral });
+          await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });
 
           const reminder = await userData.reminders.set(reminderId, {
               content: contentO,
-              msTime,
               timestamp: summedTime,
-              userId: user.id,
             }),
             emb = embed({ title: localize('REMINDER.CREATED'), type: 'success' })
               .setDescription(reminder.content)
@@ -159,7 +156,7 @@ export default class Reminder extends Command {
                 {
                   name: `🔁 ${localize('NOT_RECURSIVE')}`,
                   value:
-                    reminder.msTime < minRecursiveTime
+                    msTime < minRecursiveTime
                       ? localize('REMINDER.RECURSIVE.DISABLED', {
                           time: localize('TIME.MINUTES', { count: minRecursiveTime / 60000 }),
                         })
@@ -188,9 +185,9 @@ export default class Reminder extends Command {
           });
         }
         case 'list': {
-          await interaction.deferReply({ ephemeral: isEphemeral });
+          await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });
 
-          const reminders = await client.database.users.cache.get(user.id).reminders.fetch(),
+          const reminders = userData.reminders.cache,
             selectMenu = new StringSelectMenuBuilder()
               .setPlaceholder(localize('REMINDER.SELECT_LIST'))
               .setCustomId('reminder_select');
@@ -203,11 +200,11 @@ export default class Reminder extends Command {
               .forEach((r: Record<string, any>) => {
                 selectMenu.addOptions({
                   description: truncate(r.content, 100),
-                  label: new Date(r.timestamp).toLocaleString(userData.locale),
+                  label: new Date(r.timestamp).toLocaleString(userData.locale) + (r.recursive ? ' 🔁' : ''),
                   value: r.id,
                 });
                 emb.addFields({
-                  name: `${toUTS(r.timestamp, TimestampStyles.ShortDateTime)}${r.isRecursive ? ' 🔁' : ''}`,
+                  name: toUTS(r.timestamp, TimestampStyles.ShortDateTime) + (r.recursive ? ' 🔁' : ''),
                   value: truncate(r.content, 300),
                 });
               });
@@ -237,7 +234,7 @@ export default class Reminder extends Command {
       ) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -253,8 +250,11 @@ export default class Reminder extends Command {
             : { footer: 'interacted' },
         );
 
+      const idTimestamp = SnowflakeUtil.timestampFrom(reminderId);
+
       if (!isList) {
         if (reminder) {
+          const msTime = reminder.timestamp - idTimestamp;
           emb
             .setTitle(`🔔 ${localize('REMINDER.INFO')}`)
             .setDescription(reminder.content)
@@ -268,20 +268,20 @@ export default class Reminder extends Command {
                 name: `📅 ${localize('TIMESTAMP')}`,
                 value: `${localize('REMINDER.TIMESTAMP', { timestamp: toUTS(reminder.timestamp) })}\n${localize(
                   'REMINDER.CREATED_AT',
-                  { timestamp: toUTS(SnowflakeUtil.timestampFrom(reminder.id)) },
+                  { timestamp: toUTS(idTimestamp) },
                 )}`,
               },
-              reminder.isRecursive
+              reminder.recursive
                 ? {
                     name: `🔁 ${localize('RECURSIVE')}`,
                     value: localize('REMINDER.RECURSIVE.ON', {
-                      timestamp: toUTS(reminder.timestamp + reminder.msTime),
+                      timestamp: toUTS(reminder.timestamp + msTime),
                     }),
                   }
                 : {
                     name: `🔁 ${localize('NOT_RECURSIVE')}`,
                     value:
-                      reminder.msTime < minRecursiveTime
+                      msTime < minRecursiveTime
                         ? localize('REMINDER.RECURSIVE.DISABLED', {
                             time: localize('TIME.MINUTES', { count: minRecursiveTime / 60000 }),
                           })
@@ -328,7 +328,7 @@ export default class Reminder extends Command {
               ),
             );
           } else {
-            const reminders = await userData.reminders.fetch(),
+            const reminders = userData.reminders.cache,
               selectMenu = new StringSelectMenuBuilder()
                 .setPlaceholder(localize('REMINDER.SELECT_LIST'))
                 .setCustomId('reminder_select');
@@ -340,11 +340,11 @@ export default class Reminder extends Command {
                 .forEach((r: Record<string, any>) => {
                   selectMenu.addOptions({
                     description: truncate(r.content, 100),
-                    label: new Date(r.timestamp).toLocaleString(userData.locale),
+                    label: new Date(r.timestamp).toLocaleString(userData.locale) + (r.recursive ? ' 🔁' : ''),
                     value: r.id,
                   });
                   emb.addFields({
-                    name: `${toUTS(r.timestamp, TimestampStyles.ShortDateTime)}${r.isRecursive ? ' 🔁' : ''}`,
+                    name: toUTS(r.timestamp, TimestampStyles.ShortDateTime) + (r.recursive ? ' 🔁' : ''),
                     value: truncate(r.content, 300),
                   });
                 });
@@ -358,25 +358,21 @@ export default class Reminder extends Command {
             }
           }
 
-          client.log(util.inspect(rows, { depth: null }));
           if ((!isList || customId === 'reminder_select') && !reminder) {
-            client.log(chalk.red('1'));
             await interaction.followUp({
               embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.REMINDER.NOT_FOUND', { reminderId }))],
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
             if (!message.webhookId) {
-              client.log(chalk.green('2'));
               return interaction.editReply({
                 components: disableComponents(message.components, { enabledComponents: ['reminder_list'] }),
               });
             }
           }
 
-          client.log(chalk.yellow('3'));
-          if (!message.webhookId) return interaction.followUp({ components: rows, embeds: [emb], ephemeral: true });
+          if (!message.webhookId)
+            return interaction.followUp({ components: rows, embeds: [emb], flags: MessageFlags.Ephemeral });
 
-          client.log(chalk.blue('4'));
           return interaction.editReply({
             components: rows,
             embeds: [emb],
@@ -384,9 +380,10 @@ export default class Reminder extends Command {
         }
         case 'reminder_edit':
         case 'reminder_recursive': {
+          const msTime = reminder.timestamp - idTimestamp;
           if (customId === 'reminder_recursive') {
             reminder = await userData.reminders.set(reminderId, {
-              isRecursive: !reminder.isRecursive,
+              recursive: !reminder.recursive,
             });
 
             emb
@@ -394,11 +391,11 @@ export default class Reminder extends Command {
               .spliceFields(
                 2,
                 1,
-                reminder.isRecursive
+                reminder.recursive
                   ? {
                       name: `🔁 ${localize('RECURSIVE')}`,
                       value: localize('REMINDER.RECURSIVE.ON', {
-                        timestamp: toUTS(reminder.timestamp + reminder.msTime),
+                        timestamp: toUTS(reminder.timestamp + msTime),
                       }),
                     }
                   : {
@@ -418,11 +415,11 @@ export default class Reminder extends Command {
                 .setStyle(ButtonStyle.Primary)
                 .setCustomId('reminder_view'),
               new ButtonBuilder()
-                .setLabel(localize(`${reminder.isRecursive ? 'RECURSIVE' : 'NOT_RECURSIVE'}`))
+                .setLabel(localize(`${reminder.recursive ? 'RECURSIVE' : 'NOT_RECURSIVE'}`))
                 .setEmoji('🔁')
-                .setStyle(reminder.isRecursive ? ButtonStyle.Success : ButtonStyle.Secondary)
+                .setStyle(reminder.recursive ? ButtonStyle.Success : ButtonStyle.Secondary)
                 .setCustomId('reminder_recursive')
-                .setDisabled(reminder.msTime < minRecursiveTime),
+                .setDisabled(msTime < minRecursiveTime),
             ),
             new ActionRowBuilder().addComponents(
               new ButtonBuilder()
@@ -438,7 +435,8 @@ export default class Reminder extends Command {
             ),
           );
 
-          if (!message.webhookId) return interaction.reply({ components: rows, embeds: [emb], ephemeral: true });
+          if (!message.webhookId)
+            return interaction.reply({ components: rows, embeds: [emb], flags: MessageFlags.Ephemeral });
           return (interaction as ButtonInteraction).update({
             components: rows,
             embeds: [emb],
@@ -519,7 +517,7 @@ export default class Reminder extends Command {
           if (!inputF) {
             return interaction.reply({
               embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.REMINDER.EMPTY_CONTENT'))],
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
           }
 

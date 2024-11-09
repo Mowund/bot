@@ -18,18 +18,18 @@ export default class ReminderFoundEvent extends Event {
   }
 
   async run(client: App, reminder: ReminderData): Promise<any> {
-    const { database, isMainShard, users } = client,
-      { content, id, isRecursive, msTime, timestamp, userId } = reminder;
+    const { isMainShard, users } = client,
+      { content, id, recursive, timestamp, user: userData } = reminder;
 
     if (!isMainShard) return;
 
-    const userData = await database.users.fetch(userId);
-    await userData.reminders.delete(id);
+    await reminder.delete();
 
     const locale = userData?.locale || 'en-US',
       localize = (phrase: string, replace?: Record<string, any>) => client.localize({ locale, phrase }, replace),
-      user = await users.fetch(userId),
+      user = await users.fetch(userData.id),
       idTimestamp = SnowflakeUtil.timestampFrom(id),
+      msTime = timestamp - idTimestamp,
       row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setLabel(localize('REMINDER.COMPONENT.LIST'))
@@ -49,16 +49,14 @@ export default class ReminderFoundEvent extends Event {
           value: toUTS(idTimestamp),
         },
       ],
-      params: { messageOwners: Snowflake; reminderId?: Snowflake } = { messageOwners: userId };
+      params: { messageOwners: Snowflake; reminderId?: Snowflake } = { messageOwners: userData.id };
 
-    if (isRecursive) {
+    if (recursive) {
       const recReminderId = SnowflakeUtil.generate().toString(),
         recReminder = await userData.reminders.set(recReminderId, {
           content: content,
-          isRecursive,
-          msTime,
+          recursive,
           timestamp: SnowflakeUtil.timestampFrom(recReminderId) + msTime,
-          userId: user.id,
         });
 
       params.reminderId = recReminderId;

@@ -11,6 +11,7 @@ import {
   version,
   ApplicationIntegrationType,
   InteractionContextType,
+  MessageFlags,
 } from 'discord.js';
 import { imageOptions, supportServer } from '../defaults.js';
 import { toUTS, appInvite, msToTime } from '../utils.js';
@@ -45,7 +46,7 @@ export default class Bot extends Command {
 
     if (interaction.isChatInputCommand()) {
       const { options } = interaction;
-      await interaction.deferReply({ ephemeral: isEphemeral });
+      await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });
 
       switch (options.getSubcommand()) {
         case 'info': {
@@ -160,8 +161,8 @@ export default class Bot extends Command {
               inline: true,
               name: `💎 ${localize('SHARD')}`,
               value: `**${localize('CURRENT')}:** \`${
-                ShardClientUtil.shardIdForGuildId(guildId, client.shard.count) + 1
-              }\`\n**${localize('TOTAL')}:** \`${client.shard.count}\` `,
+                ShardClientUtil.shardIdForGuildId(guildId, await client.ws.getShardCount()) + 1
+              }\`\n**${localize('TOTAL')}:** \`${await client.ws.getShardCount()}\` `,
             });
           }
 

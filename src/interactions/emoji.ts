@@ -23,6 +23,7 @@ import {
   Snowflake,
   ApplicationIntegrationType,
   InteractionContextType,
+  MessageFlags,
 } from 'discord.js';
 import { collMap, toUTS, getFieldValue, decreaseSizeCDN, disableComponents, beforeMatch, arrayMap } from '../utils.js';
 import { imageOptions, premiumLimits } from '../defaults.js';
@@ -143,7 +144,7 @@ export default class Emoji extends Command {
         if (!interaction.channel?.fetch || !interaction.inGuild()) {
           return interaction.reply({
             embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.DM'))],
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
 
@@ -154,14 +155,14 @@ export default class Emoji extends Command {
                 localize('ERROR.PERM.USER.SINGLE.REQUIRES', { perm: localize('PERM.MANAGE_EXPRESSIONS') }),
               ),
             ],
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
 
         if (imageO.size > 256000) {
           return interaction.reply({
             embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.INVALID.IMAGE.SIZE', { maxSize: 256 }))],
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
 
@@ -178,11 +179,11 @@ export default class Emoji extends Command {
                 }),
               ),
             ],
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
       }
-      await interaction.deferReply({ ephemeral: isEphemeral });
+      await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });
 
       if (!isInfo) {
         emj = await guild.emojis
@@ -395,7 +396,7 @@ export default class Emoji extends Command {
               }),
             ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     }
@@ -406,7 +407,7 @@ export default class Emoji extends Command {
       if (message.interactionMetadata.user.id !== user.id) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
       const oldEmbs = message.embeds,
@@ -544,7 +545,7 @@ export default class Emoji extends Command {
                           ),
                         ),
                       ],
-                      ephemeral: true,
+                      flags: MessageFlags.Ephemeral,
                     });
                     return null;
                   }
@@ -632,7 +633,7 @@ export default class Emoji extends Command {
                   }),
                 ),
               ],
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
           }
           return;
@@ -676,7 +677,7 @@ export default class Emoji extends Command {
                       }),
                 ),
               ],
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
           }
           return;
@@ -761,7 +762,7 @@ export default class Emoji extends Command {
                   }),
                 ),
               ],
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
           }
 

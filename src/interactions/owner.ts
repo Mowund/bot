@@ -9,6 +9,7 @@ import {
   BaseInteraction,
   Collection,
   Colors,
+  MessageFlags,
   PermissionFlagsBits,
   Snowflake,
 } from 'discord.js';
@@ -133,7 +134,7 @@ export default class Owner extends Command {
       __filename = fileURLToPath(import.meta.url),
       __dirname = dirname(__filename);
 
-    await interaction.deferReply({ ephemeral: isEphemeral });
+    await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });
 
     if (!index.botOwners.includes(user.id)) {
       return interaction.editReply({

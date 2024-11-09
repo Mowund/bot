@@ -5,6 +5,7 @@ import {
   Guild,
   ApplicationIntegrationType,
   InteractionContextType,
+  MessageFlags,
 } from 'discord.js';
 import murmurhash from 'murmurhash';
 import { search } from 'fast-fuzzy';
@@ -44,19 +45,19 @@ export default class Rollout extends Command {
       { experiments } = client;
 
     if (interaction.isAutocomplete()) {
-      const focused = interaction.options.getFocused(),
+      const { value } = interaction.options.getFocused(),
         filteredData = experiments.data.filter(e => e.data.label && e.data.id && e.data.kind === Kind.Guild).reverse(),
-        hashFilter = search(focused, filteredData, { keySelector: e => `${e.data.hash}`, threshold: 0.95 }),
-        idFilter = search(focused, filteredData, { keySelector: e => e.data.id, threshold: 0.95 });
+        hashFilter = search(value, filteredData, { keySelector: e => `${e.data.hash}`, threshold: 0.95 }),
+        idFilter = search(value, filteredData, { keySelector: e => e.data.id, threshold: 0.95 });
 
       return interaction.respond(
-        (!focused.length
+        (!value.length
           ? filteredData
           : hashFilter.length
             ? hashFilter
             : idFilter.length
               ? idFilter
-              : search(focused, filteredData, { keySelector: e => e.data.label })
+              : search(value, filteredData, { keySelector: e => e.data.label })
         )
           .slice(0, 25)
           .map(e => ({
@@ -71,7 +72,7 @@ export default class Rollout extends Command {
         experimentO = options.getString('experiment'),
         guildO = options.getString('guild');
 
-      await interaction.deferReply({ ephemeral: isEphemeral });
+      await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });
 
       const guild = (await client.fetchGuildGlobally(guildO ?? interaction.guildId)).mergedGuild;
 

@@ -5,6 +5,7 @@ import {
   Snowflake,
   ApplicationIntegrationType,
   InteractionContextType,
+  MessageFlags,
 } from 'discord.js';
 import parseDur from 'parse-duration';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
@@ -48,8 +49,8 @@ export default class Timeout extends Command {
       maxDuration = 2419200000;
 
     if (interaction.isAutocomplete()) {
-      const focused = interaction.options.getFocused(),
-        msTime = parseDur(focused),
+      const { value } = interaction.options.getFocused(),
+        msTime = parseDur(value),
         acUserId = interaction.options.data.find(o => o.name === 'user')?.value as Snowflake,
         acMember = !msTime && acUserId && (await guild.members.fetch(acUserId).catch(() => null));
 
@@ -64,7 +65,7 @@ export default class Timeout extends Command {
                       time: localize('TIME.DAYS', { count: 28 }),
                     })
                   : msToTime(msTime),
-              value: focused,
+              value,
             }
           : {
               name: localize('TIMEOUT.DURATION.DEFAULT', {
@@ -93,21 +94,21 @@ export default class Timeout extends Command {
               localize('ERROR.PERM.USER.SINGLE.REQUIRES', { perm: localize('PERM.MODERATE_MEMBERS') }),
             ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
       if (!memberO) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize("Can't timeout who isn't a member of the server"))],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
       if (guild.ownerId === memberO.id) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize("Can't timeout the server owner"))],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -118,7 +119,7 @@ export default class Timeout extends Command {
               localize('The target has a role with a higher or same position as me'),
             ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -129,7 +130,7 @@ export default class Timeout extends Command {
               localize("You can't timeout who has a role with a higher or same position as you"),
             ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -138,7 +139,7 @@ export default class Timeout extends Command {
 
         return interaction.reply({
           embeds: [embed({ type: 'success' }).setDescription(`Removed timeout from ${memberO}`)],
-          ephemeral: isEphemeral,
+          flags: isEphemeral ? MessageFlags.Ephemeral : undefined,
         });
       }
 
@@ -154,7 +155,7 @@ export default class Timeout extends Command {
               }),
             ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -164,7 +165,7 @@ export default class Timeout extends Command {
         embeds: [
           embed({ type: 'success' }).setDescription(`${memberO} has been timed out for \`${msToTime(msTime)}\``),
         ],
-        ephemeral: isEphemeral,
+        flags: isEphemeral ? MessageFlags.Ephemeral : undefined,
       });
     }
   }

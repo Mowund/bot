@@ -1,4 +1,10 @@
-import { ShardClientUtil, BaseInteraction, InteractionContextType, ApplicationIntegrationType } from 'discord.js';
+import {
+  ShardClientUtil,
+  BaseInteraction,
+  InteractionContextType,
+  ApplicationIntegrationType,
+  MessageFlags,
+} from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 
 export default class Ping extends Command {
@@ -18,7 +24,7 @@ export default class Ping extends Command {
 
     const { client, embed, isEphemeral, localize } = args,
       { guildId } = interaction,
-      itc = await interaction.deferReply({ ephemeral: isEphemeral, fetchReply: true }),
+      itc = await interaction.deferReply({ fetchReply: true, flags: isEphemeral ? MessageFlags.Ephemeral : undefined }),
       emb = embed({ title: `🏓 ${localize('PING.TITLE')}` }).addFields(
         {
           inline: true,
@@ -28,7 +34,7 @@ export default class Ping extends Command {
         {
           inline: true,
           name: `💓 ${localize('PING.API_LATENCY')}`,
-          value: `\`${Math.round(client.ws.ping)}ms\``,
+          value: `\`${Math.round(client.ping)}ms\``,
         },
       );
 
@@ -36,8 +42,8 @@ export default class Ping extends Command {
       emb.addFields({
         name: `💎 ${localize('SHARD')}`,
         value: `**${localize('CURRENT')}:** \`${
-          ShardClientUtil.shardIdForGuildId(guildId, client.shard.count) + 1
-        }\`\n**${localize('TOTAL')}:** \`${client.shard.count}\``,
+          ShardClientUtil.shardIdForGuildId(guildId, await client.ws.getShardCount()) + 1
+        }\`\n**${localize('TOTAL')}:** \`${await client.ws.getShardCount()}\``,
       });
     }
 

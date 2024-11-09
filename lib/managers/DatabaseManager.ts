@@ -29,10 +29,7 @@ export class DatabaseManager extends CachedManager<Snowflake, Base, Base> {
   async cacheDelete(manager: AnyDataName, id: Snowflake) {
     if (this.client.allShardsReady) {
       await this.client.shard.broadcastEval(
-        (c: App, { i, m }: { i: Snowflake; m: typeof manager }) =>
-          m === 'reminders'
-            ? c.database[m].cache.forEach(r => r.userId === i && c.database[m].cache.delete(r.id))
-            : c.database[m].cache.delete(i),
+        (c: App, { i, m }: { i: Snowflake; m: typeof manager }) => c.database[m].cache.delete(i),
         {
           context: {
             i: id,

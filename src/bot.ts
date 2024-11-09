@@ -62,12 +62,22 @@ process.on('uncaughtException', async (err: DiscordAPIError) => {
 if (!debugLevel) disableValidators();
 if (debugLevel > 1) client.on('debug', client.log).on('warn', client.error).rest.on('rateLimited', client.error);
 
-client.on('ready', async () => {
+client.on('clientReady', async () => {
   try {
     client.user.setPresence({
       activities: [{ name: '🕑 Starting...', type: ActivityType.Custom }],
       status: PresenceUpdateStatus.Idle,
     });
+
+    client.isMainShard = (await client.ws.getShardIds())[0] === 0;
+    client.shardId = (await client.ws.getShardIds())[0] + 1;
+
+    try {
+      await client.mongo.connect();
+      client.log(client.chalk.blue('Connected to MongoDB'));
+    } catch (error) {
+      client.error('Failed to connect to MongoDB:', error);
+    }
 
     await client.application.fetch();
     const appCmds = await client.application.commands.fetch({ withLocalizations: true });
@@ -305,19 +315,18 @@ client.on('ready', async () => {
     client.log(client.chalk.green('Started shard'));
 
     client.user.setPresence({
-      activities: [{ name: `🏓 /ping | ${client.shardId}/${client.shard.count}`, type: ActivityType.Custom }],
+      activities: [
+        { name: `🏓 /ping | ${client.shardId}/${await client.ws.getShardCount()}`, type: ActivityType.Custom },
+      ],
       status: PresenceUpdateStatus.Online,
     });
 
     if (client.isMainShard) {
-      (async function findReminders() {
-        for (const r of await client.database.reminders.find([
-          [{ field: 'timestamp', operator: '<=', target: Date.now() }],
-        ]))
-          client.emit('reminderFound', r[1]);
-
-        setTimeout(findReminders, 5000);
-      })();
+      // Check for reminders
+      setInterval(async () => {
+        const reminders = await client.database.reminders.find({ timestamp: { $lte: Date.now() } });
+        for (const reminder of reminders) client.emit('reminderFound', reminder[1]);
+      }, 5000);
     }
   } catch (err) {
     await client.reportError(err);

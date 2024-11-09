@@ -18,6 +18,7 @@ import {
   GuildEmoji,
   GuildPreviewEmoji,
   SnowflakeUtil,
+  MessageFlags,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { imageOptions, premiumLimits } from '../defaults.js';
@@ -47,7 +48,7 @@ export default class Server extends Command {
       { client, localize } = args;
 
     if (interaction.isChatInputCommand()) {
-      await interaction.deferReply({ ephemeral: isEphemeral });
+      await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });
       const { options } = interaction,
         guildO = options.getString('guild'),
         global = await client.fetchGuildGlobally(guildO ?? interaction.guildId, true),

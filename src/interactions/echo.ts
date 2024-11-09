@@ -9,6 +9,7 @@ import {
   MessageCreateOptions,
   ApplicationIntegrationType,
   InteractionContextType,
+  MessageFlags,
 } from 'discord.js';
 import tc from 'tinycolor2';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
@@ -141,25 +142,25 @@ export default class Echo extends Command {
               localize('ECHO.INSUFFICIENT.PERMS', { perm: localize('PERM.MANAGE_MESSAGES') }),
             ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
       if ((imageO && !isValidImage(imageO.contentType)) || (thumbnailO && !isValidImage(thumbnailO.contentType))) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.INVALID.IMAGE.TYPE'))],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
       if (!contentO && !enableEmbed) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ECHO.INSUFFICIENT.ARGS'))],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
-      await interaction.deferReply({ ephemeral: isEphemeral });
+      await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });
 
       const eEmb = new EmbedBuilder().setColor(colorO),
         eMsg = {

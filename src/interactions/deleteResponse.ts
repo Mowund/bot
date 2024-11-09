@@ -3,6 +3,7 @@ import {
   BaseInteraction,
   ApplicationIntegrationType,
   InteractionContextType,
+  MessageFlags,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 
@@ -38,11 +39,11 @@ export default class DeleteResponse extends Command {
     ) {
       return interaction.reply({
         embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.DELETE_RESPONSE'))],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     await messageO.delete();
     return interaction.deleteReply();
   }

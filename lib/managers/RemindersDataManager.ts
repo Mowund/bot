@@ -1,10 +1,13 @@
-/* eslint-disable @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars, sort-keys */
 
-import { firestore } from 'firebase-admin';
-import { CachedManager, Collection, DiscordjsErrorCodes, DiscordjsTypeError, Snowflake } from 'discord.js';
+import { inspect } from 'node:util';
+import { CachedManager, Collection, Snowflake } from 'discord.js';
+import { ConnectionCheckOutFailedEvent, Filter } from 'mongodb';
+import chalk from 'chalk';
 import { App } from '../App.js';
-import { removeEmpty, SearchOptions, testConditions } from '../../src/utils.js';
+import { DataClassProperties } from '../../src/utils.js';
 import { ReminderData, ReminderDataSetOptions } from '../structures/ReminderData.js';
+import { UserData, UserDataSetOptions } from '../structures/UserData.js';
 
 export class RemindersDataManager extends CachedManager<Snowflake, ReminderData, RemindersDatabaseResolvable> {
   declare client: App;
@@ -17,61 +20,117 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
     reminder: RemindersDatabaseResolvable,
     userId: Snowflake,
     data: ReminderDataSetOptions,
-    { merge = true } = {},
+    { merge = true }: { merge?: boolean } = {},
   ) {
     const id = this.resolveId(reminder);
     if (!id) throw new Error('Invalid reminder type.');
 
-    const db = this.client.firestore.collection('users').doc(userId).collection('reminders').doc(id),
-      oldData =
-        (this.cache.get(id) ||
-          (((await db.get()) as firestore.DocumentSnapshot<firestore.DocumentData>)?.data() as ReminderData)) ??
-        null,
-      newData = oldData ? data : Object.assign(data, { id });
+    const db = this.client.mongo.db('Mowund').collection('users'),
+      user = await this.client.database.users.fetch(userId),
+      existingReminder = user?.reminders.cache.find(r => r.id === id);
 
-    await db.set(removeEmpty(newData), { merge });
+    let newData: DataClassProperties<ReminderData>;
+    if (existingReminder) {
+      newData = (
+        (
+          await db.findOneAndUpdate(
+            { _id: userId as any, 'reminders._id': id },
+            {
+              $set: merge
+                ? Object.fromEntries(Object.entries(data).map(([k, v]) => [`reminders.$.${k}`, v]))
+                : { 'reminders.$': data },
+            },
+            { returnDocument: 'after' },
+          )
+        )?.reminders as unknown as DataClassProperties<ReminderData>[]
+      )?.find(r => r._id === id);
+    } else {
+      newData = (
+        await db.findOneAndUpdate(
+          { _id: userId as any },
+          { $addToSet: { reminders: { _id: id, ...data } } },
+          { upsert: true, returnDocument: 'after', projection: { reminders: { $elemMatch: { _id: id } } } },
+        )
+      )?.reminders?.[0];
+    }
+
+    const updatedReminder = new ReminderData(this.client, Object.assign(Object.create(newData), { user }));
     await this.client.database.cacheDelete('reminders', id);
-    return this.cache.set(id, new ReminderData(this.client, Object.assign(Object.create(oldData), newData))).get(id);
+
+    return this.cache.set(id, updatedReminder).get(id);
   }
 
-  async fetch(id: Snowflake, userId: Snowflake, { cache = true, force = false } = {}) {
-    const existing = this.cache.get(id);
+  async fetch(
+    userId: Snowflake,
+    options?: { cache?: boolean; force?: boolean },
+  ): Promise<Collection<Snowflake, ReminderData>>;
+  async fetch(
+    userId: Snowflake,
+    options: { cache?: boolean; force?: boolean; reminderId: Snowflake },
+  ): Promise<ReminderData>;
+  async fetch(userId: Snowflake, options: { cache?: boolean; force?: boolean; reminderId?: Snowflake } = {}) {
+    const { cache = true, force = false, reminderId } = options;
+
+    if (!reminderId) {
+      if (!force) {
+        const cachedData = this.cache.filter(r => r.user.id === userId);
+        if (cachedData.size) return cachedData;
+      }
+
+      const user = await this.client.database.users.fetch(userId, { cache, force }),
+        reminders = user?.reminders.cache;
+
+      return reminders;
+    }
+
+    const existing = this.cache.get(reminderId);
     if (!force && existing) return existing;
 
-    let data = (
-      await this.client.firestore.collection('users').doc(userId).collection('reminders').doc(id).get()
-    ).data() as ReminderData | undefined;
+    const user = await this.client.database.users.fetch(userId, { cache, force }),
+      reminders = user?.reminders.cache.get(reminderId);
 
-    if (!data) return;
-    data = new ReminderData(this.client, Object.assign(Object.create(data), data));
+    if (!reminders) return;
 
-    if (cache) {
-      await this.client.database.cacheDelete('reminders', id);
-      this.cache.set(id, data);
-    }
-
-    return data;
+    return reminders;
   }
 
-  async find(search: SearchOptions[][], { cache = true, returnCache = false } = {}) {
-    const existing = this.cache.filter(r => testConditions(search, r));
-    if (returnCache && existing.size) return existing;
+  async find(filter: Filter<ReminderData> = {}, { cache = true } = {}) {
+    const data = new Collection<Snowflake, ReminderData>(),
+      db = this.client.mongo.db('Mowund').collection('users'),
+      users = await db
+        .aggregate<DataClassProperties<UserData>>([
+          {
+            $project: {
+              reminders: {
+                $filter: {
+                  input: '$reminders',
+                  as: 'reminder',
+                  cond: Object.entries(filter).reduce((acc, [k, fO]) => {
+                    Object.entries(fO).forEach(([c, m]) => {
+                      acc[c] = [`$$reminder.${k}`, m];
+                    });
+                    return acc;
+                  }, {}),
+                },
+              },
+            },
+          },
+        ])
+        .toArray();
 
-    const data = new Collection<Snowflake, ReminderData>();
-    let db: firestore.Query<firestore.DocumentData> = this.client.firestore.collectionGroup('reminders');
+    for (const user of users) {
+      const userData = await this.client.database.users.fetch(user._id);
 
-    for (const x of search) {
-      x.forEach(y => (db = db.where(y.field, y.operator, y.target)));
-      for (const z of (await db.get()).docs) {
-        const d = z.data();
-        data.set(z.id, new ReminderData(this.client, Object.assign(Object.create(d), d)));
+      if (cache) {
+        await this.client.database.cacheDelete('users', user._id);
+        this.client.database.users.cache.set(user._id, userData);
       }
-    }
-    if (cache) {
-      data.forEach(async d => {
-        await this.client.database.cacheDelete('reminders', d.id);
-        this.cache.set(d.id, d);
-      });
+
+      if (!user.reminders) continue;
+      for (const r of user.reminders as unknown as DataClassProperties<ReminderData>[]) {
+        const reminderData = new ReminderData(this.client, Object.assign(Object.create(r), { user: userData }));
+        data.set(r._id, reminderData);
+      }
     }
 
     return data;
@@ -81,8 +140,15 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
     const id = this.resolveId(reminder);
     if (!id) throw new Error('Invalid reminder type.');
 
-    await this.client.firestore.collection('users').doc(userId).collection('reminders').doc(id).delete();
-    this.cache.delete(id);
+    const user = typeof reminder === 'object' ? reminder.user : await this.client.database.users.fetch(userId),
+      db = this.client.mongo.db('Mowund').collection('users');
+
+    await db.updateOne(
+      { _id: userId as any },
+      user.reminders.cache.size > 1 ? { $pull: { reminders: { _id: id } } as any } : { $unset: { reminders: '' } },
+    );
+
+    await this.client.database.cacheDelete('reminders', id);
 
     return this.cache;
   }

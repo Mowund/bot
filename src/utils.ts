@@ -25,6 +25,15 @@ import {
 } from 'discord.js';
 import { firestore } from 'firebase-admin';
 
+export type Rename<T, K extends keyof T, N extends string> = Omit<T, K> & { [P in N]: T[K] };
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+export type ClassProperties<C> = { [K in keyof C as C[K] extends Function ? never : K]: C[K] };
+
+export type DataClassProperties<C> = Partial<
+  Omit<'id' extends keyof ClassProperties<C> ? Rename<ClassProperties<C>, 'id', '_id'> : ClassProperties<C>, 'client'>
+>;
+
 export const compressJSON = (json: any) => {
   const compressedData = zlib.deflateSync(JSON.stringify(json));
   return compressedData.toString('base64');
@@ -203,7 +212,6 @@ export const bufferFetch = async (input: RequestInfo, init?: RequestInit): Promi
     const res = await fetch(input, init),
       arrayBuffer = await res.arrayBuffer();
 
-    console.log(res.type);
     return Buffer.from(arrayBuffer);
   } catch (e) {
     console.error(e);
@@ -271,7 +279,6 @@ export const truncateArray = (array: string[], limit: number, extra = 0, offset 
   let index = 0;
 
   while (limit > offset) {
-    console.log(offset);
     index++;
     offset += lengths.shift() + extra;
   }

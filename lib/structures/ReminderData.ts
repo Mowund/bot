@@ -2,48 +2,45 @@
 
 import { Snowflake } from 'discord.js';
 import { App } from '../App.js';
+import { DataClassProperties } from '../../src/utils.js';
 import { Base } from './Base.js';
+import { UserData } from './UserData.js';
 
 export class ReminderData extends Base {
   content: string;
-  isRecursive?: boolean;
-  msTime: number;
+  recursive?: boolean;
   timestamp: number;
-  userId: Snowflake;
+  user: UserData;
 
-  constructor(client: App, data: ReminderData) {
+  constructor(client: App, data: DataClassProperties<ReminderData>) {
     super(client);
 
-    this.id = data.id;
+    this.id = data._id;
     this.content = data.content;
-    this.isRecursive = data.isRecursive;
-    this.msTime = data.msTime;
+    this.recursive = data.recursive;
     this.timestamp = data.timestamp;
-    this.userId = data.userId;
+    this.user = data.user;
   }
 
-  async set(data: ReminderDataSetOptions, { merge = true } = {}) {
-    return (await this.client.database.users.fetch(this.userId)).reminders.set(this.id, data, { merge });
+  set(data: ReminderDataSetOptions, { merge = true } = {}) {
+    return this.user.reminders.set(this.id, data, { merge });
   }
 
-  async delete() {
-    return (await this.client.database.users.fetch(this.userId)).reminders.delete(this.id);
+  delete() {
+    return this.user.reminders.delete(this.id);
   }
 
   _patch(data: any) {
     if ('content' in data) this.content = data.content;
-    if ('isRecursive' in data) this.isRecursive = data.isRecursive;
-    if ('msTime' in data) this.msTime = data.msTime;
+    if ('recursive' in data) this.recursive = data.recursive;
     if ('timestamp' in data) this.timestamp = data.timestamp;
-    if ('userId' in data) this.userId = data.userId;
+    if ('user' in data) this.user = data.user;
     return data;
   }
 }
 
 export interface ReminderDataSetOptions {
   content?: string;
-  isRecursive?: boolean;
-  msTime?: number;
+  recursive?: boolean;
   timestamp?: number;
-  userId?: Snowflake;
 }

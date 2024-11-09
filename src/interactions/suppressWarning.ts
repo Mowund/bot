@@ -1,4 +1,12 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Colors, EmbedBuilder } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonInteraction,
+  ButtonStyle,
+  Colors,
+  EmbedBuilder,
+  MessageFlags,
+} from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { disableComponents } from '../utils.js';
 
@@ -18,7 +26,7 @@ export default class SuppressWarning extends Command {
       });
       return interaction.followUp({
         embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.WARNING_NOT_FOUND'))],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 

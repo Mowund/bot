@@ -1,9 +1,6 @@
-/* eslint-disable @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars */
-
-import { firestore } from 'firebase-admin';
-import { CachedManager, Collection, DiscordjsErrorCodes, DiscordjsTypeError, Guild, Snowflake } from 'discord.js';
+import { CachedManager, Guild, Snowflake } from 'discord.js';
 import { App } from '../App.js';
-import { removeEmpty, SearchOptions, testConditions } from '../../src/utils.js';
+import { DataClassProperties } from '../../src/utils.js';
 import { GuildData, GuildDataSetOptions } from '../structures/GuildData.js';
 
 export class GuildsDataManager extends CachedManager<Snowflake, GuildData, GuildsDatabaseResolvable> {
@@ -17,28 +14,31 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
     const id = this.resolveId(guild);
     if (!id) throw new Error('Invalid guild type: GuildsDatabaseResolvable');
 
-    const db = this.client.firestore.collection('guilds').doc(id),
+    const db = this.client.mongo.db('Mowund').collection('guilds'),
       oldData =
-        (this.cache.get(id) ||
-          (((await db.get()) as firestore.DocumentSnapshot<firestore.DocumentData>)?.data() as
-            | GuildData
-            | undefined)) ??
-        null,
-      newData = oldData ? data : Object.assign(data, { id });
+        (this.cache.get(id) || ((await db.findOne({ _id: id as any })) as unknown as DataClassProperties<GuildData>)) ??
+        null;
 
-    await db.set(removeEmpty(newData), { merge });
+    if (merge) await db.updateOne({ _id: id as any }, { $set: data }, { upsert: true });
+    else await db.replaceOne({ _id: id as any }, { $set: data }, { upsert: true });
+
     await this.client.database.cacheDelete('guilds', id);
-    return this.cache.set(id, new GuildData(this.client, Object.assign(Object.create(oldData || {}), newData))).get(id);
+    return this.cache
+      .set(id, new GuildData(this.client, Object.assign(Object.create(oldData || {}), data, { id })))
+      .get(id);
   }
 
   async fetch(id: Snowflake, { cache = true, force = false } = {}) {
     const existing = this.cache.get(id);
     if (!force && existing) return existing;
 
-    let data = (await this.client.firestore.collection('guilds').doc(id).get()).data() as GuildData | undefined;
-    if (!data) return;
+    const rawData = (await this.client.mongo
+      .db('Mowund')
+      .collection('guilds')
+      .findOne({ _id: id as any })) as unknown as DataClassProperties<GuildData>;
+    if (!rawData) return;
 
-    data = new GuildData(this.client, Object.assign(Object.create(data), data));
+    const data = new GuildData(this.client, Object.assign(Object.create(rawData), { id }));
     if (cache) {
       await this.client.database.cacheDelete('guilds', id);
       this.cache.set(id, data);
@@ -47,7 +47,7 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
     return data;
   }
 
-  async find(search: SearchOptions[][], { cache = true, returnCache = false } = {}) {
+  /* async find(search: SearchOptions[][], { cache = true, returnCache = false } = {}) {
     const existing = this.cache.filter(r => testConditions(search, r));
     if (returnCache && existing.size) return existing;
 
@@ -55,7 +55,7 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
     let db: firestore.Query<firestore.DocumentData> = this.client.firestore.collection('guilds');
 
     for (const x of search) {
-      x.forEach(y => (db = db.where(y.field, y.operator, y.target)));
+      x.forEach(y => (db = this.client.mongo.db('Mowund').where(y.field, y.operator, y.target)));
       for (const z of (await db.get()).docs) {
         const d = z.data();
         data.set(z.id, new GuildData(this.client, Object.assign(Object.create(d), d)));
@@ -69,13 +69,16 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
     }
 
     return data;
-  }
+  }*/
 
   async delete(guild: GuildsDatabaseResolvable) {
     const id = this.resolveId(guild);
     if (!id) throw new Error('Invalid guild type: GuildsDatabaseResolvable');
 
-    await this.client.firestore.collection('guilds').doc(id).delete();
+    await this.client.mongo
+      .db('Mowund')
+      .collection('guilds')
+      .deleteOne({ _id: id as any });
     return this.client.database.cacheDelete('guilds', id);
   }
 }

@@ -19,4 +19,5 @@ export class Event {
 
 export enum AppEvents {
   ReminderFound = 'reminderFound',
+  UpdateDB = 'updateDB',
 }

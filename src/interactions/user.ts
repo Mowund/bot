@@ -26,6 +26,8 @@ import {
   ApplicationIntegrationType,
   InteractionContextType,
   Snowflake,
+  MessageFlags,
+  ALLOWED_SIZES,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { UserData, Warnings } from '../../lib/structures/UserData.js';
@@ -41,6 +43,7 @@ import {
   isEmpty,
   compressJSON,
   decompressJSON,
+  appFetch,
 } from '../utils.js';
 import { EmbeddedApplication, FullApplication } from '../../lib/interfaces/Application.js';
 import { AppFlagEmoji, UserFlagEmoji } from '../../lib/App.js';
@@ -314,7 +317,7 @@ export default class User extends Command {
 
         for (const f of u.flags.toArray()) {
           const e = UserFlagEmoji[f] as UserFlagEmoji;
-          console.log(f, e);
+
           if (e) flags.push(client.useEmoji(e));
         }
 
@@ -363,7 +366,7 @@ export default class User extends Command {
 
         return { embs: [emb], rows: [row] };
       },
-      memberInfoOpts = (m: GuildMember, s: SearchedMember, u: DiscordUser, sM?: string) => {
+      memberInfoOpts = async (m: GuildMember, s: SearchedMember, u: DiscordUser, sM?: string) => {
         client.log(util.inspect(m, { depth: null }));
         const mFlags = typeof m.flags === 'object' ? m.flags : new GuildMemberFlagsBitField(m.flags),
           flags = u?.bot
@@ -375,7 +378,11 @@ export default class User extends Command {
           avatar = m.avatar
             ? client.rest.cdn.guildMemberAvatar(guildId, u.id, m.avatar, imageOptions)
             : u.displayAvatarURL(imageOptions),
-          banner = null; // m.banner && client.rest.cdn.guildMemberBanner(guildId, u.id, m.banner, imageOptions);
+          banner =
+            m.banner &&
+            (await appFetch(client.rest.cdn.guildMemberBanner(guildId, u.id, m.banner, { size: ALLOWED_SIZES[0] })))
+              ? client.rest.cdn.guildMemberBanner(guildId, u.id, m.banner, imageOptions)
+              : null;
 
         if (u.id === guild?.ownerId) flags.push(client.useEmoji('owner'));
 
@@ -383,7 +390,7 @@ export default class User extends Command {
         if (premimSince) {
           const pMonths = monthDiff(premimSince),
             months = [1, 2, 3, 6, 12, 15, 18, 24].find(mo => pMonths <= mo) || 24;
-          console.log(pMonths, months);
+
           flags.push(
             months === 1
               ? client.useEmoji('boosting1Month')
@@ -596,8 +603,6 @@ export default class User extends Command {
             }
           }
 
-          console.log(descriptions);
-          console.log(embs.map(e => e.length));
           descriptions.forEach((d, i) => embs[i].setDescription(d));
 
           embs.at(-1).addFields({
@@ -685,11 +690,11 @@ export default class User extends Command {
       if (appO && !appId) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.INVALID.APP'))],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
-      await interaction.deferReply({ ephemeral: isEphemeral });
+      await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });
       const userO = (await (appO
           ? client.users.fetch(appId, { force: true }).catch(() => null)
           : (options.getUser('user') ?? user).fetch(true))) as DiscordUser | null,
@@ -722,7 +727,7 @@ export default class User extends Command {
           : !isUserInfoCmd && app
             ? appInfoOpts(app, embeddedApp, userO, sM)
             : memberO
-              ? memberInfoOpts(memberO, searchedMember, userO, sM)
+              ? await memberInfoOpts(memberO, searchedMember, userO, sM)
               : userInfoOpts(userO, sM),
         noApp = !app && userO?.bot;
 
@@ -783,7 +788,7 @@ export default class User extends Command {
               ),
             ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
       return;
@@ -801,7 +806,7 @@ export default class User extends Command {
                 settingsFields(userData),
               ),
             ],
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
       }
@@ -818,7 +823,7 @@ export default class User extends Command {
       if (!sameUser && customId.startsWith('user_settings')) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -854,7 +859,7 @@ export default class User extends Command {
               : isApp && app
                 ? appInfoOpts(app, embeddedApp, userO, sM)
                 : isMember && memberO && !memberButtonBlocked
-                  ? memberInfoOpts(memberO, searchedMember, userO, sM)
+                  ? await memberInfoOpts(memberO, searchedMember, userO, sM)
                   : userInfoOpts(userO, sM);
 
           if (!isPermsCmd && (memberO || userO.bot || memberButtonBlocked || noMember)) {
@@ -878,13 +883,13 @@ export default class User extends Command {
             await interaction.reply({
               components: opts.rows,
               embeds: opts.embs,
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
           }
           if (noMember && !memberButtonBlocked) {
             await interaction.followUp({
               embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.NO_LONGER_MEMBER'))],
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
           }
           return;
@@ -917,13 +922,13 @@ export default class User extends Command {
               await interaction.reply({
                 components: opts.rows,
                 embeds: opts.embs,
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
               });
             }
 
             return interaction.followUp({
               embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.NO_LONGER_MEMBER'))],
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
           }
 
@@ -973,7 +978,7 @@ export default class User extends Command {
 
           return interaction.reply({
             embeds: [emb],
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
         case 'user_settings': {

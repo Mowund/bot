@@ -13,8 +13,10 @@ import {
   EmbedBuilder,
   Events,
   InteractionContextType,
+  InteractionReplyOptions,
   InteractionType,
   MessageComponentInteraction,
+  MessageFlags,
   PermissionFlagsBits,
   PermissionsBitField,
   RepliableInteraction,
@@ -122,7 +124,7 @@ export default class InteractionCreateEvent extends Event {
               .setTitle(`❌ ${localize('ERROR.NOUN')}`)
               .setDescription(localize(`ERROR.NO_BOT_SCOPE.${isManager ? 'MANAGER' : 'MEMBER'}`)),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -145,7 +147,7 @@ export default class InteractionCreateEvent extends Event {
       });
       return (interaction as RepliableInteraction).reply({
         embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.NO_ASSOCIATED_SCRIPT'))],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -187,13 +189,13 @@ export default class InteractionCreateEvent extends Event {
           }`,
         });
 
-        const eOpts = {
+        const eOpts: InteractionReplyOptions = {
           embeds: [
             embed({ type: 'error' }).setDescription(
               `${localize('ERROR.EXECUTING_INTERACTION')}\n\`\`\`js\n${err}\`\`\``,
             ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         };
         return (interaction as RepliableInteraction).deferred || (interaction as RepliableInteraction).replied
           ? (interaction as RepliableInteraction).followUp(eOpts)

@@ -15,6 +15,7 @@ import {
   PermissionFlagsBits,
   ApplicationIntegrationType,
   InteractionContextType,
+  MessageFlags,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { GuildData } from '../../lib/structures/GuildData.js';
@@ -72,7 +73,7 @@ export default class Server extends Command {
       };
 
     if (interaction.isChatInputCommand()) {
-      await interaction.deferReply({ ephemeral: isEphemeral });
+      await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });
       const { options } = interaction;
 
       switch (options.getSubcommand()) {
@@ -95,7 +96,7 @@ export default class Server extends Command {
       if (message.interactionMetadata.user.id !== user.id) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -114,7 +115,7 @@ export default class Server extends Command {
               localize('ERROR.PERM.USER.SINGLE.NO_LONGER', { perm: localize('PERM.MANAGE_GUILD') }),
             ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
