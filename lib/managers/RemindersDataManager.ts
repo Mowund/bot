@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars, sort-keys */
+/* eslint-disable @typescript-eslint/no-unused-vars, sort-keys */
 
 import { inspect } from 'node:util';
 import { CachedManager, Collection, Snowflake } from 'discord.js';

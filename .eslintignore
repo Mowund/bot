@@ -1,5 +1,0 @@
-!.*
-package-lock.json
-*.json
-dist/
-node_modules/

@@ -23,11 +23,10 @@ import {
   ApplicationIntegrationType,
   ALLOWED_SIZES,
 } from 'discord.js';
-import { firestore } from 'firebase-admin';
 
 export type Rename<T, K extends keyof T, N extends string> = Omit<T, K> & { [P in N]: T[K] };
 
-// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 export type ClassProperties<C> = { [K in keyof C as C[K] extends Function ? never : K]: C[K] };
 
 export type DataClassProperties<C> = Partial<
@@ -121,36 +120,6 @@ export const disableComponents = (
     return rowBuilder;
   });
 };
-
-export const testConditions = (search: SearchOptions[][], destructure: { [x: string]: any }) => {
-  if (!Array.isArray(search)) return false;
-
-  const comparators = {
-      '!=': (a: any, b: any) => a !== b,
-      '<': (a: any, b: any) => a < b,
-      '<=': (a: any, b: any) => a <= b,
-      '==': (a: any, b: any) => a === b,
-      '>': (a: any, b: any) => a > b,
-      '>=': (a: any, b: any) => a >= b,
-      'array-contains': (a: any[], b: any) => a.includes(b),
-      'array-contains-any': (a: any, b: any[]) => b.some((c: any) => a.includes(c)),
-      in: (a: any, b: any) => b.includes(a),
-      'not-in': (a: any, b: any) => !b.includes(a),
-    },
-    test = (obj: SearchOptions) =>
-      comparators[destructure?.[obj.operator] ?? obj.operator]?.(destructure?.[obj.field] ?? obj.field, obj.target);
-
-  return search.some(x => x.every(y => test(y)));
-};
-
-export interface SearchOptions {
-  /** The condition's left operand */
-  field: any;
-  /** The condition's operator */
-  operator: firestore.WhereFilterOp;
-  /** The condition's right operand */
-  target: any;
-}
 
 export const decreaseSizeCDN = async (url: string, options: { initialSize?: number; maxSize?: number } = {}) => {
   const { initialSize, maxSize } = options,

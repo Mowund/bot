@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars */
-
 import { flatten, Snowflake } from 'discord.js';
 import { App } from '../App.js';
 

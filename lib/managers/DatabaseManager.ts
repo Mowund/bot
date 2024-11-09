@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars */
-
 import { Base, CachedManager, Collection, Snowflake } from 'discord.js';
 import { App } from '../App.js';
 import { GuildData } from '../structures/GuildData.js';

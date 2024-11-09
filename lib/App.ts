@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
-
 import process from 'node:process';
 import { Buffer } from 'node:buffer';
 import util from 'node:util';

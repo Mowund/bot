@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
-
 import { APIGuildMember, Snowflake } from 'discord.js';
 
 export interface MemberSearch {
