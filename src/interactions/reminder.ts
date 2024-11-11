@@ -22,6 +22,7 @@ import {
 import parseDur from 'parse-duration';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { disableComponents, getFieldValue, msToTime, toUTS, truncate } from '../utils.js';
+import { botOwners } from '../defaults.js';
 
 export default class Reminder extends Command {
   constructor() {
@@ -68,7 +69,7 @@ export default class Reminder extends Command {
       { user } = interaction,
       minTime = 1000 * 60 * 3,
       maxTime = 1000 * 60 * 60 * 24 * 365.25 * 100,
-      minRecursiveTime = minTime * 10,
+      minRecursiveTime = !botOwners.includes(user.id) ? minTime * 10 : 0,
       rows = [];
 
     if (interaction.isAutocomplete()) {
@@ -114,7 +115,7 @@ export default class Reminder extends Command {
             });
           }
 
-          if (!msTime || msTime < minTime || msTime > maxTime) {
+          if (!msTime || (!botOwners.includes(user.id) && (msTime < minTime || msTime > maxTime))) {
             return interaction.reply({
               embeds: [
                 embed({ type: 'error' }).setDescription(
