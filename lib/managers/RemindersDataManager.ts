@@ -29,7 +29,7 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
       user = await this.client.database.users.fetch(userId),
       existingReminder = user?.reminders.cache.find(r => r.id === id);
 
-    let newData: DataClassProperties<UserData>;
+    let newData: DataClassProperties<ReminderData>;
     if (existingReminder) {
       newData = (
         (await db.findOneAndUpdate(
