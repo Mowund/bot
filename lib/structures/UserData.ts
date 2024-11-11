@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { Snowflake } from 'discord.js';
+import { DataManager, Snowflake } from 'discord.js';
 import { App } from '../App.js';
 import { UserRemindersDataManager } from '../managers/UserRemindersDataManager.js';
 import { DataClassProperties } from '../../src/utils.js';
@@ -15,7 +15,7 @@ export class UserData extends Base {
   suppressedWarnings?: Record<Warnings, number>;
   reminders: UserRemindersDataManager;
 
-  constructor(client: App, data: DataClassProperties<UserData>) {
+  constructor(client: App, data: DataClassProperties<UserData, true>) {
     super(client);
 
     this.id = data._id;
@@ -24,10 +24,10 @@ export class UserData extends Base {
     this.autoLocale = data.autoLocale;
     this.locale = data.locale;
     this.suppressedWarnings = data.suppressedWarnings;
-    this.reminders = new UserRemindersDataManager(
-      this,
-      data.reminders as unknown as DataClassProperties<ReminderData>[],
-    );
+    this.reminders =
+      data.reminders instanceof UserRemindersDataManager
+        ? data.reminders
+        : new UserRemindersDataManager(this, data.reminders);
   }
 
   suppressWarning(warning: Warnings, time = 604800000) {

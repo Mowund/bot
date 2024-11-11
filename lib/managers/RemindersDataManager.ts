@@ -29,28 +29,26 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
       user = await this.client.database.users.fetch(userId),
       existingReminder = user?.reminders.cache.find(r => r.id === id);
 
-    let newData: DataClassProperties<ReminderData>;
+    let newData: DataClassProperties<UserData>;
     if (existingReminder) {
       newData = (
-        (
-          await db.findOneAndUpdate(
-            { _id: userId as any, 'reminders._id': id },
-            {
-              $set: merge
-                ? Object.fromEntries(Object.entries(data).map(([k, v]) => [`reminders.$.${k}`, v]))
-                : { 'reminders.$': data },
-            },
-            { returnDocument: 'after' },
-          )
-        )?.reminders as unknown as DataClassProperties<ReminderData>[]
-      )?.find(r => r._id === id);
+        (await db.findOneAndUpdate(
+          { _id: userId as any, 'reminders._id': id },
+          {
+            $set: merge
+              ? Object.fromEntries(Object.entries(data).map(([k, v]) => [`reminders.$.${k}`, v]))
+              : { 'reminders.$': data },
+          },
+          { returnDocument: 'after' },
+        )) as unknown as DataClassProperties<UserData>
+      )?.reminders?.find(r => r._id === id);
     } else {
       newData = (
-        await db.findOneAndUpdate(
+        (await db.findOneAndUpdate(
           { _id: userId as any },
           { $addToSet: { reminders: { _id: id, ...data } } },
           { upsert: true, returnDocument: 'after', projection: { reminders: { $elemMatch: { _id: id } } } },
-        )
+        )) as unknown as DataClassProperties<UserData>
       )?.reminders?.[0];
     }
 
@@ -127,7 +125,7 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
       }
 
       if (!user.reminders) continue;
-      for (const r of user.reminders as unknown as DataClassProperties<ReminderData>[]) {
+      for (const r of user.reminders) {
         const reminderData = new ReminderData(this.client, Object.assign(Object.create(r), { user: userData }));
         data.set(r._id, reminderData);
       }

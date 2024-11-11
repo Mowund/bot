@@ -22,6 +22,7 @@ import {
   OAuth2Scopes,
   ApplicationIntegrationType,
   ALLOWED_SIZES,
+  DataManager,
 } from 'discord.js';
 
 export type Rename<T, K extends keyof T, N extends string> = Omit<T, K> & { [P in N]: T[K] };
@@ -29,9 +30,18 @@ export type Rename<T, K extends keyof T, N extends string> = Omit<T, K> & { [P i
 // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 export type ClassProperties<C> = { [K in keyof C as C[K] extends Function ? never : K]: C[K] };
 
-export type DataClassProperties<C> = Partial<
-  Omit<'id' extends keyof ClassProperties<C> ? Rename<ClassProperties<C>, 'id', '_id'> : ClassProperties<C>, 'client'>
+type ClassRenamedAndOmitted<C> = Omit<
+  'id' extends keyof ClassProperties<C> ? Rename<ClassProperties<C>, 'id', '_id'> : ClassProperties<C>,
+  'client'
 >;
+
+export type DataClassProperties<C, IncludeManager extends boolean = false> = Partial<{
+  [K in keyof ClassRenamedAndOmitted<C>]: ClassRenamedAndOmitted<C>[K] extends DataManager<any, infer Holds, any>
+    ? IncludeManager extends true
+      ? ClassRenamedAndOmitted<C>[K] | DataClassProperties<Holds>[]
+      : DataClassProperties<Holds>[]
+    : ClassRenamedAndOmitted<C>[K];
+}>;
 
 export const compressJSON = (json: any) => {
   const compressedData = zlib.deflateSync(JSON.stringify(json));
