@@ -54,7 +54,7 @@ export default class ReminderFoundEvent extends Event {
     if (recursive) {
       const currentTime = Date.now();
       let nextTimestamp = timestamp + msTime;
-      if (nextTimestamp < currentTime) while (nextTimestamp < currentTime) nextTimestamp += msTime;
+      if (nextTimestamp < currentTime) nextTimestamp += Math.ceil((currentTime - nextTimestamp) / msTime) * msTime;
 
       const recReminderId = SnowflakeUtil.generate({ timestamp: nextTimestamp - msTime }).toString(),
         recReminder = await userData.reminders.set(recReminderId, {
