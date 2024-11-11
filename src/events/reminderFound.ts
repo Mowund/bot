@@ -52,11 +52,15 @@ export default class ReminderFoundEvent extends Event {
       params: { messageOwners: Snowflake; reminderId?: Snowflake } = { messageOwners: userData.id };
 
     if (recursive) {
-      const recReminderId = SnowflakeUtil.generate().toString(),
+      const currentTime = Date.now();
+      let nextTimestamp = timestamp + msTime;
+      if (nextTimestamp < currentTime) while (nextTimestamp < currentTime) nextTimestamp += msTime;
+
+      const recReminderId = SnowflakeUtil.generate({ timestamp: nextTimestamp - msTime }).toString(),
         recReminder = await userData.reminders.set(recReminderId, {
           content: content,
           recursive,
-          timestamp: SnowflakeUtil.timestampFrom(recReminderId) + msTime,
+          timestamp: nextTimestamp,
         });
 
       params.reminderId = recReminderId;
