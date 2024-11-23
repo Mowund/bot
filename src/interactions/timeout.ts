@@ -44,14 +44,15 @@ export default class Timeout extends Command {
   }
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
-    const { embed, isEphemeral, localize } = args,
+    const { __, client, embed, isEphemeral } = args,
+      { localize: __dl } = client,
       { guild, member, memberPermissions, user } = interaction,
       maxDuration = 2419200000;
 
     if (interaction.isAutocomplete()) {
       const { value } = interaction.options.getFocused(),
         msTime = parseDur(value),
-        acUserId = interaction.options.data.find(o => o.name === 'user')?.value as Snowflake,
+        acUserId = interaction.options.data.find(o => o.name === __dl('CMD.USER'))?.value as Snowflake,
         acMember = !msTime && acUserId && (await guild.members.fetch(acUserId).catch(() => null));
 
       return interaction.respond([
@@ -59,22 +60,22 @@ export default class Timeout extends Command {
           ? {
               name:
                 msTime > maxDuration
-                  ? localize('ERROR.INVALID.TIME_AUTOCOMPLETE', {
+                  ? __('ERROR.INVALID.TIME_AUTOCOMPLETE', {
                       condition: 'greater',
                       input: msToTime(msTime),
-                      time: localize('TIME.DAYS', { count: 28 }),
+                      time: __('TIME.DAYS', { count: 28 }),
                     })
                   : msToTime(msTime),
               value,
             }
           : {
-              name: localize('TIMEOUT.DURATION.DEFAULT', {
+              name: __('TIMEOUT.DURATION.DEFAULT', {
                 default: acMember
                   ? acMember.communicationDisabledUntilTimestamp > Date.now()
                     ? 'unset'
                     : 'set'
                   : 'notMember',
-                time: localize('TIME.HOURS', { count: 1 }),
+                time: __('TIME.HOURS', { count: 1 }),
               }),
               value: '',
             },
@@ -91,7 +92,7 @@ export default class Timeout extends Command {
         return interaction.reply({
           embeds: [
             embed({ type: 'error' }).setDescription(
-              localize('ERROR.PERM.USER.SINGLE.REQUIRES', { perm: localize('PERM.MODERATE_MEMBERS') }),
+              __('ERROR.PERM.USER.SINGLE.REQUIRES', { perm: __('PERM.MODERATE_MEMBERS') }),
             ),
           ],
           flags: MessageFlags.Ephemeral,
@@ -100,14 +101,14 @@ export default class Timeout extends Command {
 
       if (!memberO) {
         return interaction.reply({
-          embeds: [embed({ type: 'error' }).setDescription(localize("Can't timeout who isn't a member of the server"))],
+          embeds: [embed({ type: 'error' }).setDescription(__("Can't timeout who isn't a member of the server"))],
           flags: MessageFlags.Ephemeral,
         });
       }
 
       if (guild.ownerId === memberO.id) {
         return interaction.reply({
-          embeds: [embed({ type: 'error' }).setDescription(localize("Can't timeout the server owner"))],
+          embeds: [embed({ type: 'error' }).setDescription(__("Can't timeout the server owner"))],
           flags: MessageFlags.Ephemeral,
         });
       }
@@ -115,9 +116,7 @@ export default class Timeout extends Command {
       if (memberO.roles.highest.position >= guild.members.me.roles.highest.position) {
         return interaction.reply({
           embeds: [
-            embed({ type: 'error' }).setDescription(
-              localize('The target has a role with a higher or same position as me'),
-            ),
+            embed({ type: 'error' }).setDescription(__('The target has a role with a higher or same position as me')),
           ],
           flags: MessageFlags.Ephemeral,
         });
@@ -127,7 +126,7 @@ export default class Timeout extends Command {
         return interaction.reply({
           embeds: [
             embed({ type: 'error' }).setDescription(
-              localize("You can't timeout who has a role with a higher or same position as you"),
+              __("You can't timeout who has a role with a higher or same position as you"),
             ),
           ],
           flags: MessageFlags.Ephemeral,
@@ -148,10 +147,10 @@ export default class Timeout extends Command {
         return interaction.reply({
           embeds: [
             embed({ type: 'error' }).setDescription(
-              localize('ERROR.INVALID.TIME', {
+              __('ERROR.INVALID.TIME', {
                 condition: msTime && 'greater',
                 input: msTime ? msToTime(msTime) : durationO,
-                time: localize('TIME.DAYS', { count: 28 }),
+                time: __('TIME.DAYS', { count: 28 }),
               }),
             ),
           ],

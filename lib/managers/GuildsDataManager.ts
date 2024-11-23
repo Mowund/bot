@@ -1,7 +1,8 @@
 import { CachedManager, Guild, Snowflake } from 'discord.js';
 import { App } from '../App.js';
 import { DataClassProperties } from '../../src/utils.js';
-import { GuildData, GuildDataSetOptions } from '../structures/GuildData.js';
+import { GuildData } from '../structures/GuildData.js';
+import { UpdateFilter, WithoutId } from 'mongodb';
 
 export class GuildsDataManager extends CachedManager<Snowflake, GuildData, GuildsDatabaseResolvable> {
   declare client: App;
@@ -10,22 +11,27 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
     super(client, GuildData);
   }
 
-  async set(guild: GuildsDatabaseResolvable, data: GuildDataSetOptions, { merge = true } = {}) {
+  async set<M extends boolean = true>(
+    guild: GuildsDatabaseResolvable,
+    data: M extends true ? UpdateFilter<DataClassProperties<GuildData>> : WithoutId<DataClassProperties<GuildData>>,
+    { merge = true as M }: { merge?: M } = {},
+  ) {
     const id = this.resolveId(guild);
     if (!id) throw new Error('Invalid guild type: GuildsDatabaseResolvable');
 
-    const db = this.client.mongo.db('Mowund').collection('guilds'),
-      oldData =
-        (this.cache.get(id) || ((await db.findOne({ _id: id as any })) as unknown as DataClassProperties<GuildData>)) ??
-        null;
-
-    if (merge) await db.updateOne({ _id: id as any }, { $set: data }, { upsert: true });
-    else await db.replaceOne({ _id: id as any }, { $set: data }, { upsert: true });
+    const db = this.client.mongo.db('Mowund').collection<DataClassProperties<GuildData>>('guilds'),
+      newData = merge
+        ? await db.findOneAndUpdate({ _id: id }, data as UpdateFilter<DataClassProperties<GuildData>>, {
+            returnDocument: 'after',
+            upsert: true,
+          })
+        : await db.findOneAndReplace({ _id: id }, data as WithoutId<DataClassProperties<GuildData>>, {
+            returnDocument: 'after',
+            upsert: true,
+          });
 
     await this.client.database.cacheDelete('guilds', id);
-    return this.cache
-      .set(id, new GuildData(this.client, Object.assign(Object.create(oldData || {}), data, { id })))
-      .get(id);
+    return this.cache.set(id, new GuildData(this.client, newData)).get(id);
   }
 
   async fetch(id: Snowflake, { cache = true, force = false } = {}) {
@@ -36,7 +42,8 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
       .db('Mowund')
       .collection('guilds')
       .findOne({ _id: id as any })) as unknown as DataClassProperties<GuildData>;
-    if (!rawData) return;
+
+    if (force && !rawData) return;
 
     const data = new GuildData(this.client, Object.assign(Object.create(rawData), { id }));
     if (cache) {

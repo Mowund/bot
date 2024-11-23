@@ -6,11 +6,13 @@ import {
   ButtonStyle,
   Snowflake,
   APIEmbedField,
+  DiscordAPIError,
 } from 'discord.js';
 import { toUTS } from '../utils.js';
 import { AppEvents, Event } from '../../lib/structures/Event.js';
 import { App } from '../../lib/App.js';
 import { ReminderData } from '../../lib/structures/ReminderData.js';
+import { defaultLocale } from '../defaults.js';
 
 export default class ReminderFoundEvent extends Event {
   constructor() {
@@ -18,21 +20,22 @@ export default class ReminderFoundEvent extends Event {
   }
 
   async run(client: App, reminder: ReminderData): Promise<any> {
-    const { isMainShard, users } = client,
-      { content, id, recursive, timestamp, user: userData } = reminder;
+    const { users } = client,
+      { content, id, recursive, timestamp, user: userData } = reminder,
+      user = await users.fetch(userData.id);
 
-    if (!isMainShard) return;
+    if (await user.send('').catch((e: DiscordAPIError) => e.code === 50007))
+      return userData.set({ $set: { disabledDM: true } });
 
     await reminder.delete();
 
-    const locale = userData?.locale || 'en-US',
-      localize = (phrase: string, replace?: Record<string, any>) => client.localize({ locale, phrase }, replace),
-      user = await users.fetch(userData.id),
+    const locale = userData.locale || defaultLocale,
+      __ = (phrase: string, replace?: Record<string, any>) => client.localize({ locale, phrase }, replace),
       idTimestamp = SnowflakeUtil.timestampFrom(id),
       msTime = timestamp - idTimestamp,
       row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setLabel(localize('REMINDER.COMPONENT.LIST'))
+          .setLabel(__('REMINDER.COMPONENT.LIST'))
           .setEmoji('🗒️')
           .setStyle(ButtonStyle.Primary)
           .setCustomId('reminder_list'),
@@ -40,12 +43,12 @@ export default class ReminderFoundEvent extends Event {
       fields: APIEmbedField[] = [
         {
           inline: true,
-          name: `🪪 ${localize('ID')}`,
+          name: `🪪 ${__('ID')}`,
           value: `\`${id}\``,
         },
         {
           inline: true,
-          name: `📅 ${localize('CREATED')}`,
+          name: `📅 ${__('CREATED')}`,
           value: toUTS(idTimestamp),
         },
       ],
@@ -65,13 +68,13 @@ export default class ReminderFoundEvent extends Event {
 
       params.reminderId = recReminderId;
       fields.push({
-        name: `🔁 ${localize('RECURSIVE')}`,
-        value: localize('REMINDER.RECURSIVE.ON', { timestamp: toUTS(recReminder.timestamp) }),
+        name: `🔁 ${__('RECURSIVE')}`,
+        value: __('REMINDER.RECURSIVE.ON', { timestamp: toUTS(recReminder.timestamp) }),
       });
 
       row.addComponents(
         new ButtonBuilder()
-          .setLabel(localize('EDIT'))
+          .setLabel(__('EDIT'))
           .setEmoji('📝')
           .setStyle(ButtonStyle.Secondary)
           .setCustomId('reminder_edit'),
@@ -82,9 +85,9 @@ export default class ReminderFoundEvent extends Event {
       .embedBuilder({
         addParams: params,
         color: Colors.Yellow,
-        localizer: localize,
+        localizer: __,
         timestamp,
-        title: `${client.useEmoji('bellRinging')} ${localize('REMINDER.NEW')}`,
+        title: `${client.useEmoji('bellRinging')} ${__('REMINDER.NEW')}`,
         user,
       })
       .setDescription(content)

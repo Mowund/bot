@@ -66,11 +66,12 @@ export default class RoleMenu extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { client, embed, isEphemeral } = args,
+      { localize: __dl } = client,
       { guild, user } = interaction;
 
     if (interaction.isChatInputCommand()) {
       const { options } = interaction,
-        channelO = (options.getChannel('channel') ?? interaction.channel) as GuildTextBasedChannel;
+        channelO = (options.getChannel(__dl('CMD.CHANNEL')) ?? interaction.channel) as GuildTextBasedChannel;
 
       await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });
 
@@ -81,7 +82,7 @@ export default class RoleMenu extends Command {
       }
 
       switch (options.getSubcommand()) {
-        case 'create': {
+        case __dl('CMD.CREATE'): {
           if (!channelO.permissionsFor(client.user).has(PermissionFlagsBits.SendMessages)) {
             return interaction.editReply({
               embeds: [embed({ type: 'error' }).setDescription("Can't send messages on this channel")],

@@ -106,28 +106,29 @@ export default class Echo extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     if (interaction.isChatInputCommand()) {
-      const { client, embed, isEphemeral, localize } = args,
+      const { __, client, embed, isEphemeral } = args,
+        { localize: __dl } = client,
         { member, memberPermissions, options, user } = interaction,
         contentO = options
-          .getString('content')
+          .getString(__dl('CMD.CONTENT'))
           ?.replaceAll('\\n', '\n')
           .replace(/<:(\w+):>/gi, (_, p1) => client.useEmoji(p1))
           .trim(),
-        descriptionO = options.getString('description')?.replaceAll('\\n', '\n').trim(),
-        titleO = options.getString('title'),
-        urlO = options.getString('url'),
-        authorO = options.getUser('author'),
-        memberO = options.getMember('author'),
-        footerO = options.getString('footer'),
-        timestampO = options.getBoolean('timestamp'),
-        attachmentO = options.getAttachment('attachment'),
-        imageO = options.getAttachment('image'),
-        thumbnailO = options.getAttachment('thumbnail'),
-        colorO = tc(options.getString('color')).isValid()
-          ? +tc(options.getString('color')).toHex()
+        descriptionO = options.getString(__dl('CMD.DESCRIPTION'))?.replaceAll('\\n', '\n').trim(),
+        titleO = options.getString(__dl('CMD.TITLE')),
+        urlO = options.getString(__dl('CMD.URL')),
+        authorO = options.getUser(__dl('CMD.AUTHOR')),
+        memberO = options.getMember(__dl('CMD.AUTHOR')),
+        footerO = options.getString(__dl('CMD.FOOTER')),
+        timestampO = options.getBoolean(__dl('CMD.TIMESTAMP')),
+        attachmentO = options.getAttachment(__dl('CMD.ATTACHMENT')),
+        imageO = options.getAttachment(__dl('CMD.IMAGE')),
+        thumbnailO = options.getAttachment(__dl('CMD.THUMBNAIL')),
+        colorO = tc(options.getString(__dl('CMD.COLOR'))).isValid()
+          ? +tc(options.getString(__dl('CMD.COLOR'))).toHex()
           : ((memberO ?? member)?.displayColor ?? Colors.Blurple),
-        ttsO = options.getBoolean('tts'),
-        channelO = options.getChannel('channel') as GuildTextBasedChannel,
+        ttsO = options.getBoolean(__dl('CMD.TTS')),
+        channelO = options.getChannel(__dl('CMD.CHANNEL')) as GuildTextBasedChannel,
         enableEmbed = descriptionO || titleO || authorO || footerO || imageO || thumbnailO;
 
       if (
@@ -139,7 +140,7 @@ export default class Echo extends Command {
         return interaction.reply({
           embeds: [
             embed({ type: 'error' }).setDescription(
-              localize('ECHO.INSUFFICIENT.PERMS', { perm: localize('PERM.MANAGE_MESSAGES') }),
+              __('ECHO.INSUFFICIENT.PERMS', { perm: __('PERM.MANAGE_MESSAGES') }),
             ),
           ],
           flags: MessageFlags.Ephemeral,
@@ -148,14 +149,14 @@ export default class Echo extends Command {
 
       if ((imageO && !isValidImage(imageO.contentType)) || (thumbnailO && !isValidImage(thumbnailO.contentType))) {
         return interaction.reply({
-          embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.INVALID.IMAGE.TYPE'))],
+          embeds: [embed({ type: 'error' }).setDescription(__('ERROR.INVALID.IMAGE.TYPE'))],
           flags: MessageFlags.Ephemeral,
         });
       }
 
       if (!contentO && !enableEmbed) {
         return interaction.reply({
-          embeds: [embed({ type: 'error' }).setDescription(localize('ECHO.INSUFFICIENT.ARGS'))],
+          embeds: [embed({ type: 'error' }).setDescription(__('ECHO.INSUFFICIENT.ARGS'))],
           flags: MessageFlags.Ephemeral,
         });
       }
@@ -198,17 +199,17 @@ export default class Echo extends Command {
       if (channelO) {
         if (!channelO.permissionsFor(client.user).has(PermissionFlagsBits.SendMessages)) {
           return interaction.editReply({
-            embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.CANNOT_SEND_CHANNEL_MESSAGES'))],
+            embeds: [embed({ type: 'error' }).setDescription(__('ERROR.CANNOT_SEND_CHANNEL_MESSAGES'))],
           });
         }
 
         const msg = await channelO.send(eMsg);
         return interaction.editReply({
           embeds: [
-            embed({ title: localize('ECHO.SENT'), type: 'success' })
-              .setDescription(localize('ECHO.GO_TO', { msgURL: msg.url }))
+            embed({ title: __('ECHO.SENT'), type: 'success' })
+              .setDescription(__('ECHO.GO_TO', { msgURL: msg.url }))
               .addFields({
-                name: localize('CHANNEL.CHANNEL'),
+                name: __('CHANNEL.CHANNEL'),
                 value: `${channelO} - \`${channelO.id}\``,
               }),
           ],

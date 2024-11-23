@@ -17,6 +17,7 @@ import {
   InteractionType,
   MessageComponentInteraction,
   MessageFlags,
+  OAuth2Scopes,
   PermissionFlagsBits,
   PermissionsBitField,
   RepliableInteraction,
@@ -26,7 +27,7 @@ import { Event } from '../../lib/structures/Event.js';
 import { App, EmbedBuilderOptions } from '../../lib/App.js';
 import { debugLevel, defaultLocale, imageOptions } from '../defaults.js';
 import { beforeMatch, appInvite } from '../utils.js';
-import { UserDataSetOptions, Warnings } from '../../lib/structures/UserData.js';
+import { Warnings } from '../../lib/structures/UserData.js';
 
 export default class InteractionCreateEvent extends Event {
   constructor() {
@@ -44,6 +45,7 @@ export default class InteractionCreateEvent extends Event {
         options: cmdOptions,
       } = interaction as ChatInputCommandInteraction,
       { componentType, customId } = interaction as MessageComponentInteraction,
+      integrationTypes = Object.keys(authorizingIntegrationOwners || {}).map(k => parseInt(k)),
       intName = beforeMatch(customId, '_') ?? commandName,
       command = client.commands.find(
         ({ options, structure }) =>
@@ -52,49 +54,24 @@ export default class InteractionCreateEvent extends Event {
       embColor =
         member?.displayColor ||
         (user.accentColor === undefined ? (await user.fetch(true)).accentColor : user.accentColor) ||
-        Colors.Blurple;
+        Colors.Blurple,
+      userData = await database.users.fetch(user.id);
 
-    let { guild } = interaction,
-      userData =
-        (await database.users.fetch(user.id)) ||
-        (await database.users.set(user.id, {
-          locale: supportedLocales.includes(interaction.locale) ? interaction.locale : defaultLocale,
-        }));
+    let { guild } = interaction;
 
-    {
-      const expiredWarningSuppresions = Object.values(userData.suppressedWarnings ?? {}).some(v => Date.now() > v),
-        noLocale =
-          !customId?.startsWith('user_settings_locale_') &&
-          (userData.autoLocale ?? true) &&
-          userData.locale !== interaction.locale &&
-          supportedLocales.includes(interaction.locale);
-
-      if (expiredWarningSuppresions || noLocale) {
-        const newUserData: UserDataSetOptions = {};
-
-        if (expiredWarningSuppresions) {
-          newUserData.suppressedWarnings = Object.fromEntries(
-            Object.entries(userData.suppressedWarnings ?? {})
-              .filter(([, v]) => Date.now() < v)
-              .map(([k, v]) => [Warnings[k], v]),
-          );
-        }
-
-        if (noLocale) {
-          newUserData.autoLocale = true;
-          newUserData.locale = interaction.locale;
-        }
-
-        userData = await userData.set(newUserData);
-      }
-    }
-
-    const localize = (phrase: string, replace?: Record<string, any>) =>
-      client.localize({ locale: userData.locale, phrase }, replace);
+    const __ = (phrase: string, replace?: Record<string, any>) =>
+      client.localize(
+        {
+          locale:
+            userData.locale || (supportedLocales.includes(interaction.locale) ? interaction.locale : defaultLocale),
+          phrase,
+        },
+        replace,
+      );
 
     if (
       context === InteractionContextType.Guild &&
-      Object.keys(authorizingIntegrationOwners || {}).includes(`${ApplicationIntegrationType.GuildInstall}`)
+      integrationTypes.includes(ApplicationIntegrationType.GuildInstall)
     ) {
       if (!(guild ||= await client.guilds.fetch(guildId).catch(() => null))) {
         const isManager = (memberPermissions as PermissionsBitField).has(PermissionFlagsBits.ManageGuild);
@@ -104,7 +81,7 @@ export default class InteractionCreateEvent extends Event {
             ? [
                 new ActionRowBuilder<ButtonBuilder>().addComponents(
                   new ButtonBuilder()
-                    .setLabel(localize('READD_TO_SERVER'))
+                    .setLabel(__('READD_TO_SERVER'))
                     .setEmoji(client.discordEmoji)
                     .setStyle(ButtonStyle.Link)
                     .setURL(
@@ -121,8 +98,8 @@ export default class InteractionCreateEvent extends Event {
           embeds: [
             new EmbedBuilder()
               .setColor(Colors.Red)
-              .setTitle(`❌ ${localize('ERROR.NOUN')}`)
-              .setDescription(localize(`ERROR.NO_BOT_SCOPE.${isManager ? 'MANAGER' : 'MEMBER'}`)),
+              .setTitle(`❌ ${__('ERROR.NOUN')}`)
+              .setDescription(__(`ERROR.NO_BOT_SCOPE.${isManager ? 'MANAGER' : 'MEMBER'}`)),
           ],
           flags: MessageFlags.Ephemeral,
         });
@@ -136,7 +113,7 @@ export default class InteractionCreateEvent extends Event {
         ...options,
         avatar: member?.avatar && client.rest.cdn.guildMemberAvatar(guildId, user.id, member.avatar, imageOptions),
         color: options.color ?? embColor,
-        localizer: options.localizer ?? localize,
+        localizer: options.localizer ?? __,
         member,
         user,
       });
@@ -146,7 +123,7 @@ export default class InteractionCreateEvent extends Event {
         embed: { footer: 'requested', member, user },
       });
       return (interaction as RepliableInteraction).reply({
-        embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.NO_ASSOCIATED_SCRIPT'))],
+        embeds: [embed({ type: 'error' }).setDescription(__('ERROR.NO_ASSOCIATED_SCRIPT'))],
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -161,7 +138,7 @@ export default class InteractionCreateEvent extends Event {
           (userData.ignoreEphemeralRoles || (nonEphRoleIds && !nonEphRoleIds.some(r => member?.roles.cache.has(r)))));
 
     return command
-      .run({ client, embed, guildData, isEphemeral, localize, userData }, interaction)
+      .run({ __, client, embed, guildData, integrationTypes, isEphemeral, userData }, interaction)
       .catch(async err => {
         if (
           err.code === RESTJSONErrorCodes.UnknownInteraction ||
@@ -191,9 +168,7 @@ export default class InteractionCreateEvent extends Event {
 
         const eOpts: InteractionReplyOptions = {
           embeds: [
-            embed({ type: 'error' }).setDescription(
-              `${localize('ERROR.EXECUTING_INTERACTION')}\n\`\`\`js\n${err}\`\`\``,
-            ),
+            embed({ type: 'error' }).setDescription(`${__('ERROR.EXECUTING_INTERACTION')}\n\`\`\`js\n${err}\`\`\``),
           ],
           flags: MessageFlags.Ephemeral,
         };
@@ -201,39 +176,72 @@ export default class InteractionCreateEvent extends Event {
           ? (interaction as RepliableInteraction).followUp(eOpts)
           : (interaction as RepliableInteraction).reply(eOpts);
       })
-      .finally(() => {
-        if (debugLevel && interaction.type !== InteractionType.ApplicationCommandAutocomplete) {
-          client.log(
-            chalk.blue(user.tag) +
-              chalk.gray(' (') +
-              chalk.blue(user.id) +
-              chalk.gray(') - ') +
-              (guild
-                ? chalk.cyan(guild.name) +
-                  chalk.gray(' (') +
-                  chalk.cyan(guildId) +
-                  chalk.gray(') - ') +
-                  chalk.green(`#${channel.name}`)
-                : chalk.green('DM')) +
-              chalk.gray(' (') +
-              chalk.green(channelId) +
-              chalk.gray('): ') +
-              chalk.red(`${InteractionType[type]}`) +
-              chalk.gray(':') +
-              (commandType
-                ? chalk.red(`${ApplicationCommandType[commandType]}`) + chalk.gray(':')
-                : componentType
-                  ? chalk.red(`${ComponentType[componentType]}`) + chalk.gray(':')
+      .finally(async () => {
+        if (interaction.isRepliable()) {
+          if (
+            userData.disabledDM &&
+            !userData.hasSuppressedWarning(Warnings.CannotDM) &&
+            ![client.localize('CMD.REMINDER'), 'verify-dm'].includes(intName)
+          ) {
+            await userData.suppressWarning(Warnings.CannotDM, 12 * 60 * 60000);
+            return interaction.followUp({
+              components: [
+                new ActionRowBuilder<ButtonBuilder>().addComponents(
+                  new ButtonBuilder()
+                    .setLabel(__('ADD_TO_ACCOUNT'))
+                    .setEmoji(client.useEmoji('invite'))
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(
+                      appInvite(client.user.id, {
+                        integrationType: ApplicationIntegrationType.UserInstall,
+                        scopes: [OAuth2Scopes.ApplicationsCommands],
+                      }),
+                    )
+                    .setDisabled(integrationTypes.includes(ApplicationIntegrationType.UserInstall)),
+                  new ButtonBuilder()
+                    .setLabel(__('VERIFY'))
+                    .setEmoji('🔁')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setCustomId('verify-dm'),
+                ),
+              ],
+              embeds: [embed({ type: 'warning' }).setDescription(__('ERROR.CANNOT_DM'))],
+              flags: MessageFlags.Ephemeral,
+            });
+          }
+          if (debugLevel) {
+            client.log(
+              chalk.blue(user.tag) +
+                chalk.gray(' (') +
+                chalk.blue(user.id) +
+                chalk.gray(') - ') +
+                (guild
+                  ? chalk.cyan(guild.name) +
+                    chalk.gray(' (') +
+                    chalk.cyan(guildId) +
+                    chalk.gray(') - ') +
+                    chalk.green(`#${channel.name}`)
+                  : chalk.green('DM')) +
+                chalk.gray(' (') +
+                chalk.green(channelId) +
+                chalk.gray('): ') +
+                chalk.red(`${InteractionType[type]}`) +
+                chalk.gray(':') +
+                (commandType
+                  ? chalk.red(`${ApplicationCommandType[commandType]}`) + chalk.gray(':')
+                  : componentType
+                    ? chalk.red(`${ComponentType[componentType]}`) + chalk.gray(':')
+                    : '') +
+                chalk.yellow(customId ?? commandName) +
+                chalk.gray(':') +
+                ((cmdOptions as any)?._group ? chalk.yellow((cmdOptions as any)?._group) + chalk.gray(':') : '') +
+                ((cmdOptions as any)?._subcommand
+                  ? chalk.yellow((cmdOptions as any)?._subcommand) + chalk.gray(':')
                   : '') +
-              chalk.yellow(customId ?? commandName) +
-              chalk.gray(':') +
-              ((cmdOptions as any)?._group ? chalk.yellow((cmdOptions as any)?._group) + chalk.gray(':') : '') +
-              ((cmdOptions as any)?._subcommand
-                ? chalk.yellow((cmdOptions as any)?._subcommand) + chalk.gray(':')
-                : '') +
-              chalk.redBright(JSON.stringify(interaction, (_, v) => (typeof v === 'bigint' ? v.toString() : v))) +
-              (cmdOptions ? chalk.gray(':') + JSON.stringify(cmdOptions) : ''),
-          );
+                chalk.redBright(JSON.stringify(interaction, (_, v) => (typeof v === 'bigint' ? v.toString() : v))) +
+                (cmdOptions ? chalk.gray(':') + JSON.stringify(cmdOptions) : ''),
+            );
+          }
         }
       });
   }

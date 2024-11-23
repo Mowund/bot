@@ -1,10 +1,10 @@
 import process from 'node:process';
-import { ALLOWED_SIZES, GuildPremiumTier, ImageURLOptions } from 'discord.js';
+import { ALLOWED_SIZES, GuildPremiumTier, ImageURLOptions, Locale } from 'discord.js';
 
 export const botOwners = process.env.OWNERS?.split(','),
   isDev = process.env.NODE_ENV === 'development',
   debugLevel = +(process.env.DEBUG_LEVEL ?? isDev),
-  defaultLocale = 'en-US',
+  defaultLocale = Locale.EnglishUS,
   imageOptions: ImageURLOptions = { extension: 'png', size: ALLOWED_SIZES.at(-1) },
   premiumLimits = {
     [GuildPremiumTier.None]: { emojis: 50, stickers: 5 },

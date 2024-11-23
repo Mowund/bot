@@ -152,6 +152,33 @@ export const isEmpty = (obj: Record<any, any>) => {
 };
 
 /**
+ * @returns The keys with empty values from an object
+ * @param obj The object to filter the keys
+ * @param options The function's options
+ * @param options.recursion Whether to also recursively get empty nested keys (Default: True)
+ * @param options.removeFalsy Whether to get all falsy values (Default: False)
+ * @param options.removeNull Whether to get null values (Default: False)
+ */
+export const getEmptyKeys = (
+  obj: Record<any, any>,
+  options: { removeFalsy?: boolean; removeNull?: boolean; recursion?: boolean } = {},
+  parentKey = '',
+): string[] => {
+  const keys: string[] = [];
+
+  Object.keys(obj).forEach(k => {
+    const v = obj[k],
+      fullKey = parentKey ? `${parentKey}.${k}` : k;
+
+    if (options.recursion && v && typeof v === 'object' && !Array.isArray(v))
+      keys.push(...getEmptyKeys(v, options, fullKey));
+    else if ((options.removeNull && v === null) || (options.removeFalsy ? !!v : v != null)) keys.push(fullKey);
+  });
+
+  return keys;
+};
+
+/**
  * @returns Remove keys with empty values from an object
  * @param object The object to filter the values
  * @param options The function's options

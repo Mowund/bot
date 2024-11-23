@@ -126,11 +126,11 @@ export default class Owner extends Command {
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     if (!interaction.isChatInputCommand()) return;
 
-    const { client, embed, isEphemeral, localize } = args,
-      { chalk } = client,
+    const { __, client, embed, isEphemeral } = args,
+      { chalk, localize: __dl } = client,
       { member, options, user } = interaction,
-      idO = options.getString('id'),
-      guildO = options.getString('guild'),
+      idO = options.getString(__dl('CMD.ID')),
+      guildO = options.getString(__dl('CMD.GUILD')),
       __filename = fileURLToPath(import.meta.url),
       __dirname = dirname(__filename);
 
@@ -138,7 +138,7 @@ export default class Owner extends Command {
 
     if (!index.botOwners.includes(user.id)) {
       return interaction.editReply({
-        embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.DEVELOPERS_ONLY'))],
+        embeds: [embed({ type: 'error' }).setDescription(__('ERROR.DEVELOPERS_ONLY'))],
       });
     }
 
@@ -146,15 +146,15 @@ export default class Owner extends Command {
 
     if (guildO && !guild) {
       return interaction.editReply({
-        embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.GUILD_NOT_FOUND'))],
+        embeds: [embed({ type: 'error' }).setDescription(__('ERROR.GUILD_NOT_FOUND'))],
       });
     }
 
     switch (options.getSubcommand()) {
-      case 'eval': {
-        const scriptO = options.getString('script'),
-          asyncO = options.getBoolean('async') ?? true,
-          awaitO = options.getBoolean('await') ?? true,
+      case __dl('CMD.EVAL'): {
+        const scriptO = options.getString(__dl('CMD.SCRIPT')),
+          asyncO = options.getBoolean(__dl('CMD.ASYNC')) ?? true,
+          awaitO = options.getBoolean(__dl('CMD.AWAIT')) ?? true,
           script = asyncO ? `(async () => {${scriptO}})()` : scriptO;
 
         try {
@@ -167,7 +167,7 @@ export default class Owner extends Command {
             embeds: [
               embed({ type: 'success' })
                 .setDescription(`\`\`\`ts\n${utils.truncate(evaled, 4087)}\`\`\``)
-                .addFields({ name: localize('TYPE'), value: `\`\`\`ts\n${evaledType}\`\`\`` }),
+                .addFields({ name: __('TYPE'), value: `\`\`\`ts\n${evaledType}\`\`\`` }),
             ],
           });
         } catch (err) {
@@ -175,7 +175,7 @@ export default class Owner extends Command {
           return interaction.editReply({
             embeds: [
               embed({ type: 'error' }).addFields({
-                name: localize('OUTPUT'),
+                name: __('OUTPUT'),
                 value: `\`\`\`js\n${err}\`\`\``,
               }),
             ],
@@ -185,9 +185,9 @@ export default class Owner extends Command {
     }
 
     switch (options.getSubcommandGroup()) {
-      case 'command': {
+      case __dl('CMD.COMMAND'): {
         switch (options.getSubcommand()) {
-          case 'update': {
+          case __dl('CMD.UPDATE'): {
             const embs = [],
               appCmds = client.application.commands,
               fAppCmds = await appCmds.fetch({ withLocalizations: true }),
@@ -257,7 +257,7 @@ export default class Owner extends Command {
               return interaction.editReply({
                 embeds: [
                   embed({ type: 'error' }).setDescription(
-                    `${localize('ERROR.RELOADING_APPLICATION_COMMAND')}\n\`\`\`js\n${err}\`\`\``,
+                    `${__('ERROR.RELOADING_APPLICATION_COMMAND')}\n\`\`\`js\n${err}\`\`\``,
                   ),
                 ],
               });
@@ -282,10 +282,10 @@ export default class Owner extends Command {
                     (gOnly ? o.guildId : !o.guildId)
                       ? `**${
                           o.type === ApplicationCommandType.Message
-                            ? localize('MESSAGE')
+                            ? __('MESSAGE')
                             : o.type === ApplicationCommandType.User
-                              ? localize('USER.NOUN')
-                              : localize('CHAT')
+                              ? __('USER.NOUN')
+                              : __('CHAT')
                         }**: \`${o.name}\``
                       : '',
                   )
@@ -296,11 +296,11 @@ export default class Owner extends Command {
               delCmdGuild = cmdMap(delCmds, true);
 
             if (updCmds.size) {
-              const e = embed({ title: localize('OWNER.COMMAND.COMMANDS.UPDATED'), type: 'success' });
+              const e = embed({ title: __('OWNER.COMMAND.COMMANDS.UPDATED'), type: 'success' });
               if (updCmdGlobal) {
                 e.addFields({
                   inline: true,
-                  name: localize('OWNER.COMMAND.COMMANDS.GLOBAL'),
+                  name: __('OWNER.COMMAND.COMMANDS.GLOBAL'),
                   value: updCmdGlobal,
                 });
               }
@@ -309,19 +309,19 @@ export default class Owner extends Command {
                 e.addFields({
                   inline: true,
                   name: guild
-                    ? localize('OWNER.COMMAND.COMMANDS.SPECIFIED_GUILD', { guildName: guild.name })
-                    : localize('OWNER.COMMAND.COMMANDS.GUILD'),
+                    ? __('OWNER.COMMAND.COMMANDS.SPECIFIED_GUILD', { guildName: guild.name })
+                    : __('OWNER.COMMAND.COMMANDS.GUILD'),
                   value: updCmdGuild,
                 });
               }
               embs.push(e);
             }
             if (delCmds.size) {
-              const e = embed({ color: Colors.Red, title: `🗑️ ${localize('OWNER.COMMAND.COMMANDS.DELETED')}` });
+              const e = embed({ color: Colors.Red, title: `🗑️ ${__('OWNER.COMMAND.COMMANDS.DELETED')}` });
               if (delCmdGlobal) {
                 e.addFields({
                   inline: true,
-                  name: localize('OWNER.COMMAND.COMMANDS.GLOBAL'),
+                  name: __('OWNER.COMMAND.COMMANDS.GLOBAL'),
                   value: delCmdGlobal,
                 });
               }
@@ -330,8 +330,8 @@ export default class Owner extends Command {
                 e.addFields({
                   inline: true,
                   name: guild
-                    ? localize('OWNER.COMMAND.COMMANDS.SPECIFIED_GUILD', { guildName: guild.name })
-                    : localize('OWNER.COMMAND.COMMANDS.GUILD'),
+                    ? __('OWNER.COMMAND.COMMANDS.SPECIFIED_GUILD', { guildName: guild.name })
+                    : __('OWNER.COMMAND.COMMANDS.GUILD'),
                   value: delCmdGuild,
                 });
               }
@@ -339,19 +339,17 @@ export default class Owner extends Command {
             }
 
             return interaction.editReply({
-              embeds: embs.length
-                ? embs
-                : [embed({ type: 'warning' }).setDescription(localize('OWNER.COMMAND.NO_UPDATE'))],
+              embeds: embs.length ? embs : [embed({ type: 'warning' }).setDescription(__('OWNER.COMMAND.NO_UPDATE'))],
             });
           }
         }
         break;
       }
-      case 'localization': {
+      case __dl('CMD.LOCALIZATION'): {
         switch (options.getSubcommand()) {
-          case 'update': {
+          case __dl('CMD.UPDATE'): {
             await interaction.editReply({
-              embeds: [embed({ type: 'loading' }).setDescription(localize('OWNER.LOCALIZATION.UPDATING'))],
+              embeds: [embed({ type: 'loading' }).setDescription(__('OWNER.LOCALIZATION.UPDATING'))],
             });
 
             await client.updateLocalizations();
@@ -380,21 +378,21 @@ export default class Owner extends Command {
             await client.application.editRoleConnectionMetadataRecords(metadata);
 
             return interaction.editReply({
-              embeds: [embed({ type: 'success' }).setDescription(localize('OWNER.LOCALIZATION.UPDATED'))],
+              embeds: [embed({ type: 'success' }).setDescription(__('OWNER.LOCALIZATION.UPDATED'))],
             });
           }
         }
         break;
       }
-      case 'shard': {
+      case __dl('CMD.SHARD'): {
         switch (options.getSubcommand()) {
           case 'respawn-all': {
             const shardDelayO = options.getInteger('shard-delay') ?? 5000,
               respawnDelayO = options.getInteger('respawn-delay') ?? 500,
-              timeoutO = options.getInteger('timeout') ?? 30000;
+              timeoutO = options.getInteger(__dl('CMD.TIMEOUT')) ?? 30000;
 
             await interaction.editReply({
-              embeds: [embed({ type: 'warning' }).setDescription(localize('OWNER.SHARD.RESPAWNING'))],
+              embeds: [embed({ type: 'warning' }).setDescription(__('OWNER.SHARD.RESPAWNING'))],
             });
 
             return client.shard.respawnAll({

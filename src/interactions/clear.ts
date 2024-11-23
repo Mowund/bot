@@ -52,7 +52,8 @@ export default class Clear extends Command {
   }
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
-    const { client, embed, isEphemeral, localize } = args,
+    const { __, client, embed, isEphemeral } = args,
+      { localize: __dl } = client,
       { channel, memberPermissions, user } = interaction;
 
     // TODO: Create a confirmation menu
@@ -60,9 +61,9 @@ export default class Clear extends Command {
     // TODO: Let users delete their own messages without manage messages permission
     if (interaction.isCommand()) {
       const { options } = interaction,
-        countO = (options as CommandInteractionOptionResolver)?.getInteger('count') ?? 100,
-        delPinsO = (options as CommandInteractionOptionResolver)?.getBoolean('delete-pinned'),
-        messageO = (options as CommandInteractionOptionResolver)?.getMessage('message'),
+        countO = (options as CommandInteractionOptionResolver)?.getInteger(__dl('CMD.COUNT')) ?? 100,
+        delPinsO = (options as CommandInteractionOptionResolver)?.getBoolean(__dl('CMD.DELETE-PINNED')),
+        messageO = (options as CommandInteractionOptionResolver)?.getMessage(__dl('CMD.MESSAGE')),
         msg = await interaction.deferReply({
           fetchReply: true,
           flags: isEphemeral ? MessageFlags.Ephemeral : undefined,
@@ -72,7 +73,7 @@ export default class Clear extends Command {
         return interaction.editReply({
           embeds: [
             embed({ type: 'error' }).setDescription(
-              localize('ERROR.PERM.USER.SINGLE.REQUIRES', { perm: localize('PERM.MANAGE_MESSAGES') }),
+              __('ERROR.PERM.USER.SINGLE.REQUIRES', { perm: __('PERM.MANAGE_MESSAGES') }),
             ),
           ],
         });
@@ -88,7 +89,7 @@ export default class Clear extends Command {
 
       rows[0].addComponents(
         new ButtonBuilder()
-          .setLabel(localize('YES'))
+          .setLabel(__('YES'))
           .setEmoji('✅')
           .setStyle(ButtonStyle.Success)
           .setCustomId('clear_delete'),
@@ -126,7 +127,7 @@ export default class Clear extends Command {
 
       if (message.interactionMetadata.user.id !== user.id) {
         return interaction.reply({
-          embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
+          embeds: [embed({ type: 'error' }).setDescription(__('ERROR.UNALLOWED.COMMAND'))],
           flags: MessageFlags.Ephemeral,
         });
       }
@@ -135,7 +136,7 @@ export default class Clear extends Command {
         return interaction.editReply({
           embeds: [
             embed({ type: 'error' }).setDescription(
-              localize('ERROR.PERM.USER.SINGLE.NO_LONGER', { perm: localize('PERM.MANAGE_MESSAGES') }),
+              __('ERROR.PERM.USER.SINGLE.NO_LONGER', { perm: __('PERM.MANAGE_MESSAGES') }),
             ),
           ],
         });

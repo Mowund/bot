@@ -29,14 +29,6 @@ export class ReminderData extends Base {
   delete() {
     return this.user.reminders.delete(this.id);
   }
-
-  _patch(data: any) {
-    if ('content' in data) this.content = data.content;
-    if ('recursive' in data) this.recursive = data.recursive;
-    if ('timestamp' in data) this.timestamp = data.timestamp;
-    if ('user' in data) this.user = data.user;
-    return data;
-  }
 }
 
 export interface ReminderDataSetOptions {

@@ -7,7 +7,7 @@ import chalk from 'chalk';
 import { App } from '../App.js';
 import { DataClassProperties } from '../../src/utils.js';
 import { ReminderData, ReminderDataSetOptions } from '../structures/ReminderData.js';
-import { UserData, UserDataSetOptions } from '../structures/UserData.js';
+import { UserData } from '../structures/UserData.js';
 
 export class RemindersDataManager extends CachedManager<Snowflake, ReminderData, RemindersDatabaseResolvable> {
   declare client: App;
@@ -92,11 +92,12 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
     return reminders;
   }
 
-  async find(filter: Filter<ReminderData> = {}, { cache = true } = {}) {
+  async find(filter: Filter<ReminderData> = {}, { cache = true, ignoreDisabledDM = false } = {}) {
     const data = new Collection<Snowflake, ReminderData>(),
       db = this.client.mongo.db('Mowund').collection('users'),
       users = await db
         .aggregate<DataClassProperties<UserData>>([
+          ignoreDisabledDM ? { $match: { disabledDM: { $ne: true } } } : {},
           {
             $project: {
               reminders: {

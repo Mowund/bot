@@ -1,7 +1,8 @@
 import { CachedManager, Snowflake, User } from 'discord.js';
 import { App } from '../App.js';
 import { DataClassProperties } from '../../src/utils.js';
-import { UserData, UserDataSetOptions } from '../structures/UserData.js';
+import { UserData } from '../structures/UserData.js';
+import { UpdateFilter, WithoutId } from 'mongodb';
 
 export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDatabaseResolvable> {
   declare client: App;
@@ -10,22 +11,27 @@ export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDa
     super(client, UserData);
   }
 
-  async set(user: UsersDatabaseResolvable, data: UserDataSetOptions, { merge = true } = {}) {
+  async set<M extends boolean = true>(
+    user: UsersDatabaseResolvable,
+    data: M extends true ? UpdateFilter<DataClassProperties<UserData>> : WithoutId<DataClassProperties<UserData>>,
+    { merge = true as M }: { merge?: M } = {},
+  ) {
     const id = this.resolveId(user);
     if (!id) throw new Error('Invalid user type: UsersDatabaseResolvable');
 
-    const db = this.client.mongo.db('Mowund').collection('users'),
-      oldData =
-        (this.cache.get(id) || ((await db.findOne({ _id: id as any })) as unknown as DataClassProperties<UserData>)) ??
-        null;
-
-    if (merge) await db.updateOne({ _id: id as any }, { $set: data }, { upsert: true });
-    else await db.replaceOne({ _id: id as any }, { $set: data }, { upsert: true });
+    const db = this.client.mongo.db('Mowund').collection<DataClassProperties<UserData>>('users'),
+      newData = merge
+        ? await db.findOneAndUpdate({ _id: id }, data as UpdateFilter<DataClassProperties<UserData>>, {
+            returnDocument: 'after',
+            upsert: true,
+          })
+        : await db.findOneAndReplace({ _id: id }, data as WithoutId<DataClassProperties<UserData>>, {
+            returnDocument: 'after',
+            upsert: true,
+          });
 
     await this.client.database.cacheDelete('users', id);
-    return this.cache
-      .set(id, new UserData(this.client, Object.assign(Object.create(oldData || {}), data, { _id: id })))
-      .get(id);
+    return this.cache.set(id, new UserData(this.client, newData)).get(id);
   }
 
   async fetch(id: Snowflake, { cache = true, force = false } = {}) {
@@ -36,7 +42,8 @@ export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDa
       .db('Mowund')
       .collection('users')
       .findOne({ _id: id as any })) as unknown as DataClassProperties<UserData>;
-    if (!rawData) return;
+
+    if (force && !rawData) return;
 
     const data = new UserData(this.client, Object.assign(Object.create(rawData)));
     if (cache) {

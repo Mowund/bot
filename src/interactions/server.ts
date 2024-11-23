@@ -44,12 +44,12 @@ export default class Server extends Command {
     let { guildData } = args;
     const { embed, isEphemeral } = args,
       { guildId, memberPermissions, user } = interaction,
-      { client, localize } = args,
-      { database } = client,
+      { __, client } = args,
+      { database, localize: __dl } = client,
       settingsComponents = () => [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setLabel(localize('SERVER.SETTINGS.ALLOW_NON_EPHEMERAL.EDIT'))
+            .setLabel(__('SERVER.SETTINGS.ALLOW_NON_EPHEMERAL.EDIT'))
             .setEmoji('📝')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(!memberPermissions.has(PermissionFlagsBits.ManageGuild))
@@ -64,10 +64,10 @@ export default class Server extends Command {
         return [
           {
             inline: true,
-            name: `👁️ ${localize('SERVER.SETTINGS.ALLOW_NON_EPHEMERAL.NAME')}`,
-            value: `**${localize('CHANNELS.NOUN')}:** ${
-              channels.length ? channels : localize('ALL')
-            }\n**${localize('ROLES.NOUN')}:** ${roles.length ? roles : localize('ALL')}`,
+            name: `👁️ ${__('SERVER.SETTINGS.ALLOW_NON_EPHEMERAL.NAME')}`,
+            value: `**${__('CHANNELS.NOUN')}:** ${
+              channels.length ? channels : __('ALL')
+            }\n**${__('ROLES.NOUN')}:** ${roles.length ? roles : __('ALL')}`,
           },
         ];
       };
@@ -77,11 +77,11 @@ export default class Server extends Command {
       const { options } = interaction;
 
       switch (options.getSubcommand()) {
-        case 'settings': {
+        case __dl('CMD.SETTINGS'): {
           return interaction.editReply({
             components: memberPermissions.has(PermissionFlagsBits.ManageGuild) ? settingsComponents() : [],
             embeds: [
-              embed({ title: `${client.useEmoji('cog')} ${localize('SERVER.SETTINGS.TITLE')}` }).addFields(
+              embed({ title: `${client.useEmoji('cog')} ${__('SERVER.SETTINGS.TITLE')}` }).addFields(
                 settingsFields(guildData),
               ),
             ],
@@ -95,7 +95,7 @@ export default class Server extends Command {
 
       if (message.interactionMetadata.user.id !== user.id) {
         return interaction.reply({
-          embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.UNALLOWED.COMMAND'))],
+          embeds: [embed({ type: 'error' }).setDescription(__('ERROR.UNALLOWED.COMMAND'))],
           flags: MessageFlags.Ephemeral,
         });
       }
@@ -104,7 +104,7 @@ export default class Server extends Command {
         await interaction.update({
           components: settingsComponents(),
           embeds: [
-            embed({ title: `${client.useEmoji('cog')} ${localize('SERVER.SETTINGS.TITLE')}` }).addFields(
+            embed({ title: `${client.useEmoji('cog')} ${__('SERVER.SETTINGS.TITLE')}` }).addFields(
               settingsFields(guildData),
             ),
           ],
@@ -112,7 +112,7 @@ export default class Server extends Command {
         return interaction.followUp({
           embeds: [
             embed({ type: 'error' }).setDescription(
-              localize('ERROR.PERM.USER.SINGLE.NO_LONGER', { perm: localize('PERM.MANAGE_GUILD') }),
+              __('ERROR.PERM.USER.SINGLE.NO_LONGER', { perm: __('PERM.MANAGE_GUILD') }),
             ),
           ],
           flags: MessageFlags.Ephemeral,
@@ -124,7 +124,7 @@ export default class Server extends Command {
           return interaction.update({
             components: settingsComponents(),
             embeds: [
-              embed({ title: `${client.useEmoji('cog')} ${localize('SERVER.SETTINGS.TITLE')}` }).addFields(
+              embed({ title: `${client.useEmoji('cog')} ${__('SERVER.SETTINGS.TITLE')}` }).addFields(
                 settingsFields(guildData),
               ),
             ],
@@ -163,23 +163,27 @@ export default class Server extends Command {
               if (isChannel) {
                 channelIds = channelIds.filter(r => !values.includes(r));
                 guildData = await database.guilds.set(guildId, {
-                  allowNonEphemeral: {
-                    channelIds,
-                    roleIds,
+                  $set: {
+                    allowNonEphemeral: {
+                      channelIds,
+                      roleIds,
+                    },
                   },
                 });
                 count = oldChannelIds.length - channelIds.length;
-                title = count ? localize('CHANNELS.REMOVING', { count }) : localize('CHANNELS_AND_ROLES.REMOVING');
+                title = count ? __('CHANNELS.REMOVING', { count }) : __('CHANNELS_AND_ROLES.REMOVING');
               } else {
                 roleIds = roleIds.filter(r => !values.includes(r));
                 guildData = await database.guilds.set(guildId, {
-                  allowNonEphemeral: {
-                    channelIds,
-                    roleIds,
+                  $set: {
+                    allowNonEphemeral: {
+                      channelIds,
+                      roleIds,
+                    },
                   },
                 });
                 count = oldRoleIds.length - roleIds.length;
-                title = count ? localize('ROLES.REMOVING', { count }) : localize('CHANNELS_AND_ROLES.REMOVING');
+                title = count ? __('ROLES.REMOVING', { count }) : __('CHANNELS_AND_ROLES.REMOVING');
               }
 
               color = Colors.Red;
@@ -189,25 +193,29 @@ export default class Server extends Command {
                 values.forEach(v => channelIds.push(v));
 
                 guildData = await database.guilds.set(guildId, {
-                  allowNonEphemeral: {
-                    channelIds,
-                    roleIds,
+                  $set: {
+                    allowNonEphemeral: {
+                      channelIds,
+                      roleIds,
+                    },
                   },
                 });
                 count = channelIds.length - oldChannelIds.length;
-                title = count ? localize('CHANNELS.ADDING', { count }) : localize('CHANNELS_AND_ROLES.ADDING');
+                title = count ? __('CHANNELS.ADDING', { count }) : __('CHANNELS_AND_ROLES.ADDING');
               } else {
                 roleIds = roleIds.filter(r => !values.includes(r));
                 values.forEach(v => roleIds.push(v));
 
                 guildData = await database.guilds.set(guildId, {
-                  allowNonEphemeral: {
-                    channelIds,
-                    roleIds,
+                  $set: {
+                    allowNonEphemeral: {
+                      channelIds,
+                      roleIds,
+                    },
                   },
                 });
                 count = roleIds.length - oldRoleIds.length;
-                title = count ? localize('ROLES.ADDING', { count }) : localize('CHANNELS_AND_ROLES.ADDING');
+                title = count ? __('ROLES.ADDING', { count }) : __('CHANNELS_AND_ROLES.ADDING');
               }
               color = Colors.Green;
             }
@@ -215,18 +223,20 @@ export default class Server extends Command {
             if (isChannel) channelIds = [];
             else roleIds = [];
             guildData = await database.guilds.set(guildId, {
-              allowNonEphemeral: { channelIds, roleIds },
+              $set: {
+                allowNonEphemeral: { channelIds, roleIds },
+              },
             });
-            title = localize(`${isChannel ? 'CHANNELS.NOUN' : 'ROLES.NOUN'}.RESET`);
+            title = __(`${isChannel ? 'CHANNELS.NOUN' : 'ROLES.NOUN'}.RESET`);
             color = Colors.Red;
           } else if (isEdit) {
-            title = localize('CHANNELS_AND_ROLES.EDITING');
+            title = __('CHANNELS_AND_ROLES.EDITING');
             color = Colors.Orange;
           } else if (isRemove) {
-            title = localize('CHANNELS_AND_ROLES.REMOVING');
+            title = __('CHANNELS_AND_ROLES.REMOVING');
             color = Colors.Red;
           } else {
-            title = localize('CHANNELS_AND_ROLES.ADDING');
+            title = __('CHANNELS_AND_ROLES.ADDING');
             color = Colors.Green;
           }
 
@@ -234,20 +244,20 @@ export default class Server extends Command {
             components: [
               new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
-                  .setLabel(localize('BACK'))
+                  .setLabel(__('BACK'))
                   .setEmoji('↩️')
                   .setStyle(ButtonStyle.Primary)
                   .setCustomId('server_settings'),
               ),
               new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
-                  .setLabel(localize('CHANNELS.RESET'))
+                  .setLabel(__('CHANNELS.RESET'))
                   .setEmoji('🔄')
                   .setStyle(ButtonStyle.Primary)
                   .setCustomId('server_settings_ephemeral_channels_reset')
                   .setDisabled(!channelIds.length),
                 new ButtonBuilder()
-                  .setLabel(localize('ROLES.RESET'))
+                  .setLabel(__('ROLES.RESET'))
                   .setEmoji('🔄')
                   .setStyle(ButtonStyle.Primary)
                   .setCustomId('server_settings_ephemeral_roles_reset')
@@ -255,13 +265,13 @@ export default class Server extends Command {
               ),
               new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
-                  .setLabel(localize('ADD'))
+                  .setLabel(__('ADD'))
                   .setEmoji('➕')
                   .setStyle(ButtonStyle.Success)
                   .setCustomId('server_settings_ephemeral_add')
                   .setDisabled(!isEdit && !isRemove),
                 new ButtonBuilder()
-                  .setLabel(localize('REMOVE'))
+                  .setLabel(__('REMOVE'))
                   .setEmoji('➖')
                   .setStyle(ButtonStyle.Danger)
                   .setCustomId('server_settings_ephemeral_remove')
@@ -270,7 +280,7 @@ export default class Server extends Command {
               new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
                 new ChannelSelectMenuBuilder()
                   .setPlaceholder(
-                    localize(
+                    __(
                       isEdit ? 'CHANNELS.SELECT.DEFAULT' : isRemove ? 'CHANNELS.SELECT.REMOVE' : 'CHANNELS.SELECT.ADD',
                     ),
                   )
@@ -295,7 +305,7 @@ export default class Server extends Command {
               new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(
                 new RoleSelectMenuBuilder()
                   .setPlaceholder(
-                    localize(isEdit ? 'ROLES.SELECT.DEFAULT' : isRemove ? 'ROLES.SELECT.REMOVE' : 'ROLES.SELECT.ADD'),
+                    __(isEdit ? 'ROLES.SELECT.DEFAULT' : isRemove ? 'ROLES.SELECT.REMOVE' : 'ROLES.SELECT.ADD'),
                   )
                   .setMinValues(1)
                   .setMaxValues(25)

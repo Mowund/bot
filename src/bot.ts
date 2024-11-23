@@ -324,7 +324,10 @@ client.on('clientReady', async () => {
     if (client.isMainShard) {
       // Check for reminders
       setInterval(async () => {
-        const reminders = await client.database.reminders.find({ timestamp: { $lte: Date.now() } });
+        const reminders = await client.database.reminders.find(
+          { timestamp: { $lte: Date.now() } },
+          { ignoreDisabledDM: true },
+        );
         for (const reminder of reminders) client.emit('reminderFound', reminder[1]);
       }, 5000);
     }

@@ -41,8 +41,8 @@ export default class Rollout extends Command {
   }
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
-    const { client, embed, isEphemeral, localize } = args,
-      { experiments } = client;
+    const { __, client, embed, isEphemeral } = args,
+      { experiments, localize: __dl } = client;
 
     if (interaction.isAutocomplete()) {
       const { value } = interaction.options.getFocused(),
@@ -69,8 +69,8 @@ export default class Rollout extends Command {
 
     if (interaction.isChatInputCommand()) {
       const { options } = interaction,
-        experimentO = options.getString('experiment'),
-        guildO = options.getString('guild');
+        experimentO = options.getString(__dl('CMD.EXPERIMENT')),
+        guildO = options.getString(__dl('CMD.GUILD'));
 
       await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });
 
@@ -78,7 +78,7 @@ export default class Rollout extends Command {
 
       if (guildO && !guild) {
         return interaction.editReply({
-          embeds: [embed({ type: 'error' }).setDescription(localize('ERROR.GUILD_NOT_FOUND'))],
+          embeds: [embed({ type: 'error' }).setDescription(__('ERROR.GUILD_NOT_FOUND'))],
         });
       }
 
@@ -211,7 +211,7 @@ export default class Rollout extends Command {
           emb.setURL(`https://discordlookup.com/experiments/${experiment.data.id}`);
         emb.addFields({
           inline: true,
-          name: `🪪 ${localize('ID')}`,
+          name: `🪪 ${__('ID')}`,
           value: `\`${experiment.data.id}\``,
         });
       }
@@ -298,7 +298,7 @@ export default class Rollout extends Command {
                       }`,
                   )
                   .join(' & ')
-              : 'Default',
+              : __('DEFAULT'),
             value: fieldValues.join('\n'),
           });
         }
