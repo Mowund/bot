@@ -461,30 +461,32 @@ export default class Reminder extends Command {
             });
           }
 
-          await interaction.followUp({
-            components: [
-              new ActionRowBuilder<ButtonBuilder>().addComponents(
-                new ButtonBuilder()
-                  .setLabel(__('ADD_TO_ACCOUNT'))
-                  .setEmoji(client.useEmoji('invite'))
-                  .setStyle(ButtonStyle.Link)
-                  .setURL(
-                    appInvite(client.user.id, {
-                      integrationType: ApplicationIntegrationType.UserInstall,
-                      scopes: [OAuth2Scopes.ApplicationsCommands],
-                    }),
-                  )
-                  .setDisabled(integrationTypes.includes(ApplicationIntegrationType.UserInstall)),
-                new ButtonBuilder()
-                  .setLabel(__('VERIFY'))
-                  .setEmoji('🔁')
-                  .setStyle(ButtonStyle.Secondary)
-                  .setCustomId('verify-dm'),
-              ),
-            ],
-            embeds: [embed({ type: 'warning' }).setDescription(__('ERROR.REMINDER.CANNOT_DM.PAUSED'))],
-            flags: MessageFlags.Ephemeral,
-          });
+          if (disabledDM) {
+            await interaction.followUp({
+              components: [
+                new ActionRowBuilder<ButtonBuilder>().addComponents(
+                  new ButtonBuilder()
+                    .setLabel(__('ADD_TO_ACCOUNT'))
+                    .setEmoji(client.useEmoji('invite'))
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(
+                      appInvite(client.user.id, {
+                        integrationType: ApplicationIntegrationType.UserInstall,
+                        scopes: [OAuth2Scopes.ApplicationsCommands],
+                      }),
+                    )
+                    .setDisabled(integrationTypes.includes(ApplicationIntegrationType.UserInstall)),
+                  new ButtonBuilder()
+                    .setLabel(__('VERIFY'))
+                    .setEmoji('🔁')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setCustomId('verify-dm'),
+                ),
+              ],
+              embeds: [embed({ type: 'warning' }).setDescription(__('ERROR.REMINDER.CANNOT_DM.PAUSED'))],
+              flags: MessageFlags.Ephemeral,
+            });
+          }
 
           return;
         }
