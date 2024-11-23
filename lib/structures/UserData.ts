@@ -6,22 +6,23 @@ import { UserRemindersDataManager } from '../managers/UserRemindersDataManager.j
 import { DataClassProperties } from '../../src/utils.js';
 import { Base } from './Base.js';
 import { ReminderData, ReminderDataSetOptions } from './ReminderData.js';
+import { UpdateFilter, WithoutId } from 'mongodb';
 
 export class UserData extends Base {
+  disabledDM?: boolean;
   ephemeralResponses?: boolean;
   ignoreEphemeralRoles?: boolean;
-  autoLocale?: boolean;
   locale?: string;
   suppressedWarnings?: Record<Warnings, number>;
-  reminders: UserRemindersDataManager;
+  reminders?: UserRemindersDataManager;
 
   constructor(client: App, data: DataClassProperties<UserData, true>) {
     super(client);
 
     this.id = data._id;
+    this.disabledDM = data.disabledDM;
     this.ephemeralResponses = data.ephemeralResponses;
     this.ignoreEphemeralRoles = data.ignoreEphemeralRoles;
-    this.autoLocale = data.autoLocale;
     this.locale = data.locale;
     this.suppressedWarnings = data.suppressedWarnings;
     this.reminders =
@@ -30,39 +31,66 @@ export class UserData extends Base {
         : new UserRemindersDataManager(this, data.reminders);
   }
 
-  suppressWarning(warning: Warnings, time = 604800000) {
-    const suppressedWarnings = this.suppressedWarnings;
-    suppressedWarnings[warning] = Date.now() + time;
-    return this.set({ suppressedWarnings });
+  hasSuppressedWarning(warning: Warnings) {
+    const now = Date.now(),
+      suppressedWarnings = this.suppressedWarnings ?? ({} as Record<Warnings, number>);
+    let hasExpired = false;
+
+    for (const key in suppressedWarnings) {
+      if (suppressedWarnings[key] < now) {
+        delete suppressedWarnings[key];
+        hasExpired ||= true;
+      }
+    }
+    if (hasExpired) {
+      this.set(
+        Object.keys(suppressedWarnings).length
+          ? { $set: { suppressedWarnings } }
+          : { $unset: { suppressedWarnings: '' } },
+      );
+    }
+
+    return suppressedWarnings[warning] ?? null;
   }
 
-  set(data: UserDataSetOptions, { merge = true } = {}) {
+  suppressWarning(warning: Warnings, time = 7 * 24 * 60 * 60000) {
+    const now = Date.now(),
+      suppressedWarnings = this.suppressedWarnings ?? ({} as Record<Warnings, number>);
+
+    for (const key in suppressedWarnings) if (suppressedWarnings[key] < now) delete suppressedWarnings[key];
+    suppressedWarnings[warning] = now + time;
+
+    return this.set({ $set: { suppressedWarnings } });
+  }
+
+  unsuppressWarning(warning: Warnings) {
+    const now = Date.now(),
+      suppressedWarnings = this.suppressedWarnings ?? ({} as Record<Warnings, number>);
+
+    delete suppressedWarnings[warning];
+    for (const key in suppressedWarnings) if (suppressedWarnings[key] < now) delete suppressedWarnings[key];
+
+    return this.set(
+      Object.keys(suppressedWarnings).length
+        ? { $set: { suppressedWarnings } }
+        : { $unset: { suppressedWarnings: '' } },
+    );
+  }
+
+  set<M extends boolean = true>(
+    data: M extends true ? UpdateFilter<DataClassProperties<UserData>> : WithoutId<DataClassProperties<UserData>>,
+    { merge = true as M }: { merge?: M } = {},
+  ) {
     return this.client.database.users.set(this.id, data, { merge });
   }
 
   delete() {
     return this.client.database.users.delete(this.id);
   }
-
-  _patch(data: any) {
-    if ('ephemeralResponses' in data) this.ephemeralResponses = data.ephemeralResponses;
-    if ('ignoreEphemeralRoles' in data) this.ignoreEphemeralRoles = data.ignoreEphemeralRoles;
-    if ('autoLocale' in data) this.autoLocale = data.autoLocale;
-    if ('locale' in data) this.locale = data.locale;
-    if ('suppressedWarnings' in data) this.suppressedWarnings = data.suppresedWarnings;
-    return data;
-  }
 }
 
-export interface UserDataSetOptions {
-  ephemeralResponses?: boolean;
-  ignoreEphemeralRoles?: boolean;
-  autoLocale?: boolean;
-  locale?: string;
-  reminders?: ReminderDataSetOptions[];
-  suppressedWarnings?: Record<Warnings, number>;
-}
 export enum Warnings {
   BotAppNotFound,
   InaccesibleMemberInfo,
+  CannotDM,
 }
