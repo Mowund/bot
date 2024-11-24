@@ -236,9 +236,12 @@ export default class Emoji extends Command {
         emjCodePoint: string,
         emjURL = `https://cdn.discordapp.com/emojis/${parsedEmoji.id || emjId}`;
 
-      const extractUnicodeEmoji = (input: string) => input.match(/alt="([^"]*)".*?src="([^"]*)"/)?.slice(1) ?? null,
-        emjUnicodeURL = `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/`,
-        parsedTwemoji = extractUnicodeEmoji(twemoji.parse(emjName, i => i)),
+      const emjUnicodeURL = `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/`,
+        parsedTwemoji =
+          twemoji
+            .parse(emjName, i => i)
+            .match(/alt="([^"]*)".*?src="([^"]*)"/)
+            ?.slice(1) ?? null,
         imageType = parsedTwemoji
           ? 'twemoji'
           : (await fetch(`${emjURL}.gif`)).ok
