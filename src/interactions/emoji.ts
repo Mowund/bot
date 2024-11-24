@@ -1,4 +1,4 @@
-import { parse } from 'twemoji-parser';
+import twemoji from '@twemoji/api';
 import {
   SnowflakeUtil,
   ButtonBuilder,
@@ -220,8 +220,7 @@ export default class Emoji extends Command {
         if (!emj) return;
       }
 
-      const anyEmj = shardEmj?.[0] || emj,
-        emjUnicodeURL = `https://twemoji.maxcdn.com/v/latest/72x72/`;
+      const anyEmj = shardEmj?.[0] || emj;
 
       if (anyEmj) {
         emjId = anyEmj.id;
@@ -237,7 +236,9 @@ export default class Emoji extends Command {
         emjCodePoint: string,
         emjURL = `https://cdn.discordapp.com/emojis/${parsedEmoji.id || emjId}`;
 
-      const parsedTwemoji = parse(emjName)[0],
+      const extractUnicodeEmoji = (input: string) => input.match(/alt="([^"]*)".*?src="([^"]*)"/)?.slice(1) ?? null,
+        emjUnicodeURL = `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/`,
+        parsedTwemoji = extractUnicodeEmoji(twemoji.parse(emjName, i => i)),
         imageType = parsedTwemoji
           ? 'twemoji'
           : (await fetch(`${emjURL}.gif`)).ok
@@ -250,8 +251,8 @@ export default class Emoji extends Command {
           emjURL += `.${imageType}?size=${imageOptions.size}`;
           break;
         case 'twemoji':
-          emjDisplay = `${parsedTwemoji.text} `;
-          emjCodePoint = new URL(parsedTwemoji.url).pathname.split(/[/&.]/)[4];
+          [emjName, emjCodePoint] = parsedTwemoji;
+          emjDisplay = `${emjName} `;
           emjURL = `${emjUnicodeURL}${emjCodePoint}.png`;
           break;
         default:
