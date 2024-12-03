@@ -234,10 +234,10 @@ export default class Emoji extends Command {
               : `<:${anyEmj.identifier}> `
             : `${client.useEmoji('emojiGhost')} `,
         emjCodePoint: string,
-        emjURL = `https://cdn.discordapp.com/emojis/${parsedEmoji.id || emjId}`;
+        emjURL = `https://cdn.discordapp.com/emojis/${parsedEmoji.id || emjId}`,
+        isGIF = false;
 
-      const emjUnicodeURL = `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/`,
-        parsedTwemoji =
+      const parsedTwemoji =
           twemoji
             .parse(emjName, i => i)
             .match(/alt="([^"]*)".*?src="([^"]*)"/)
@@ -250,13 +250,15 @@ export default class Emoji extends Command {
 
       switch (imageType) {
         case 'gif':
+          isGIF = true;
+        // eslint-disable-next-line no-fallthrough
         case 'png':
           emjURL += `.${imageType}?size=${imageOptions.size}`;
           break;
         case 'twemoji':
           [emjName, emjCodePoint] = parsedTwemoji;
           emjDisplay = `${emjName} `;
-          emjURL = `${emjUnicodeURL}${emjCodePoint}.png`;
+          emjURL = `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/${emjCodePoint}.png`;
           break;
         default:
           return interaction.editReply({
@@ -307,7 +309,7 @@ export default class Emoji extends Command {
           emb.addFields({
             inline: true,
             name: `${client.useEmoji('mention')} ${__('MENTION')}`,
-            value: `\`<${imageType === 'gif' ? 'a' : ''}:${emjName}:${emjId}>\``,
+            value: `\`<${isGIF ? 'a' : ''}:${emjName}:${emjId}>\``,
           });
         }
         emb.addFields({
@@ -357,16 +359,30 @@ export default class Emoji extends Command {
       if (!memberPermissions?.has(PermissionFlagsBits.ManageEmojisAndStickers)) addBtnVsby = editBtnVsby = 0;
 
       const rows = [new ActionRowBuilder<ButtonBuilder>()];
-      rows[0].addComponents(
+      let row = rows[0];
+
+      row.addComponents(
         new ButtonBuilder()
-          .setLabel(__('EMOJI.COMPONENT.LINK'))
+          .setLabel(__(`OPEN.${isGIF ? 'GIF' : 'PNG'}`))
           .setEmoji('🖼️')
           .setStyle(ButtonStyle.Link)
-          .setURL(emjCodePoint ? emjURL : `${beforeMatch(emjURL, '?')}?size=${imageOptions.size}`),
+          .setURL(emjURL),
       );
 
+      if (emjCodePoint) {
+        row.addComponents(
+          new ButtonBuilder()
+            .setLabel(__('OPEN.SVG'))
+            .setEmoji('🖼️')
+            .setStyle(ButtonStyle.Link)
+            .setURL(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${emjCodePoint}.svg`),
+        );
+        rows.push(new ActionRowBuilder<ButtonBuilder>());
+        row = rows[1];
+      }
+
       if (addBtnVsby) {
-        rows[0].addComponents(
+        row.addComponents(
           new ButtonBuilder()
             .setLabel(__('EMOJI.COMPONENT.ADD'))
             .setEmoji('➕')
@@ -376,7 +392,7 @@ export default class Emoji extends Command {
         );
       }
       if (editBtnVsby) {
-        rows[0].addComponents(
+        row.addComponents(
           new ButtonBuilder()
             .setLabel(__('EDIT'))
             .setEmoji('📝')
@@ -445,7 +461,7 @@ export default class Emoji extends Command {
       const rows: ActionRowBuilder<ButtonBuilder | RoleSelectMenuBuilder>[] = [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setLabel(__('EMOJI.COMPONENT.LINK'))
+            .setLabel(__(`OPEN.${emjURL.includes('gif') ? 'GIF' : 'PNG'}`))
             .setEmoji('🖼️')
             .setStyle(ButtonStyle.Link)
             .setURL(`${beforeMatch(emjURL, '?')}?size=${imageOptions.size}`),
