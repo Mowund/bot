@@ -81,7 +81,6 @@ export default class TicTacToe extends Command {
             validCol ? null : 1,
           )
             .filter(s => s !== '1x1')
-            .slice(0, 25)
             .map(s => ({ name: s, value: s })),
         );
       }
