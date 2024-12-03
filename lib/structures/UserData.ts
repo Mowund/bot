@@ -1,16 +1,13 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
-import { DataManager, Snowflake } from 'discord.js';
 import { App } from '../App.js';
 import { UserRemindersDataManager } from '../managers/UserRemindersDataManager.js';
 import { DataClassProperties } from '../../src/utils.js';
 import { Base } from './Base.js';
-import { ReminderData, ReminderDataSetOptions } from './ReminderData.js';
 import { UpdateFilter, WithoutId } from 'mongodb';
 
 export class UserData extends Base {
   disabledDM?: boolean;
   ephemeralResponses?: boolean;
+  gameIcon: string;
   ignoreEphemeralRoles?: boolean;
   locale?: string;
   suppressedWarnings?: Record<Warnings, number>;
@@ -22,6 +19,7 @@ export class UserData extends Base {
     this.id = data._id;
     this.disabledDM = data.disabledDM;
     this.ephemeralResponses = data.ephemeralResponses;
+    this.gameIcon = data.gameIcon;
     this.ignoreEphemeralRoles = data.ignoreEphemeralRoles;
     this.locale = data.locale;
     this.suppressedWarnings = data.suppressedWarnings;

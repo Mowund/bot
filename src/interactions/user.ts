@@ -28,6 +28,10 @@ import {
   Snowflake,
   MessageFlags,
   ALLOWED_SIZES,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ModalMessageModalSubmitInteraction,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { UserData, Warnings } from '../../lib/structures/UserData.js';
@@ -126,7 +130,7 @@ export default class User extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { client, embed, isEphemeral } = args,
-      { database, localize: __dl, supportedLocales } = client,
+      { localize: __dl, supportedLocales } = client,
       { guild, guildId, user } = interaction;
     let { __, userData } = args;
 
@@ -142,6 +146,11 @@ export default class User extends Command {
             .setEmoji('📝')
             .setStyle(ButtonStyle.Primary)
             .setCustomId('user_settings_locale'),
+          new ButtonBuilder()
+            .setLabel(__('USER.SETTINGS.GAME.ICON.EDIT'))
+            .setEmoji('🎮')
+            .setStyle(ButtonStyle.Primary)
+            .setCustomId('user_settings_game_icon'),
         ),
       ],
       settingsFields = (data: UserData) => [
@@ -172,6 +181,11 @@ export default class User extends Command {
               name: `${client.useEmoji('no')} ${__('USER.SETTINGS.EPHEMERAL.IGNORE_ROLES.NAME')}`,
               value: __('USER.SETTINGS.EPHEMERAL.IGNORE_ROLES.DISABLED'),
             },
+        {
+          inline: true,
+          name: `🎮 ${__('USER.SETTINGS.GAME.ICON.NAME')}`,
+          value: data?.gameIcon || `**${__('NONE')}**`,
+        },
       ],
       appInfoOpts = (app: FullApplication, embeddedApp: EmbeddedApplication, u: DiscordUser, sM: string | null) => {
         const flags = new ApplicationFlagsBitField(app.flags),
@@ -193,7 +207,7 @@ export default class User extends Command {
               {
                 inline: true,
                 name: `🏷️ ${__('TAGS')}`,
-                value: app.tags?.map((t: string) => `\`${t}\``).join(', ') || __('NONE'),
+                value: app.tags?.map((t: string) => `\`${t}\``).join(', ') || `**${__('NONE')}**`,
               },
               {
                 inline: true,
@@ -988,11 +1002,11 @@ export default class User extends Command {
         case 'user_settings_ephemeral_toggle':
         case 'user_settings_ephemeral_role_override': {
           if (customId === 'user_settings_ephemeral_toggle') {
-            userData = await database.users.set(user.id, {
+            userData = await userData.set({
               [`$${userData.ephemeralResponses ? 'un' : ''}set`]: { ephemeralResponses: true },
             });
           } else {
-            userData = await database.users.set(user.id, {
+            userData = await userData.set({
               [`$${userData.ignoreEphemeralRoles ? 'un' : ''}set`]: { ignoreEphemeralRoles: true },
             });
           }
@@ -1124,6 +1138,55 @@ export default class User extends Command {
                       title: `${client.useEmoji('cog')} ${__('USER.SETTINGS.LOCALE.EDITING')}`,
                     },
               ).addFields(settingsFields(userData)),
+            ],
+          });
+        }
+        case 'user_settings_game_icon': {
+          const modal = new ModalBuilder()
+            .setCustomId('user_settings_game_icon_modal')
+            .setTitle(__('USER.SETTINGS.GAME.ICON.EDITING'))
+            .addComponents(
+              new ActionRowBuilder<TextInputBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId('game_icon_input')
+                  .setLabel(__('USER.SETTINGS.GAME.ICON.EDITING_LABEL'))
+                  .setPlaceholder(userData?.gameIcon || __('USER.SETTINGS.GAME.ICON.INPUT_PLACEHOLDER'))
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(false),
+              ),
+            );
+          await interaction.showModal(modal);
+        }
+      }
+    }
+
+    if (interaction.isModalSubmit()) {
+      const { channel, customId, message } = interaction,
+        sameUser =
+          (channel && message.reference ? await channel.messages.fetch(message.reference.messageId) : message)
+            .interactionMetadata.user.id === user.id;
+
+      if (!sameUser && customId.startsWith('user_settings')) {
+        return interaction.reply({
+          embeds: [embed({ type: 'error' }).setDescription(__('ERROR.UNALLOWED.COMMAND'))],
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
+      switch (customId) {
+        case 'user_settings_game_icon_modal': {
+          const gameIcon = interaction.fields.getTextInputValue('game_icon_input');
+          // Save the game icon to the database or user data
+          userData = await userData.set({
+            [`$${gameIcon ? '' : 'un'}set`]: { gameIcon },
+          });
+          await (interaction as ModalMessageModalSubmitInteraction).update({
+            embeds: [
+              embed({
+                color: Colors.Green,
+                localizer: __,
+                title: `${client.useEmoji('cog')} ${__('USER.SETTINGS.GAME.ICON.EDITED')}`,
+              }).addFields(settingsFields(userData)),
             ],
           });
         }
