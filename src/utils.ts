@@ -25,6 +25,8 @@ import {
   DataManager,
 } from 'discord.js';
 
+export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export type Rename<T, K extends keyof T, N extends string> = Omit<T, K> & { [P in N]: T[K] };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
