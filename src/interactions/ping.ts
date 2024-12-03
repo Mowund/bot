@@ -23,7 +23,6 @@ export default class Ping extends Command {
     if (!interaction.isChatInputCommand()) return;
 
     const { __, client, embed, isEphemeral } = args,
-      { guildId } = interaction,
       itc = await interaction.deferReply({ fetchReply: true, flags: isEphemeral ? MessageFlags.Ephemeral : undefined }),
       emb = embed({ title: `🏓 ${__('PING.TITLE')}` }).addFields(
         {
@@ -36,16 +35,11 @@ export default class Ping extends Command {
           name: `💓 ${__('PING.API_LATENCY')}`,
           value: `\`${Math.round(client.ping)}ms\``,
         },
+        {
+          name: `💎 ${__('SHARD')}`,
+          value: `**${__('CURRENT')}:** \`${client.shardId}\`\n**${__('TOTAL')}:** \`${await client.ws.getShardCount()}\``,
+        },
       );
-
-    if (interaction.inGuild()) {
-      emb.addFields({
-        name: `💎 ${__('SHARD')}`,
-        value: `**${__('CURRENT')}:** \`${
-          ShardClientUtil.shardIdForGuildId(guildId, await client.ws.getShardCount()) + 1
-        }\`\n**${__('TOTAL')}:** \`${await client.ws.getShardCount()}\``,
-      });
-    }
 
     return interaction.editReply({
       embeds: [emb],
