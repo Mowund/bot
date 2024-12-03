@@ -61,7 +61,7 @@ export default class ReminderFoundEvent extends Event {
 
       const recReminderId = SnowflakeUtil.generate({ timestamp: nextTimestamp - msTime }).toString(),
         recReminder = await userData.reminders.set(recReminderId, {
-          content: content,
+          content,
           recursive,
           timestamp: nextTimestamp,
         });

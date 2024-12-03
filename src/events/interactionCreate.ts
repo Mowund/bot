@@ -45,7 +45,9 @@ export default class InteractionCreateEvent extends Event {
         options: cmdOptions,
       } = interaction as ChatInputCommandInteraction,
       { componentType, customId } = interaction as MessageComponentInteraction,
-      integrationTypes = Object.keys(authorizingIntegrationOwners || {}).map(k => parseInt(k)),
+      integrationTypes = Object.keys(authorizingIntegrationOwners || {}).map(k =>
+        parseInt(k),
+      ) as ApplicationIntegrationType[],
       intName = beforeMatch(customId, '_') ?? commandName,
       command = client.commands.find(
         ({ options, structure }) =>

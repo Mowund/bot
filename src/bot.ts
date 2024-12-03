@@ -40,7 +40,7 @@ const __filename = fileURLToPath(import.meta.url),
     intents: [
       GatewayIntentBits.DirectMessages,
       GatewayIntentBits.Guilds,
-      GatewayIntentBits.GuildEmojisAndStickers,
+      GatewayIntentBits.GuildExpressions,
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.GuildMembers,
       GatewayIntentBits.GuildPresences,
