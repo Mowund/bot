@@ -45,7 +45,7 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
 
     if (force && !rawData) return;
 
-    const data = new GuildData(this.client, Object.assign(Object.create(rawData), { id }));
+    const data = new GuildData(this.client, Object.assign(Object.create(rawData), { _id: id }));
     if (cache) {
       await this.client.database.cacheDelete('guilds', id);
       this.cache.set(id, data);

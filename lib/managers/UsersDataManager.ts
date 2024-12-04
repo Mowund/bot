@@ -45,7 +45,7 @@ export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDa
 
     if (force && !rawData) return;
 
-    const data = new UserData(this.client, Object.assign(Object.create(rawData)));
+    const data = new UserData(this.client, Object.assign(Object.create(rawData), { _id: id }));
     if (cache) {
       await this.client.database.cacheDelete('users', id);
       this.cache.set(id, data);
