@@ -64,7 +64,8 @@ export default class TicTacToe extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { __, client, embed, integrationTypes, isEphemeral, userData } = args,
-      { localize: __dl } = client;
+      { localize: __dl } = client,
+      msToNotify = 120000;
 
     if (interaction.isAutocomplete()) {
       const { value } = interaction.options.getFocused(),
@@ -166,8 +167,6 @@ export default class TicTacToe extends Command {
 
       if (opponent.bot) {
         await interaction.reply({
-          allowedMentions: { users: [opponent.id] },
-          content: opponent.bot ? null : `||${opponent}||`,
           embeds: [emb],
           flags: isEphemeral ? MessageFlags.Ephemeral : undefined,
         });
@@ -175,8 +174,8 @@ export default class TicTacToe extends Command {
         return updateBoard(board, players[0], emb);
       }
 
-      return interaction.reply({
-        allowedMentions: { users: [opponent.id] },
+      await interaction.reply({
+        allowedMentions: { users: [user.id, opponent.id] },
         components: [
           new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
@@ -191,17 +190,22 @@ export default class TicTacToe extends Command {
               .setStyle(ButtonStyle.Danger),
           ),
         ],
-        content: opponent.bot ? null : `||${opponent}||`,
+        content: `||${user} ${opponent}||`,
         embeds: [emb.setDescription(__('GAME.CONFIRM', { player: players[0].user.toString() }))],
+      });
+
+      return interaction.editReply({
+        content: `${opponent}`,
       });
     }
 
     if (interaction.isButton()) {
-      const { customId, guild, message } = interaction,
+      const { createdTimestamp, customId, guild, message, user } = interaction,
+        shouldNotify = createdTimestamp - message.editedTimestamp > msToNotify,
         emb = new EmbedBuilder(message.embeds[0]),
         players: PlayerCell[] = await Promise.all(
           emb.data.fields[0].value?.split('\n').map(async line => {
-            const u = interaction.client.users.cache.get(line.match(/<@!?(\d+)>/)?.[1]);
+            const u = client.users.cache.get(line.match(/<@!?(\d+)>/)?.[1]);
             return {
               icon: (await client.database.users.fetch(u.id))?.gameIcon || line.replaceAll('_', '')?.split(' ')[0],
               user: u,
@@ -216,10 +220,7 @@ export default class TicTacToe extends Command {
         ) as [[number, number], [number, number], number],
         [action, row, col] = customId.split('_');
 
-      if (
-        !players.some(p => p.user.id === interaction.user.id) ||
-        (!col && players[0].user.id === interaction.user.id)
-      ) {
+      if (!players.some(p => p.user.id === user.id) || (!col && players[0].user.id === user.id)) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(__('ERROR.UNALLOWED.COMMAND'))],
           flags: MessageFlags.Ephemeral,
@@ -229,12 +230,12 @@ export default class TicTacToe extends Command {
       switch (customId) {
         case 'tictactoe_accept': {
           await updateBoard(createEmptyBoard(settings[0][0], settings[0][1]), players[0], emb.setDescription(null));
-          // Notify the player if the opponent doesn't respond in 2 minutes
-          if (Date.now() - message.createdTimestamp >= 120000) {
+
+          if (shouldNotify) {
             await interaction
               .followUp({
                 allowedMentions: { users: [players[0].user.id] },
-                content: `${players[0].user}`,
+                content: `${players[0].user} ${__('GAME.ACCEPTED')}`,
               })
               .then(i => i.delete());
           }
@@ -242,7 +243,7 @@ export default class TicTacToe extends Command {
         }
         case 'tictactoe_decline': {
           const opponent = guild?.members.cache.get(players[1].user.id) ?? players[1].user;
-          return interaction.update({
+          await interaction.update({
             components: [],
             content: null,
             embeds: [
@@ -255,10 +256,20 @@ export default class TicTacToe extends Command {
                 .setColor(Colors.Red),
             ],
           });
+
+          if (shouldNotify) {
+            await interaction
+              .followUp({
+                allowedMentions: { users: [players[0].user.id] },
+                content: `${players[0].user} ${__('GAME.DECLINED')}`,
+              })
+              .then(i => i.delete());
+          }
+          return;
         }
       }
 
-      if (currentPlayer.user.id !== interaction.user.id) {
+      if (currentPlayer.user.id !== user.id) {
         return interaction
           .reply({
             embeds: [embed({ type: 'error' }).setDescription(__('ERROR.NOT_YOUR_TURN'))],
@@ -317,6 +328,15 @@ export default class TicTacToe extends Command {
         const nextPlayer = players.find(p => p.user.id !== currentPlayer.user.id);
 
         await updateBoard(board, nextPlayer, emb);
+
+        if (shouldNotify) {
+          await interaction
+            .followUp({
+              allowedMentions: { users: [nextPlayer.user.id] },
+              content: `${nextPlayer.user} ${__('GAME.YOUR_TURN')}`,
+            })
+            .then(i => i.delete());
+        }
 
         // Handle AI move
         if (nextPlayer.user.bot) {
