@@ -267,7 +267,6 @@ export class App extends Client<true> {
     options.localizer ??= this.localize;
 
     const emb = new EmbedBuilder();
-    if (options.timestamp) emb.setTimestamp(options.timestamp);
 
     if (options.footer !== 'none') {
       emb.setFooter({
@@ -405,7 +404,6 @@ export interface EmbedBuilderOptions {
   footer?: 'interacted' | 'requested' | 'none';
   localizer?: (phrase: string, replace?: Record<string, any>) => string;
   member?: GuildMember;
-  timestamp?: number;
   title?: string;
   type?: 'error' | 'loading' | 'success' | 'warning' | 'wip';
   user: User;

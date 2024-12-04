@@ -86,10 +86,10 @@ export default class ReminderFoundEvent extends Event {
         addParams: params,
         color: Colors.Yellow,
         localizer: __,
-        timestamp,
         title: `${client.useEmoji('bellRinging')} ${__('REMINDER.NEW')}`,
         user,
       })
+      .setTimestamp(timestamp)
       .setDescription(content)
       .addFields(fields);
 
