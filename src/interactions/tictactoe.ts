@@ -18,6 +18,7 @@ import {
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { sleep } from '../utils.js';
+import { imageOptions } from '../defaults.js';
 
 export default class TicTacToe extends Command {
   constructor() {
@@ -196,7 +197,7 @@ export default class TicTacToe extends Command {
     }
 
     if (interaction.isButton()) {
-      const { customId, message } = interaction,
+      const { customId, guild, message } = interaction,
         emb = new EmbedBuilder(message.embeds[0]),
         players: PlayerCell[] = await Promise.all(
           emb.data.fields[0].value?.split('\n').map(async line => {
@@ -207,10 +208,12 @@ export default class TicTacToe extends Command {
             };
           }),
         ),
+        currentPlayer = players.find(
+          p => p.user.id === emb.data.footer?.icon_url.match(/(?:users|avatars)\/(\d+)\//)?.[1],
+        ),
         settings = Array.from(message.embeds[0].fields[1].value.matchAll(/`([^`]+)`/g), m => m[1]).map((v, i) =>
           i < 2 ? v.split('x').map(Number) : Number(v),
         ) as [[number, number], [number, number], number],
-        currentPlayer = players.find(p => p.user.id === emb.data.footer?.icon_url.match(/avatars\/(\d+)\//)?.[1]),
         [action, row, col] = customId.split('_');
 
       if (
@@ -225,22 +228,43 @@ export default class TicTacToe extends Command {
 
       switch (customId) {
         case 'tictactoe_accept': {
-          return updateBoard(createEmptyBoard(settings[0][0], settings[0][1]), players[0], emb.setDescription(null));
+          await updateBoard(createEmptyBoard(settings[0][0], settings[0][1]), players[0], emb.setDescription(null));
+          // Notify the player if the opponent doesn't respond in 2 minutes
+          if (Date.now() - message.createdTimestamp >= 120000) {
+            await interaction
+              .followUp({
+                allowedMentions: { users: [players[0].user.id] },
+                content: `${players[0].user}`,
+              })
+              .then(i => i.delete());
+          }
+          return;
         }
         case 'tictactoe_decline': {
+          const opponent = guild?.members.cache.get(players[1].user.id) ?? players[1].user;
           return interaction.update({
             components: [],
             content: null,
-            embeds: [emb.setDescription(__('GAME.DECLINED')).setColor(Colors.Red)],
+            embeds: [
+              emb
+                .setFooter({
+                  iconURL: opponent.displayAvatarURL(imageOptions),
+                  text: __('INTERACTED_BY', { userName: opponent.displayName }),
+                })
+                .setDescription(__('GAME.DECLINED'))
+                .setColor(Colors.Red),
+            ],
           });
         }
       }
 
       if (currentPlayer.user.id !== interaction.user.id) {
-        return interaction.reply({
-          embeds: [embed({ type: 'error' }).setDescription(__('ERROR.NOT_YOUR_TURN'))],
-          flags: MessageFlags.Ephemeral,
-        });
+        return interaction
+          .reply({
+            embeds: [embed({ type: 'error' }).setDescription(__('ERROR.NOT_YOUR_TURN'))],
+            flags: MessageFlags.Ephemeral,
+          })
+          .then(i => setTimeout(() => i.delete(), 3000));
       }
 
       const handleMove = async (board: Board, boardRules: [number, number]) => {
@@ -394,8 +418,8 @@ export default class TicTacToe extends Command {
             .join('\n'),
         })
         .setFooter({
-          iconURL: currentMember?.user.displayAvatarURL() || currentPlayer.user.displayAvatarURL(),
-          text: `${(currentMember || currentPlayer.user).displayName}'s turn`,
+          iconURL: (currentMember ?? currentPlayer.user).displayAvatarURL(),
+          text: `${(currentMember ?? currentPlayer.user).displayName}'s turn`,
         })
         .setColor(Colors.Blue);
 
@@ -428,7 +452,7 @@ export default class TicTacToe extends Command {
                     : ButtonStyle.Primary
                   : ButtonStyle.Secondary,
               )
-              .setDisabled(!!winner),
+              .setDisabled(!!cell || !!winner),
           ),
         ),
       );
