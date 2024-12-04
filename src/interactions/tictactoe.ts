@@ -439,7 +439,7 @@ export default class TicTacToe extends Command {
         })
         .setFooter({
           iconURL: (currentMember ?? currentPlayer.user).displayAvatarURL(),
-          text: `${(currentMember ?? currentPlayer.user).displayName}'s turn`,
+          text: __('GAME.TURN', { player: (currentMember ?? currentPlayer.user).displayName }),
         })
         .setColor(Colors.Blue);
 
