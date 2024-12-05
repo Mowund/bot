@@ -203,15 +203,13 @@ export default class TicTacToe extends Command {
       const { createdTimestamp, customId, guild, message, user } = interaction,
         shouldNotify = createdTimestamp - message.editedTimestamp > msToNotify,
         emb = new EmbedBuilder(message.embeds[0]),
-        players: PlayerCell[] = await Promise.all(
-          emb.data.fields[0].value?.split('\n').map(async line => {
-            const u = client.users.cache.get(line.match(/<@!?(\d+)>/)?.[1]);
-            return {
-              icon: (await client.database.users.fetch(u.id))?.gameIcon || line.replaceAll('_', '')?.split(' ')[0],
-              user: u,
-            };
-          }),
-        ),
+        players: PlayerCell[] = emb.data.fields[0].value?.split('\n').map(line => {
+          const u = client.users.cache.get(line.match(/<@!?(\d+)>/)?.[1]);
+          return {
+            icon: line.replace(/^_+|_+$/g, '')?.split(' ')[0],
+            user: u,
+          };
+        }),
         currentPlayer = players.find(
           p => p.user.id === emb.data.footer?.icon_url.match(/(?:users|avatars)\/(\d+)\//)?.[1],
         ),
@@ -299,7 +297,7 @@ export default class TicTacToe extends Command {
                 .setDescription(__('TICTACTOE.WINNER', { player: winner.user.toString() }))
                 .spliceFields(0, 1, {
                   ...emb.data.fields[0],
-                  value: emb.data.fields[0].value.replaceAll('_', ''),
+                  value: emb.data.fields[0].value.replaceAll(/^_+|_+$/g, ''),
                 })
                 .setFooter(null)
                 .setColor(Colors.Green),
@@ -316,7 +314,7 @@ export default class TicTacToe extends Command {
                 .setDescription(__('TICTACTOE.DRAW'))
                 .spliceFields(0, 1, {
                   ...emb.data.fields[0],
-                  value: emb.data.fields[0].value.replaceAll('_', ''),
+                  value: emb.data.fields[0].value.replaceAll(/^_+|_+$/g, ''),
                 })
                 .setFooter(null)
                 .setColor(Colors.Yellow),
@@ -389,7 +387,7 @@ export default class TicTacToe extends Command {
                   .setDescription(__('TICTACTOE.WINNER', { player: winner.user.toString() }))
                   .spliceFields(0, 1, {
                     ...emb.data.fields[0],
-                    value: emb.data.fields[0].value.replaceAll('_', ''),
+                    value: emb.data.fields[0].value.replaceAll(/^_+|_+$/g, ''),
                   })
                   .setFooter(null)
                   .setColor(Colors.Green),
@@ -403,7 +401,7 @@ export default class TicTacToe extends Command {
                   .setDescription(__('TICTACTOE.DRAW'))
                   .spliceFields(0, 1, {
                     ...emb.data.fields[0],
-                    value: emb.data.fields[0].value.replaceAll('_', ''),
+                    value: emb.data.fields[0].value.replaceAll(/^_+|_+$/g, ''),
                   })
                   .setFooter(null)
                   .setColor(Colors.Yellow),
@@ -432,7 +430,7 @@ export default class TicTacToe extends Command {
         .spliceFields(0, 1, {
           ...emb.data.fields[0],
           value: emb.data.fields[0].value
-            .replaceAll('_', '')
+            .replaceAll(/^_+|_+$/g, '')
             .split('\n')
             .map(line => (line.includes(currentPlayer.user.id) ? italic(line) : line))
             .join('\n'),
