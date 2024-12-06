@@ -32,6 +32,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ModalMessageModalSubmitInteraction,
+  parseEmoji,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { UserData, Warnings } from '../../lib/structures/UserData.js';
@@ -50,8 +51,9 @@ import {
   appFetch,
 } from '../utils.js';
 import { EmbeddedApplication, FullApplication } from '../../lib/interfaces/Application.js';
-import { AppFlagEmoji, UserFlagEmoji } from '../../lib/App.js';
+import { App, AppFlagEmoji, UserFlagEmoji } from '../../lib/App.js';
 import { SearchedMember, JoinSourceType } from '../../lib/structures/MemberSearch.js';
+import twemoji from '@twemoji/api';
 
 export default class User extends Command {
   constructor() {
@@ -1003,11 +1005,11 @@ export default class User extends Command {
         case 'user_settings_ephemeral_role_override': {
           if (customId === 'user_settings_ephemeral_toggle') {
             userData = await userData.set({
-              [`$${userData.ephemeralResponses ? 'un' : ''}set`]: { ephemeralResponses: true },
+              [userData.ephemeralResponses ? '$unset' : '$set']: { ephemeralResponses: true },
             });
           } else {
             userData = await userData.set({
-              [`$${userData.ignoreEphemeralRoles ? 'un' : ''}set`]: { ignoreEphemeralRoles: true },
+              [userData.ignoreEphemeralRoles ? '$unset' : '$set']: { ignoreEphemeralRoles: true },
             });
           }
         }
@@ -1161,7 +1163,7 @@ export default class User extends Command {
     }
 
     if (interaction.isModalSubmit()) {
-      const { channel, customId, message } = interaction,
+      const { channel, customId, fields, message } = interaction,
         sameUser =
           (channel && message.reference ? await channel.messages.fetch(message.reference.messageId) : message)
             .interactionMetadata.user.id === user.id;
@@ -1175,11 +1177,34 @@ export default class User extends Command {
 
       switch (customId) {
         case 'user_settings_game_icon_modal': {
-          const gameIcon = interaction.fields.getTextInputValue('game_icon_input');
-          // Save the game icon to the database or user data
+          const input = fields.getTextInputValue('game_icon_input'),
+            parsedEmoji = parseEmoji(input),
+            emjId = parsedEmoji.id || input.match(/\d+/g)?.[0],
+            emjName = parsedEmoji.name,
+            gameIcon =
+              twemoji.parse(emjName, i => i).match(/alt="([^"]*)"/)?.[1] ||
+              (
+                client.emojis.cache.get(emjId) ||
+                (!parsedEmoji.id &&
+                  (guild?.emojis.cache.find(({ name }) => name === emjName) ||
+                    guild?.emojis.cache.find(({ name }) => name.toLowerCase() === emjName.toLowerCase())))
+              )?.toString() ||
+              (client.allShardsReady &&
+                (await client.shard
+                  .broadcastEval((c: App, { d }) => c.emojis.cache.get(d)?.toString(), { context: { d: emjId } })
+                  .then(eA => eA.find(e => e))));
+
+          if (input && !gameIcon) {
+            return (interaction as ModalMessageModalSubmitInteraction).reply({
+              embeds: [embed({ type: 'error' }).setDescription(__('ERROR.EMOJI.NOT_FOUND', { input }))],
+              flags: MessageFlags.Ephemeral,
+            });
+          }
+
           userData = await userData.set({
-            [`$${gameIcon ? '' : 'un'}set`]: { gameIcon },
+            [input ? '$set' : '$unset']: { gameIcon },
           });
+
           await (interaction as ModalMessageModalSubmitInteraction).update({
             embeds: [
               embed({
