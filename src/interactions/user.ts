@@ -139,15 +139,15 @@ export default class User extends Command {
     const settingsComponents = () => [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setLabel(__('USER.SETTINGS.EPHEMERAL.EDIT'))
-            .setEmoji('📝')
-            .setStyle(ButtonStyle.Primary)
-            .setCustomId('user_settings_ephemeral'),
-          new ButtonBuilder()
             .setLabel(__('USER.SETTINGS.LOCALE.EDIT'))
-            .setEmoji('📝')
+            .setEmoji(__('LOCALE.EMOJI'))
             .setStyle(ButtonStyle.Primary)
             .setCustomId('user_settings_locale'),
+          new ButtonBuilder()
+            .setLabel(__('USER.SETTINGS.EPHEMERAL.EDIT'))
+            .setEmoji('👁️')
+            .setStyle(ButtonStyle.Primary)
+            .setCustomId('user_settings_ephemeral'),
           new ButtonBuilder()
             .setLabel(__('USER.SETTINGS.GAME.ICON.EDIT'))
             .setEmoji('🎮')
