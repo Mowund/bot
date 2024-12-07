@@ -17,7 +17,6 @@ import {
   PermissionFlagsBits,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
-import { sleep } from '../utils.js';
 import { imageOptions } from '../defaults.js';
 
 export default class TicTacToe extends Command {
@@ -52,6 +51,14 @@ export default class TicTacToe extends Command {
             name: 'CMD.COMBINATIONS',
             type: ApplicationCommandOptionType.Integer,
           },
+          /* {
+            autocomplete: true,
+            description: 'TICTACTOE.DESC.OVERLAPS',
+            maxValue: 4,
+            minValue: 0,
+            name: 'CMD.OVERLAPS',
+            type: ApplicationCommandOptionType.Integer,
+          },*/
           {
             description: 'TICTACTOE.DESC.DIAGONALS',
             name: 'CMD.DIAGONALS',
@@ -68,31 +75,61 @@ export default class TicTacToe extends Command {
       msToNotify = 120000;
 
     if (interaction.isAutocomplete()) {
-      const { value } = interaction.options.getFocused(),
-        rules = value.split('x').map(Number),
-        board = (interaction.options.getString('board-size') ?? '3x3').split('x').map(Number);
+      const { name, value } = interaction.options.getFocused();
+      switch (name) {
+        case __dl('CMD.BOARD_RULES'): {
+          const rules = value.split('x').map(Number),
+            board = (interaction.options.getString('board-size') ?? '3x3').split('x').map(Number);
 
-      if (value && value !== '1x1') {
-        const validRow = rules[0] >= 1 && rules[0] <= board[0],
-          validCol = rules[1] >= 1 && rules[1] <= board[1];
+          if (value && value !== '1x1') {
+            const validRow = rules[0] >= 1 && rules[0] <= board[0],
+              validCol = rules[1] >= 1 && rules[1] <= board[1];
 
-        return interaction.respond(
-          generateSizes(
-            validRow ? rules[0] : board[0],
-            validCol ? rules[1] : board[1],
-            validRow ? null : 1,
-            validCol ? null : 1,
-          )
-            .filter(s => s !== '1x1')
-            .map(s => ({ name: s, value: s })),
-        );
+            return interaction.respond(
+              generateSizes(
+                validRow ? rules[0] : board[0],
+                validCol ? rules[1] : board[1],
+                validRow ? null : 1,
+                validCol ? null : 1,
+              )
+                .filter(s => s !== '1x1')
+                .map(s => ({ name: s, value: s })),
+            );
+          }
+
+          return interaction.respond(
+            generateSizes(board[0], board[1], 1, 1)
+              .filter(s => s !== '1x1')
+              .map(s => ({ name: s, value: s })),
+          );
+        }
+        case __dl('CMD.OVERLAPS'): {
+          const boardRulesArr = (
+              interaction.options.getString('board-rules') ??
+              interaction.options.getString('board-size') ??
+              '3x3'
+            )
+              .split('x')
+              .map(Number),
+            maxOverlaps = Math.min(boardRulesArr[0], boardRulesArr[1]) - 1,
+            overlaps = Number(value);
+
+          if (Number.isInteger(overlaps) && overlaps >= 0 && overlaps <= maxOverlaps) {
+            return interaction.respond([
+              {
+                name: value === '0' ? __('NONE') : value,
+                value,
+              },
+            ]);
+          }
+          return interaction.respond(
+            Array.from({ length: maxOverlaps + 1 }, (_, i) => i).map(i => ({
+              name: i === 0 ? __('NONE') : i.toString(),
+              value: i,
+            })),
+          );
+        }
       }
-
-      return interaction.respond(
-        generateSizes(board[0], board[1], 1, 1)
-          .filter(s => s !== '1x1')
-          .map(s => ({ name: s, value: s })),
-      );
     }
 
     if (interaction.isChatInputCommand()) {
@@ -128,7 +165,8 @@ export default class TicTacToe extends Command {
 
       const boardSize = options.getString('board-size') ?? '3x3',
         boardSizeArr = boardSize.split('x').map(Number),
-        boardRules = options.getString('board-rules') ?? boardSize;
+        boardRules = options.getString('board-rules') ?? boardSize,
+        boardRulesArr = boardRules === boardSize ? boardSizeArr : boardRules.split('x').map(Number);
 
       if (
         !generateSizes(boardSizeArr[0], boardSizeArr[1], 1, 1)
@@ -138,15 +176,31 @@ export default class TicTacToe extends Command {
         return interaction.reply({
           embeds: [
             embed({ type: 'error' }).setDescription(
-              __('ERROR.INVALID.BOARD_RULES', { maxCol: boardSizeArr[1], maxRow: boardSizeArr[0], size: boardSize }),
+              __('ERROR.INVALID.BOARD_RULES', { maxSize: boardSize, size: boardRules }),
             ),
           ],
           flags: MessageFlags.Ephemeral,
         });
       }
 
-      const diagonals = options.getBoolean('diagonals') ?? true,
-        combinations = options.getInteger('combinations') ?? 1,
+      const maxOverlaps = Math.min(boardRulesArr[0], boardRulesArr[1]) - 1,
+        overlaps = options.getInteger('overlaps') ?? maxOverlaps;
+
+      if (overlaps > maxOverlaps) {
+        return interaction.reply({
+          embeds: [
+            embed({ type: 'error' }).setDescription(
+              maxOverlaps === 0
+                ? __('ERROR.INVALID.MAX_OVERLAPS_NONE')
+                : __('ERROR.INVALID.MAX_OVERLAPS', { maxOverlaps, overlaps }),
+            ),
+          ],
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
+      const combinations = options.getInteger('combinations') ?? 1,
+        diagonals = options.getBoolean('diagonals') ?? true,
         opponentData = await client.database.users.fetch(opponent.id),
         players: PlayerCell[] = [
           { icon: userData?.gameIcon || '❌', user },
@@ -155,13 +209,18 @@ export default class TicTacToe extends Command {
         emb = embed({ title: `${client.useEmoji('tictactoe')} ${__('TICTACTOE.TITLE')}` }).addFields(
           {
             inline: true,
-            name: __('PLAYERS'),
+            name: `${client.useEmoji('members')} ${__('PLAYERS')}`,
             value: `${players[0].icon} ${players[0].user}\n${players[1].icon} ${players[1].user}`,
           },
           {
             inline: true,
-            name: __('SETTINGS'),
-            value: `**${__('BOARD_SIZE')}:** \`${boardSize}\`\n**${__('BOARD_RULES')}:** \`${boardRules}\`\n**${__('COMBINATIONS')}:** \`${combinations}\`\n**${__('DIAGONALS')}:** ${diagonals ? client.useEmoji('check') : client.useEmoji('no')}`,
+            name: `${client.useEmoji('cog')} ${__('SETTINGS')}`,
+            value:
+              `**${__('BOARD_SIZE')}:** \`${boardSize}\`\n` +
+              `**${__('BOARD_RULES')}:** \`${boardRules}\`\n` +
+              `**${__('COMBINATIONS')}:** \`${combinations}\`\n` +
+              // `**${__('OVERLAPS')}:** ${overlaps ? `\`${overlaps}\`` : client.useEmoji('no')}\n` +
+              `**${__('DIAGONALS')}:** ${diagonals ? client.useEmoji('check') : client.useEmoji('no')}`,
           },
         );
 
@@ -195,6 +254,7 @@ export default class TicTacToe extends Command {
       });
 
       return interaction.editReply({
+        allowedMentions: { users: [opponent.id] },
         content: `${opponent}`,
       });
     }
@@ -203,20 +263,19 @@ export default class TicTacToe extends Command {
       const { createdTimestamp, customId, guild, message, user } = interaction,
         shouldNotify = createdTimestamp - message.editedTimestamp > msToNotify,
         emb = new EmbedBuilder(message.embeds[0]),
-        players: PlayerCell[] = emb.data.fields[0].value?.split('\n').map(line => {
-          const u = client.users.cache.get(line.match(/<@!?(\d+)>/)?.[1]);
-          return {
-            icon: line.replace(/^_+|_+$/g, '')?.split(' ')[0],
-            user: u,
-          };
-        }),
+        players: PlayerCell[] = emb.data.fields[0].value?.split('\n').map(line => ({
+          icon: line.replace(/^_+|_+$/g, '')?.split(' ')[0],
+          user: client.users.cache.get(line.match(/<@!?(\d+)>/)?.[1]),
+        })),
         currentPlayer = players.find(
           p => p.user.id === emb.data.footer?.icon_url.match(/(?:users|avatars)\/(\d+)\//)?.[1],
         ),
         settings = Array.from(message.embeds[0].fields[1].value.matchAll(/`([^`]+)`/g), m => m[1]).map((v, i) =>
           i < 2 ? v.split('x').map(Number) : Number(v),
-        ) as [[number, number], [number, number], number],
+        ) as [[number, number], [number, number], number, number | undefined],
         [action, row, col] = customId.split('_');
+
+      console.log(settings);
 
       if (!players.some(p => p.user.id === user.id) || (!col && players[0].user.id === user.id)) {
         return interaction.reply({
@@ -287,7 +346,7 @@ export default class TicTacToe extends Command {
         }
 
         let winner: PlayerCell;
-        ({ board, winner } = checkCombinations(board, boardRules, diagonals, settings[2]));
+        ({ board, winner } = checkCombinations(board, boardRules, diagonals, settings[2], settings[3]));
 
         if (winner) {
           await interaction.update({
@@ -297,7 +356,7 @@ export default class TicTacToe extends Command {
                 .setDescription(__('TICTACTOE.WINNER', { player: winner.user.toString() }))
                 .spliceFields(0, 1, {
                   ...emb.data.fields[0],
-                  value: emb.data.fields[0].value.replaceAll(/^_+|_+$/g, ''),
+                  value: emb.data.fields[0].value.replace(/^_+|_+$/gm, ''),
                 })
                 .setFooter(null)
                 .setColor(Colors.Green),
@@ -314,7 +373,7 @@ export default class TicTacToe extends Command {
                 .setDescription(__('TICTACTOE.DRAW'))
                 .spliceFields(0, 1, {
                   ...emb.data.fields[0],
-                  value: emb.data.fields[0].value.replaceAll(/^_+|_+$/g, ''),
+                  value: emb.data.fields[0].value.replace(/^_+|_+$/gm, ''),
                 })
                 .setFooter(null)
                 .setColor(Colors.Yellow),
@@ -324,39 +383,25 @@ export default class TicTacToe extends Command {
         }
 
         const nextPlayer = players.find(p => p.user.id !== currentPlayer.user.id);
-
         await updateBoard(board, nextPlayer, emb);
 
-        if (shouldNotify) {
-          await interaction
-            .followUp({
-              allowedMentions: { users: [nextPlayer.user.id] },
-              content: `${nextPlayer.user} ${__('GAME.YOUR_TURN')}`,
-            })
-            .then(i => i.delete());
-        }
-
-        // Handle AI move
         if (nextPlayer.user.bot) {
-          await updateBoard(board, nextPlayer, emb);
-          await sleep(500);
-
+          // Handle AI move
           function getAIMove(): [number, number] {
-            const simulateMove = (r: number, c: number, player: PlayerCell) => {
-              const copy = board.map(bR => [...bR]);
-              copy[r][c] = player;
-              return copy;
-            };
+            const simulateMove = (r: number, c: number, player: PlayerCell) =>
+              board.map((bR, i) => (i === r ? [...bR.slice(0, c), player, ...bR.slice(c + 1)] : bR));
 
-            // Check for winning or blocking moves
-            for (let r = 0; r < numRows; r++) {
-              for (let c = 0; c < numCols; c++) {
-                if (board[r][c] === null) {
+            // Prioritize checking winning moves, then blocking moves, or vice versa if there are multiple combinations
+            for (const player of settings[2] > 1 ? [currentPlayer, nextPlayer] : [nextPlayer, currentPlayer]) {
+              for (let r = 0; r < numRows; r++) {
+                for (let c = 0; c < numCols; c++) {
+                  if (board[r][c]) continue;
+                  const simulatedMove = simulateMove(r, c, player);
                   if (
-                    checkCombinations(simulateMove(r, c, nextPlayer), boardRules, diagonals, settings[2], true)
-                      ?.winner === nextPlayer ||
-                    checkCombinations(simulateMove(r, c, currentPlayer), boardRules, diagonals, settings[2], true)
-                      ?.winner === currentPlayer
+                    (
+                      checkCombinations(simulatedMove, boardRules, diagonals, settings[2], settings[3])?.winner ??
+                      checkCombinations(simulatedMove, boardRules, diagonals, 1, settings[3])?.winner
+                    )?.user === player.user
                   )
                     return [r, c];
                 }
@@ -377,7 +422,7 @@ export default class TicTacToe extends Command {
 
           makeMove(board, aiRow, aiCol, nextPlayer);
 
-          ({ board, winner } = checkCombinations(board, boardRules, diagonals, settings[2]));
+          ({ board, winner } = checkCombinations(board, boardRules, diagonals, settings[2], settings[3]));
 
           if (winner) {
             await interaction.editReply({
@@ -387,7 +432,7 @@ export default class TicTacToe extends Command {
                   .setDescription(__('TICTACTOE.WINNER', { player: winner.user.toString() }))
                   .spliceFields(0, 1, {
                     ...emb.data.fields[0],
-                    value: emb.data.fields[0].value.replaceAll(/^_+|_+$/g, ''),
+                    value: emb.data.fields[0].value.replace(/^_+|_+$/gm, ''),
                   })
                   .setFooter(null)
                   .setColor(Colors.Green),
@@ -401,7 +446,7 @@ export default class TicTacToe extends Command {
                   .setDescription(__('TICTACTOE.DRAW'))
                   .spliceFields(0, 1, {
                     ...emb.data.fields[0],
-                    value: emb.data.fields[0].value.replaceAll(/^_+|_+$/g, ''),
+                    value: emb.data.fields[0].value.replace(/^_+|_+$/gm, ''),
                   })
                   .setFooter(null)
                   .setColor(Colors.Yellow),
@@ -410,6 +455,13 @@ export default class TicTacToe extends Command {
           } else {
             await updateBoard(board, currentPlayer, emb);
           }
+        } else if (shouldNotify) {
+          await interaction
+            .followUp({
+              allowedMentions: { users: [nextPlayer.user.id] },
+              content: `${nextPlayer.user} ${__('GAME.YOUR_TURN')}`,
+            })
+            .then(i => i.delete());
         }
       };
 
@@ -430,7 +482,7 @@ export default class TicTacToe extends Command {
         .spliceFields(0, 1, {
           ...emb.data.fields[0],
           value: emb.data.fields[0].value
-            .replaceAll(/^_+|_+$/g, '')
+            .replace(/^_+|_+$/gm, '')
             .split('\n')
             .map(line => (line.includes(currentPlayer.user.id) ? italic(line) : line))
             .join('\n'),
@@ -481,30 +533,17 @@ export default class TicTacToe extends Command {
       boardRules: [number, number],
       diagonals: boolean = true,
       requiredCombinations: number = 1,
+      _maxOverlaps = 0,
       isAI: boolean = false,
     ): { board: Board; winner: PlayerCell | null } {
       const [boardRows, boardCols] = [board.length, board[0].length],
         [ruleRows, ruleCols] = [Math.min(boardRules[0], boardRows), Math.min(boardRules[1], boardCols)],
-        lines = [],
-        addLines = (
-          startRow: number,
-          startCol: number,
-          endRow: number,
-          endCol: number,
-          stepRow: number,
-          stepCol: number,
-          maxSteps: number,
-        ) => {
-          for (let r = startRow; r <= endRow; r++) {
-            for (let c = startCol; c <= endCol; c++) {
-              const cells = [];
-              for (let i = 0; i < maxSteps; i++) {
-                const nr = r + i * stepRow,
-                  nc = c + i * stepCol;
-                if (nr < 0 || nc < 0 || nr >= boardRows || nc >= boardCols) break;
-                cells.push([nr, nc]);
-              }
-              if (cells.length === maxSteps) lines.push(cells);
+        lines: [number, number][][] = [],
+        addLines = (sr: number, sc: number, er: number, ec: number, dr: number, dc: number, steps: number) => {
+          for (let r = sr; r <= er; r++) {
+            for (let c = sc; c <= ec; c++) {
+              const cells = Array.from({ length: steps }, (_, i) => [r + i * dr, c + i * dc] as [number, number]);
+              if (cells.every(([nr, nc]) => nr >= 0 && nc >= 0 && nr < boardRows && nc < boardCols)) lines.push(cells);
             }
           }
         };
@@ -535,18 +574,20 @@ export default class TicTacToe extends Command {
       }
 
       const winner =
-          Array.from(matchCount.entries()).reduce(
-            (highest, [player, count]) =>
-              count >= (isAI ? 1 : requiredCombinations) && (highest === null || count > highest[1])
-                ? [player, count]
-                : highest,
-            null,
-          )?.[0] || null,
-        resultBoard = board.map((row, r) =>
-          row.map((cell, c) => (matchedPositions.has(`${r},${c}`) ? { ...cell, matched: true } : cell)),
-        );
+        Array.from(matchCount.entries()).reduce(
+          (highest, [player, count]) =>
+            count >= (isAI ? 1 : requiredCombinations) && (highest === null || count > highest[1])
+              ? [player, count]
+              : highest,
+          null,
+        )?.[0] || null;
 
-      return { board: resultBoard, winner };
+      return {
+        board: board.map((row, r) =>
+          row.map((cell, c) => (matchedPositions.has(`${r},${c}`) ? { ...cell, matched: true } : cell)),
+        ),
+        winner,
+      };
     }
 
     function createEmptyBoard(rows: number, cols: number): Board {
