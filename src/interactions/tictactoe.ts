@@ -275,8 +275,6 @@ export default class TicTacToe extends Command {
         ) as [[number, number], [number, number], number, number | undefined],
         [action, row, col] = customId.split('_');
 
-      console.log(settings);
-
       if (!players.some(p => p.user.id === user.id) || (!col && players[0].user.id === user.id)) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(__('ERROR.UNALLOWED.COMMAND'))],
