@@ -64,6 +64,11 @@ export default class TicTacToe extends Command {
             name: 'CMD.DIAGONALS',
             type: ApplicationCommandOptionType.Boolean,
           },
+          {
+            description: 'TICTACTOE.DESC.OPPONENT_STARTS',
+            name: 'CMD.OPPONENT_STARTS',
+            type: ApplicationCommandOptionType.Boolean,
+          },
         ],
       },
     ]);
@@ -199,37 +204,53 @@ export default class TicTacToe extends Command {
         });
       }
 
-      const combinations = options.getInteger('combinations') ?? 1,
+      const opponentStarts = options.getBoolean('opponent-starts') ?? false,
+        combinations = options.getInteger('combinations') ?? 1,
         diagonals = options.getBoolean('diagonals') ?? true,
         opponentData = await client.database.users.fetch(opponent.id),
         players: PlayerCell[] = [
           { icon: userData?.gameIcon || '❌', user },
           { icon: opponentData?.gameIcon || '⭕', user: opponent },
-        ],
-        emb = embed({ title: `${client.useEmoji('tictactoe')} ${__('TICTACTOE.TITLE')}` }).addFields(
-          {
-            inline: true,
-            name: `${client.useEmoji('members')} ${__('PLAYERS')}`,
-            value: `${players[0].icon} ${players[0].user}\n${players[1].icon} ${players[1].user}`,
-          },
-          {
-            inline: true,
-            name: `${client.useEmoji('cog')} ${__('SETTINGS')}`,
-            value:
-              `**${__('BOARD_SIZE')}:** \`${boardSize}\`\n` +
-              `**${__('BOARD_RULES')}:** \`${boardRules}\`\n` +
-              `**${__('COMBINATIONS')}:** \`${combinations}\`\n` +
-              // `**${__('OVERLAPS')}:** ${overlaps ? `\`${overlaps}\`` : client.useEmoji('no')}\n` +
-              `**${__('DIAGONALS')}:** ${diagonals ? client.useEmoji('check') : client.useEmoji('no')}`,
-          },
-        );
+        ];
+
+      if (opponentStarts) players.reverse();
+
+      const emb = embed({ title: `${client.useEmoji('tictactoe')} ${__('TICTACTOE.TITLE')}` }).addFields(
+        {
+          inline: true,
+          name: `${client.useEmoji('members')} ${__('PLAYERS')}`,
+          value: `${players[0].icon} ${players[0].user}\n${players[1].icon} ${players[1].user}`,
+        },
+        {
+          inline: true,
+          name: `${client.useEmoji('cog')} ${__('SETTINGS')}`,
+          value:
+            `**${__('BOARD_SIZE')}:** \`${boardSize}\`\n` +
+            `**${__('BOARD_RULES')}:** \`${boardRules}\`\n` +
+            `**${__('COMBINATIONS')}:** \`${combinations}\`\n` +
+            // `**${__('OVERLAPS')}:** ${overlaps ? `\`${overlaps}\`` : client.useEmoji('no')}\n` +
+            `**${__('DIAGONALS')}:** ${diagonals ? client.useEmoji('check') : client.useEmoji('no')}`,
+        },
+      );
 
       if (opponent.bot) {
         await interaction.reply({
           embeds: [emb],
           flags: isEphemeral ? MessageFlags.Ephemeral : undefined,
         });
+
         const board = createEmptyBoard(boardSizeArr[0], boardSizeArr[1]);
+
+        if (opponentStarts) {
+          const emptyCells: [number, number][] = [];
+          for (let r = 0; r < board.length; r++)
+            for (let c = 0; c < board[r].length; c++) if (board[r][c] === null) emptyCells.push([r, c]);
+
+          const [aiRow, aiCol] = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+          makeMove(board, aiRow, aiCol, players[0]);
+          return updateBoard(board, players[1], emb);
+        }
+
         return updateBoard(board, players[0], emb);
       }
 
@@ -408,11 +429,9 @@ export default class TicTacToe extends Command {
 
             // Pick a random move
             const emptyCells: [number, number][] = [];
-            board.forEach((r, rIdx) =>
-              r.forEach((c, cIdx) => {
-                if (c === null) emptyCells.push([rIdx, cIdx]);
-              }),
-            );
+            for (let r = 0; r < board.length; r++)
+              for (let c = 0; c < board[r].length; c++) if (board[r][c] === null) emptyCells.push([r, c]);
+
             return emptyCells[Math.floor(Math.random() * emptyCells.length)];
           }
 
