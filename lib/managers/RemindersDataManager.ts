@@ -53,7 +53,7 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
       )?.reminders?.[0];
     }
 
-    const updatedReminder = new ReminderData(this.client, Object.assign(Object.create(newData), { user }));
+    const updatedReminder = new ReminderData(this.client, Object.assign(Object.create(newData), { userId }));
     await this.client.database.cacheDelete('reminders', id);
 
     return this.cache.set(id, updatedReminder).get(id);
@@ -72,7 +72,7 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
 
     if (!reminderId) {
       if (!force) {
-        const cachedData = this.cache.filter(r => r.user.id === userId);
+        const cachedData = this.cache.filter(r => r.userId === userId);
         if (cachedData.size) return cachedData;
       }
 
@@ -128,7 +128,7 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
 
       if (!user.reminders) continue;
       for (const r of user.reminders) {
-        const reminderData = new ReminderData(this.client, Object.assign(Object.create(r), { user: userData }));
+        const reminderData = new ReminderData(this.client, Object.assign(Object.create(r), { userId: user._id }));
         data.set(r._id, reminderData);
       }
     }

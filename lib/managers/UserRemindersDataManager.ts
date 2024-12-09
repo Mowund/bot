@@ -7,36 +7,41 @@ import { RemindersDatabaseResolvable } from './RemindersDataManager.js';
 
 export class UserRemindersDataManager extends DataManager<Snowflake, ReminderData, RemindersDatabaseResolvable> {
   declare client: App;
-  user: UserData;
+  userId: Snowflake;
 
   constructor(userData: UserData, reminders: DataClassProperties<ReminderData>[]) {
     super(userData.client, ReminderData);
-    this.user = userData;
+
+    this.userId = userData.id;
     reminders?.forEach(r =>
       this.client.database.reminders.cache.set(
         r._id,
-        new ReminderData(this.client, Object.assign(Object.create(r), { user: userData })),
+        new ReminderData(this.client, Object.assign(Object.create(r), { userId: userData.id })),
       ),
     );
   }
 
+  get user() {
+    return this.client.users.cache.get(this.userId) ?? null;
+  }
+
   get cache() {
-    return this.client.database.reminders.cache.filter(r => r.user.id === this.user.id);
+    return this.client.database.reminders.cache.filter(r => r.userId === this.userId);
   }
 
   set(reminder: RemindersDatabaseResolvable, data: ReminderDataSetOptions, { merge = true } = {}) {
-    return this.client.database.reminders.set(reminder, this.user.id, data, { merge });
+    return this.client.database.reminders.set(reminder, this.userId, data, { merge });
   }
 
   fetch(options?: { cache?: boolean; force?: boolean }): Promise<Collection<string, ReminderData>>;
   fetch(options: { cache?: boolean; force?: boolean; reminderId: Snowflake }): Promise<ReminderData>;
   fetch(options: { cache?: boolean; force?: boolean; reminderId?: Snowflake } = {}) {
-    return this.client.database.reminders.fetch(this.user.id, options) as
+    return this.client.database.reminders.fetch(this.userId, options) as
       | Promise<Collection<string, ReminderData>>
       | Promise<ReminderData>;
   }
 
   delete(reminder: RemindersDatabaseResolvable) {
-    return this.client.database.reminders.delete(reminder, this.user.id);
+    return this.client.database.reminders.delete(reminder, this.userId);
   }
 }
