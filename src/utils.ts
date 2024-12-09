@@ -24,7 +24,7 @@ import {
   ALLOWED_SIZES,
   DataManager,
 } from 'discord.js';
-import { TimeUnit, timeUnitDivisor } from './defaults';
+import { TimeUnit, timeUnitDivisor } from './defaults.js';
 
 export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
