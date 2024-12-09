@@ -132,7 +132,7 @@ export default class User extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { client, embed, isEphemeral } = args,
-      { localize: __dl, supportedLocales } = client,
+      { __dl: __dl, supportedLocales } = client,
       { guild, guildId, user } = interaction;
     let { __, userData } = args;
 

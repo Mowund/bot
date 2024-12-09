@@ -66,7 +66,7 @@ export default class RoleMenu extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { client, embed, isEphemeral } = args,
-      { localize: __dl } = client,
+      { __dl: __dl } = client,
       { guild, user } = interaction;
 
     if (interaction.isChatInputCommand()) {

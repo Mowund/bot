@@ -16,4 +16,5 @@ export const botOwners = process.env.OWNERS?.split(','),
     errorChannelId: '1062084806025937018',
     id: '420007989261500418',
     invite: 'https://discord.gg/f85rEGJ',
-  };
+  },
+  mongoDB = 'Mowund';

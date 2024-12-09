@@ -31,18 +31,18 @@ export default class Owner extends Command {
               name: 'CMD.EVAL',
               options: [
                 {
-                  description: 'OWNER.EVAL.DESC.SCRIPT',
+                  description: 'DESC.OWNER_EVAL_SCRIPT',
                   name: 'CMD.SCRIPT',
                   required: true,
                   type: ApplicationCommandOptionType.String,
                 },
                 {
-                  description: 'OWNER.EVAL.DESC.ASYNC',
+                  description: 'DESC.OWNER_EVAL_ASYNC',
                   name: 'CMD.ASYNC',
                   type: ApplicationCommandOptionType.Boolean,
                 },
                 {
-                  description: 'OWNER.EVAL.DESC.AWAIT',
+                  description: 'DESC.OWNER_EVAL_AWAIT',
                   name: 'CMD.AWAIT',
                   type: ApplicationCommandOptionType.Boolean,
                 },
@@ -54,16 +54,16 @@ export default class Owner extends Command {
               name: 'CMD.COMMAND',
               options: [
                 {
-                  description: 'OWNER.COMMAND.DESC.UPDATE',
+                  description: 'DESC.OWNER_COMMAND_UPDATE',
                   name: 'CMD.UPDATE',
                   options: [
                     {
-                      description: 'OWNER.COMMAND.UPDATE.DESC.ID',
+                      description: 'DESC.OWNER_COMMAND_ID',
                       name: 'CMD.ID',
                       type: ApplicationCommandOptionType.String,
                     },
                     {
-                      description: 'OWNER.COMMAND.UPDATE.DESC.GUILD',
+                      description: 'DESC.OWNER_COMMAND_GUILD',
                       name: 'CMD.GUILD',
                       type: ApplicationCommandOptionType.String,
                     },
@@ -78,7 +78,7 @@ export default class Owner extends Command {
               name: 'CMD.LOCALIZATION',
               options: [
                 {
-                  description: 'OWNER.LOCALIZATION.DESC.UPDATE',
+                  description: 'DESC.OWNER_LOCALIZATION_UPDATE',
                   name: 'CMD.UPDATE',
                   type: ApplicationCommandOptionType.Subcommand,
                 },
@@ -90,21 +90,21 @@ export default class Owner extends Command {
               name: 'CMD.SHARD',
               options: [
                 {
-                  description: 'OWNER.SHARD.DESC.RESPAWN_ALL',
+                  description: 'DESC.OWNER_SHARD_RESPAWN_ALL',
                   name: 'CMD.RESPAWN_ALL',
                   options: [
                     {
-                      description: 'OWNER.SHARD.RESPAWN_ALL.DESC.SHARD_DELAY',
+                      description: 'DESC.OWNER_SHARD_SHARD_DELAY',
                       name: 'CMD.SHARD_DELAY',
                       type: ApplicationCommandOptionType.Integer,
                     },
                     {
-                      description: 'OWNER.SHARD.RESPAWN_ALL.DESC.RESPAWN_DELAY',
+                      description: 'DESC.OWNER_SHARD_RESPAWN_DELAY',
                       name: 'CMD.RESPAWN_DELAY',
                       type: ApplicationCommandOptionType.Integer,
                     },
                     {
-                      description: 'OWNER.SHARD.RESPAWN_ALL.DESC.TIMEOUT',
+                      description: 'DESC.OWNER_SHARD_TIMEOUT',
                       name: 'CMD.TIMEOUT',
                       type: ApplicationCommandOptionType.Integer,
                     },
@@ -127,7 +127,7 @@ export default class Owner extends Command {
     if (!interaction.isChatInputCommand()) return;
 
     const { __, client, embed, isEphemeral } = args,
-      { chalk, localize: __dl } = client,
+      { __dl: __dl, chalk } = client,
       { member, options, user } = interaction,
       idO = options.getString(__dl('CMD.ID')),
       guildO = options.getString(__dl('CMD.GUILD')),
@@ -203,7 +203,7 @@ export default class Owner extends Command {
               for (const file of readdirSync(__dirname).filter(f => f.endsWith('.js'))) {
                 const command = new (await import(`./${file}`)).default() as Command;
                 for (const dt of command.structure) {
-                  client.localizeData(dt);
+                  client.__data(dt);
 
                   const gOnly = command.options?.guildOnly?.find(i => i === (guild ?? interaction.guild)?.id),
                     findCmd = idO
@@ -374,7 +374,7 @@ export default class Owner extends Command {
                 type: 6,
               },
             ];
-            for (const d of metadata) client.localizeData(d);
+            for (const d of metadata) client.__data(d);
             await client.application.editRoleConnectionMetadataRecords(metadata);
 
             return interaction.editReply({
@@ -386,9 +386,9 @@ export default class Owner extends Command {
       }
       case __dl('CMD.SHARD'): {
         switch (options.getSubcommand()) {
-          case 'respawn-all': {
-            const shardDelayO = options.getInteger('shard-delay') ?? 5000,
-              respawnDelayO = options.getInteger('respawn-delay') ?? 500,
+          case __dl('CMD.RESPAWN_ALL'): {
+            const shardDelayO = options.getInteger(__dl('CMD.SHARD_DELAY')) ?? 5000,
+              respawnDelayO = options.getInteger(__dl('CMD.RESPAWN_DELAY')) ?? 500,
               timeoutO = options.getInteger(__dl('CMD.TIMEOUT')) ?? 30000;
 
             await interaction.editReply({

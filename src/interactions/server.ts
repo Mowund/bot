@@ -26,6 +26,7 @@ export default class Server extends Command {
     super([
       {
         contexts: [InteractionContextType.Guild],
+        defaultMemberPermissions: [PermissionFlagsBits.ManageGuild],
         description: 'DESC.SERVER',
         integrationTypes: [ApplicationIntegrationType.GuildInstall],
         name: 'CMD.SERVER',
@@ -45,7 +46,7 @@ export default class Server extends Command {
     const { embed, isEphemeral } = args,
       { guildId, memberPermissions, user } = interaction,
       { __, client } = args,
-      { database, localize: __dl } = client,
+      { __dl: __dl, database } = client,
       settingsComponents = () => [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()

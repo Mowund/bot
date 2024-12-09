@@ -24,6 +24,7 @@ export interface CommandOptions {
 
 export interface CommandArgs {
   __: (phrase: string, replace?: Record<string, any>) => string;
+  command: Command;
   client: App;
   /**
    * Configure a predefined embed

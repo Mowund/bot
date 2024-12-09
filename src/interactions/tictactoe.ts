@@ -76,7 +76,7 @@ export default class TicTacToe extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { __, client, embed, integrationTypes, isEphemeral, userData } = args,
-      { localize: __dl } = client,
+      { __dl: __dl } = client,
       msToNotify = 120000;
 
     if (interaction.isAutocomplete()) {

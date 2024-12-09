@@ -30,7 +30,7 @@ export default class ReminderFoundEvent extends Event {
     await reminder.delete();
 
     const locale = userData.locale || defaultLocale,
-      __ = (phrase: string, replace?: Record<string, any>) => client.localize({ locale, phrase }, replace),
+      __ = (phrase: string, replace?: Record<string, any>) => client.__dl({ locale, phrase }, replace),
       idTimestamp = SnowflakeUtil.timestampFrom(id),
       msTime = timestamp - idTimestamp,
       row = new ActionRowBuilder<ButtonBuilder>().addComponents(

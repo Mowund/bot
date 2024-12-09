@@ -53,7 +53,7 @@ export default class Clear extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { __, client, embed, isEphemeral } = args,
-      { localize: __dl } = client,
+      { __dl: __dl } = client,
       { channel, memberPermissions, user } = interaction;
 
     // TODO: Create a confirmation menu
@@ -64,9 +64,11 @@ export default class Clear extends Command {
         countO = (options as CommandInteractionOptionResolver)?.getInteger(__dl('CMD.COUNT')) ?? 100,
         delPinsO = (options as CommandInteractionOptionResolver)?.getBoolean(__dl('CMD.DELETE-PINNED')),
         messageO = (options as CommandInteractionOptionResolver)?.getMessage(__dl('CMD.MESSAGE')),
-        msg = await interaction.deferReply({
-          fetchReply: true,
+        {
+          resource: { message },
+        } = await interaction.deferReply({
           flags: isEphemeral ? MessageFlags.Ephemeral : undefined,
+          withResponse: true,
         });
 
       if (!memberPermissions?.has(PermissionFlagsBits.ManageMessages) && !botOwners.includes(user.id)) {
@@ -79,7 +81,7 @@ export default class Clear extends Command {
         });
       }
 
-      const msgs = await channel.messages.fetch({ after: messageO?.id, before: msg.id, limit: countO }),
+      const msgs = await channel.messages.fetch({ after: messageO?.id, before: message.id, limit: countO }),
         fMsgs = msgs.filter(m => !m.pinned),
         pinCnt = msgs.size - fMsgs.size,
         rows = [new ActionRowBuilder<ButtonBuilder>()];
@@ -102,7 +104,7 @@ export default class Clear extends Command {
           embed({
             addParams: {
               afterMsg: messageO?.id ?? `${+msgs.last().id - 1}`,
-              beforeMsg: msg.id,
+              beforeMsg: message.id,
               delPins: `${delPinsO}`,
             },
             color: Colors.Red,

@@ -8,6 +8,7 @@ import { App } from '../App.js';
 import { DataClassProperties } from '../../src/utils.js';
 import { ReminderData, ReminderDataSetOptions } from '../structures/ReminderData.js';
 import { UserData } from '../structures/UserData.js';
+import { mongoDB } from '../../src/defaults.js';
 
 export class RemindersDataManager extends CachedManager<Snowflake, ReminderData, RemindersDatabaseResolvable> {
   declare client: App;
@@ -25,7 +26,7 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
     const id = this.resolveId(reminder);
     if (!id) throw new Error('Invalid reminder type.');
 
-    const db = this.client.mongo.db('Mowund').collection('users'),
+    const db = this.client.mongo.db(mongoDB).collection('users'),
       user = await this.client.database.users.fetch(userId),
       existingReminder = user?.reminders.cache.find(r => r.id === id);
 
@@ -94,7 +95,7 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
 
   async find(filter: Filter<ReminderData> = {}, { cache = true, ignoreDisabledDM = false } = {}) {
     const data = new Collection<Snowflake, ReminderData>(),
-      db = this.client.mongo.db('Mowund').collection('users'),
+      db = this.client.mongo.db(mongoDB).collection('users'),
       users = await db
         .aggregate<DataClassProperties<UserData>>([
           ignoreDisabledDM ? { $match: { disabledDM: { $ne: true } } } : {},
@@ -140,7 +141,7 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
     if (!id) throw new Error('Invalid reminder type.');
 
     const user = typeof reminder === 'object' ? reminder.user : await this.client.database.users.fetch(userId),
-      db = this.client.mongo.db('Mowund').collection('users');
+      db = this.client.mongo.db(mongoDB).collection('users');
 
     await db.updateOne(
       { _id: userId as any },

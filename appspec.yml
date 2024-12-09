@@ -1,8 +1,8 @@
 version: 0.0
 os: linux
 files:
- - source: .
-   destination: /home/ec2-user/app
+  - source: .
+    destination: /home/ec2-user/app
 hooks:
   BeforeInstall:
     - location: scripts/BeforeInstall.sh

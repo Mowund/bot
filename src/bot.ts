@@ -1,6 +1,5 @@
 import process from 'node:process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { setTimeout } from 'node:timers';
 import { fileURLToPath } from 'node:url';
 import path, { dirname } from 'node:path';
 import {
@@ -248,10 +247,9 @@ client.on('clientReady', async () => {
         client.log(client.chalk.yellow('Finished updating emojis'));
       }
 
-      await (async function updateData() {
+      setInterval(async () => {
         await client.updateExperiments();
-        setTimeout(updateData, 300000);
-      })();
+      }, 300000);
 
       const metadata = [
         {
@@ -273,7 +271,7 @@ client.on('clientReady', async () => {
           type: 6,
         },
       ];
-      for (const d of metadata) client.localizeData(d);
+      for (const d of metadata) client.__data(d);
       await client.application.editRoleConnectionMetadataRecords(metadata);
     }
 
@@ -281,7 +279,7 @@ client.on('clientReady', async () => {
       const command = new (await import(`./interactions/${file}`)).default() as Command;
 
       for (const dt of command.structure as ChatInputApplicationCommandData[]) {
-        client.localizeData(dt);
+        client.__data(dt);
 
         if (client.isMainShard && !command.options?.guildOnly) {
           const searchCmd = appCmds.find(c => c.name === dt.name),

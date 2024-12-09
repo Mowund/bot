@@ -1,8 +1,8 @@
 {
-  "singleQuote": true,
+  "arrowParens": "avoid",
+  "endOfLine": "lf",
   "printWidth": 120,
   "quoteProps": "as-needed",
-  "trailingComma": "all",
-  "endOfLine": "lf",
-  "arrowParens": "avoid"
+  "singleQuote": true,
+  "trailingComma": "all"
 }

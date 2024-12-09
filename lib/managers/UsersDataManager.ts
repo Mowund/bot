@@ -3,6 +3,7 @@ import { App } from '../App.js';
 import { DataClassProperties } from '../../src/utils.js';
 import { UserData } from '../structures/UserData.js';
 import { UpdateFilter, WithoutId } from 'mongodb';
+import { mongoDB } from '../../src/defaults.js';
 
 export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDatabaseResolvable> {
   declare client: App;
@@ -19,7 +20,7 @@ export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDa
     const id = this.resolveId(user);
     if (!id) throw new Error('Invalid user type: UsersDatabaseResolvable');
 
-    const db = this.client.mongo.db('Mowund').collection<DataClassProperties<UserData>>('users'),
+    const db = this.client.mongo.db(mongoDB).collection<DataClassProperties<UserData>>('users'),
       newData = merge
         ? await db.findOneAndUpdate({ _id: id }, data as UpdateFilter<DataClassProperties<UserData>>, {
             returnDocument: 'after',
@@ -39,7 +40,7 @@ export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDa
     if (!force && existing) return existing;
 
     const rawData = (await this.client.mongo
-      .db('Mowund')
+      .db(mongoDB)
       .collection('users')
       .findOne({ _id: id as any })) as unknown as DataClassProperties<UserData>;
 
@@ -62,7 +63,7 @@ export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDa
     let db: firestore.Query<firestore.DocumentData> = this.client.firestore.collection('users');
 
     for (const x of search) {
-      x.forEach(y => (db = this.client.mongo.db('Mowund').where(y.field, y.operator, y.target)));
+      x.forEach(y => (db = this.client.mongo.db(mongoDB).where(y.field, y.operator, y.target)));
       for (const z of (await db.get()).docs) {
         const d = z.data();
         data.set(z.id, new UserData(this.client, Object.assign(Object.create(d), d)));
@@ -84,7 +85,7 @@ export class UsersDataManager extends CachedManager<Snowflake, UserData, UsersDa
     if (!id) throw new Error('Invalid user type: UsersDatabaseResolvable');
 
     await this.client.mongo
-      .db('Mowund')
+      .db(mongoDB)
       .collection('users')
       .deleteOne({ _id: id as any });
     return this.client.database.cacheDelete('users', id);

@@ -46,7 +46,7 @@ export default class Server extends Command {
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { embed, isEphemeral } = args,
       { __, client } = args,
-      { localize: __dl } = client;
+      { __dl: __dl } = client;
 
     if (interaction.isChatInputCommand()) {
       await interaction.deferReply({ flags: isEphemeral ? MessageFlags.Ephemeral : undefined });

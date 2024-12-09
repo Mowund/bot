@@ -3,6 +3,7 @@ import { App } from '../App.js';
 import { DataClassProperties } from '../../src/utils.js';
 import { GuildData } from '../structures/GuildData.js';
 import { UpdateFilter, WithoutId } from 'mongodb';
+import { mongoDB } from '../../src/defaults.js';
 
 export class GuildsDataManager extends CachedManager<Snowflake, GuildData, GuildsDatabaseResolvable> {
   declare client: App;
@@ -19,7 +20,7 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
     const id = this.resolveId(guild);
     if (!id) throw new Error('Invalid guild type: GuildsDatabaseResolvable');
 
-    const db = this.client.mongo.db('Mowund').collection<DataClassProperties<GuildData>>('guilds'),
+    const db = this.client.mongo.db(mongoDB).collection<DataClassProperties<GuildData>>('guilds'),
       newData = merge
         ? await db.findOneAndUpdate({ _id: id }, data as UpdateFilter<DataClassProperties<GuildData>>, {
             returnDocument: 'after',
@@ -39,7 +40,7 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
     if (!force && existing) return existing;
 
     const rawData = (await this.client.mongo
-      .db('Mowund')
+      .db(mongoDB)
       .collection('guilds')
       .findOne({ _id: id as any })) as unknown as DataClassProperties<GuildData>;
 
@@ -62,7 +63,7 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
     let db: firestore.Query<firestore.DocumentData> = this.client.firestore.collection('guilds');
 
     for (const x of search) {
-      x.forEach(y => (db = this.client.mongo.db('Mowund').where(y.field, y.operator, y.target)));
+      x.forEach(y => (db = this.client.mongo.db(mongoDB).where(y.field, y.operator, y.target)));
       for (const z of (await db.get()).docs) {
         const d = z.data();
         data.set(z.id, new GuildData(this.client, Object.assign(Object.create(d), d)));
@@ -83,7 +84,7 @@ export class GuildsDataManager extends CachedManager<Snowflake, GuildData, Guild
     if (!id) throw new Error('Invalid guild type: GuildsDatabaseResolvable');
 
     await this.client.mongo
-      .db('Mowund')
+      .db(mongoDB)
       .collection('guilds')
       .deleteOne({ _id: id as any });
     return this.client.database.cacheDelete('guilds', id);

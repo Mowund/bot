@@ -98,23 +98,23 @@ export class App extends Client<true> {
     return this.useEmoji(new Date().getMonth() === 9 ? 'discordHalloween' : 'discord');
   }
 
-  localize = (phraseOrOptions: string | i18n.TranslateOptions, replace?: Record<string, any>) =>
+  __dl = (phraseOrOptions: string | i18n.TranslateOptions, replace?: Record<string, any>) =>
     replace ? i18n.__mf(phraseOrOptions, replace) : i18n.__(phraseOrOptions);
 
-  localizeObject(object: Record<string, any>, key: string) {
+  __obj(object: Record<string, any>, key: string) {
     object[`${key}Localizations`] ??= {};
 
     for (const locale of this.supportedLocales.filter((l: string) => l !== defaultLocale))
-      object[`${key}Localizations`][locale] = this.localize({ locale, phrase: object[key] });
+      object[`${key}Localizations`][locale] = this.__dl({ locale, phrase: object[key] });
 
-    object[key] = this.localize({ locale: defaultLocale, phrase: object[key] });
+    object[key] = this.__dl({ locale: defaultLocale, phrase: object[key] });
   }
 
-  localizeData(data: Record<string, any>) {
-    if ('name' in data) this.localizeObject(data, 'name');
-    if ('description' in data) this.localizeObject(data, 'description');
-    if ('options' in data) for (const opt of data.options) this.localizeData(opt);
-    if ('choices' in data) for (const ch of data.choices) this.localizeData(ch);
+  __data(data: Record<string, any>) {
+    if ('name' in data) this.__obj(data, 'name');
+    if ('description' in data) this.__obj(data, 'description');
+    if ('options' in data) for (const opt of data.options) this.__data(opt);
+    if ('choices' in data) for (const ch of data.choices) this.__data(ch);
   }
 
   async fetchGuildGlobally<I extends boolean = false>(
@@ -264,7 +264,7 @@ export class App extends Client<true> {
   }
 
   embedBuilder(options: EmbedBuilderOptions) {
-    options.localizer ??= this.localize;
+    options.localizer ??= this.__dl;
 
     const emb = new EmbedBuilder();
 

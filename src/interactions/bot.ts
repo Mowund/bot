@@ -38,7 +38,7 @@ export default class Bot extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { __, client, embed, isEphemeral } = args,
-      { globalCommandCount, localize: __dl } = client,
+      { __dl: __dl, globalCommandCount } = client,
       { installParams } = client.application,
       { guild, guildId } = interaction,
       botMember = guild?.members.cache.get(client.user.id),

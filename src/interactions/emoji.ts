@@ -80,7 +80,7 @@ export default class Emoji extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { __, client, embed, isEphemeral } = args,
-      { localize: __dl } = client,
+      { __dl: __dl } = client,
       { appPermissions, guild, memberPermissions, user } = interaction,
       emojiLimit = guild
         ? (guild.features as GuildFeature | string[]).includes('MORE_EMOJI') && guild.premiumTier < 3

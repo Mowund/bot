@@ -45,7 +45,7 @@ export default class Timeout extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { __, client, embed, isEphemeral } = args,
-      { localize: __dl } = client,
+      { __dl: __dl } = client,
       { guild, member, memberPermissions, user } = interaction,
       maxDuration = 2419200000;
 

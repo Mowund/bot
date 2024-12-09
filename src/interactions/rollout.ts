@@ -42,7 +42,7 @@ export default class Rollout extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { __, client, embed, isEphemeral } = args,
-      { experiments, localize: __dl } = client;
+      { __dl: __dl, experiments } = client;
 
     if (interaction.isAutocomplete()) {
       const { value } = interaction.options.getFocused(),

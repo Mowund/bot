@@ -62,7 +62,7 @@ export default class InteractionCreateEvent extends Event {
     let { guild } = interaction;
 
     const __ = (phrase: string, replace?: Record<string, any>) =>
-      client.localize(
+      client.__dl(
         {
           locale:
             userData.locale || (supportedLocales.includes(interaction.locale) ? interaction.locale : defaultLocale),
@@ -140,7 +140,7 @@ export default class InteractionCreateEvent extends Event {
           (userData.ignoreEphemeralRoles || (nonEphRoleIds && !nonEphRoleIds.some(r => member?.roles.cache.has(r)))));
 
     return command
-      .run({ __, client, embed, guildData, integrationTypes, isEphemeral, userData }, interaction)
+      .run({ __, client, command, embed, guildData, integrationTypes, isEphemeral, userData }, interaction)
       .catch(async err => {
         if (
           err.code === RESTJSONErrorCodes.UnknownInteraction ||
@@ -183,7 +183,7 @@ export default class InteractionCreateEvent extends Event {
           if (
             userData.disabledDM &&
             !userData.hasSuppressedWarning(Warnings.CannotDM) &&
-            ![client.localize('CMD.REMINDER'), 'verify-dm'].includes(intName)
+            ![client.__dl('CMD.REMINDER'), 'verify-dm'].includes(intName)
           ) {
             await userData.suppressWarning(Warnings.CannotDM, 12 * 60 * 60000);
             return interaction.followUp({

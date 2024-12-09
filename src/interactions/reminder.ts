@@ -71,7 +71,7 @@ export default class Reminder extends Command {
     let { userData } = args,
       { disabledDM = false } = userData;
     const { __, client, embed, integrationTypes, isEphemeral } = args,
-      { localize: __dl } = client,
+      { __dl: __dl } = client,
       { user } = interaction,
       minTime = 1000 * 60 * 3,
       maxTime = 1000 * 60 * 60 * 24 * 365.25 * 100,
