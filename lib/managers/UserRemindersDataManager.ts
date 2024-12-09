@@ -21,12 +21,12 @@ export class UserRemindersDataManager extends DataManager<Snowflake, ReminderDat
     );
   }
 
-  get user() {
-    return this.client.users.cache.get(this.userId) ?? null;
-  }
-
   get cache() {
     return this.client.database.reminders.cache.filter(r => r.userId === this.userId);
+  }
+
+  get user() {
+    return this.client.users.cache.get(this.userId) ?? null;
   }
 
   set(reminder: RemindersDatabaseResolvable, data: ReminderDataSetOptions, { merge = true } = {}) {
