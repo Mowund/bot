@@ -32,7 +32,6 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ModalMessageModalSubmitInteraction,
-  parseEmoji,
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { UserData, Warnings } from '../../lib/structures/UserData.js';
@@ -51,9 +50,8 @@ import {
   appFetch,
 } from '../utils.js';
 import { EmbeddedApplication, FullApplication } from '../../lib/interfaces/Application.js';
-import { App, AppFlagEmoji, UserFlagEmoji } from '../../lib/App.js';
+import { AppFlagEmoji, UserFlagEmoji } from '../../lib/App.js';
 import { SearchedMember, JoinSourceType } from '../../lib/structures/MemberSearch.js';
-import twemoji from '@twemoji/api';
 
 export default class User extends Command {
   constructor() {
@@ -132,7 +130,7 @@ export default class User extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     const { client, embed, isEphemeral } = args,
-      { __dl: __dl, supportedLocales } = client,
+      { __dl: __dl, rest, supportedLocales } = client,
       { guild, guildId, user } = interaction;
     let { __, userData } = args;
 
@@ -191,7 +189,7 @@ export default class User extends Command {
       ],
       appInfoOpts = (app: FullApplication, embeddedApp: EmbeddedApplication, u: DiscordUser, sM: string | null) => {
         const flags = new ApplicationFlagsBitField(app.flags),
-          iconURL = client.rest.cdn.appIcon(app.id, app.icon, imageOptions),
+          iconURL = rest.cdn.appIcon(app.id, app.icon, imageOptions),
           emb = embed({
             addParams: sM ? { member: sM } : {},
             color: Colors.Blurple,
@@ -388,12 +386,12 @@ export default class User extends Command {
             : [],
           rejoined = mFlags.has(GuildMemberFlags.DidRejoin),
           avatar = m.avatar
-            ? client.rest.cdn.guildMemberAvatar(guildId, u.id, m.avatar, imageOptions)
+            ? rest.cdn.guildMemberAvatar(guildId, u.id, m.avatar, imageOptions)
             : u.displayAvatarURL(imageOptions),
           banner =
             m.banner &&
-            (await appFetch(client.rest.cdn.guildMemberBanner(guildId, u.id, m.banner, { size: ALLOWED_SIZES[0] })))
-              ? client.rest.cdn.guildMemberBanner(guildId, u.id, m.banner, imageOptions)
+            (await appFetch(rest.cdn.guildMemberBanner(guildId, u.id, m.banner, { size: ALLOWED_SIZES[0] })))
+              ? rest.cdn.guildMemberBanner(guildId, u.id, m.banner, imageOptions)
               : null;
 
         if (u.id === guild?.ownerId) flags.push(client.useEmoji('owner'));
@@ -479,12 +477,10 @@ export default class User extends Command {
               .setCustomId('user_member_permissions'),
             new ButtonBuilder().setLabel(__('AVATAR')).setEmoji('🖼️').setStyle(ButtonStyle.Link).setURL(avatar),
           ),
-          mRoles = m.roles.cache?.filter(({ id }) => id !== guildId);
-
-        client.log(typeof m.roles);
-        const timeoutTimestamp =
-          m.communicationDisabledUntilTimestamp ??
-          Date.parse((m as any as APIInteractionGuildMember).communication_disabled_until);
+          mRoles = m.roles.cache?.filter(({ id }) => id !== guildId),
+          timeoutTimestamp =
+            m.communicationDisabledUntilTimestamp ??
+            Date.parse((m as any as APIInteractionGuildMember).communication_disabled_until);
 
         if (timeoutTimestamp > Date.now()) {
           emb.addFields({
@@ -553,7 +549,7 @@ export default class User extends Command {
       appPermsOpts = (app: FullApplication, member: GuildMember, channel: GuildTextBasedChannel) => {
         if (!app.install_params) return { emb: embed({ type: 'error' }).setDescription(__('ERROR.NO_INSTALL_PARAMS')) };
 
-        const iconURL = client.rest.cdn.appIcon(app.id, app.icon, imageOptions),
+        const iconURL = rest.cdn.appIcon(app.id, app.icon, imageOptions),
           installPerms = new PermissionsBitField(app.install_params.permissions as `${bigint}`),
           integratedPerms = guild?.roles.botRoleFor?.(client.user)?.permissions ?? null,
           overwrittenPerms = channel?.permissionsFor?.(client.user) ?? null,
@@ -630,7 +626,6 @@ export default class User extends Command {
       },
       switchRow = (u: DiscordUser, m: GuildMember, disable: string, noApp: boolean, noMember = false) => {
         const row = new ActionRowBuilder<ButtonBuilder>();
-        client.log(noMember);
 
         if (u.bot) {
           row.addComponents(
@@ -667,16 +662,16 @@ export default class User extends Command {
       },
       // TODO: bots can't access embedded activity
       getFullApplication = async (id: Snowflake) => {
-        const app = await client.rest.get(`/applications/${id}`).catch(e => {
+        const app = await rest.get(`/applications/${id}`).catch(e => {
             console.error(e);
             return null;
           }),
-          rpc = await client.rest.get(`/applications/${id}/rpc`).catch(e => {
+          rpc = await rest.get(`/applications/${id}/rpc`).catch(e => {
             console.error(e);
             return null;
           }),
           fullApp = (Object.assign(app || {}, rpc || {}) || {}) as FullApplication,
-          embeddedApp = (await client.rest.get(`/applications/public?application_ids=${id}`).catch(e => {
+          embeddedApp = (await rest.get(`/applications/public?application_ids=${id}`).catch(e => {
             console.error(e);
             return null;
           })) as EmbeddedApplication;
@@ -943,7 +938,7 @@ export default class User extends Command {
           }
 
           const avatar = memberO.avatar
-              ? client.rest.cdn.guildMemberAvatar(guildId, userO.id, memberO.avatar, imageOptions)
+              ? rest.cdn.guildMemberAvatar(guildId, userO.id, memberO.avatar, imageOptions)
               : userO.displayAvatarURL(imageOptions),
             emb = embed({
               color: memberO?.displayColor || userO.accentColor || Colors.Blurple,
@@ -1178,21 +1173,7 @@ export default class User extends Command {
       switch (customId) {
         case 'user_settings_game_icon_modal': {
           const input = fields.getTextInputValue('game_icon_input'),
-            parsedEmoji = parseEmoji(input),
-            emjId = parsedEmoji.id || input.match(/\d+/g)?.[0],
-            emjName = parsedEmoji.name,
-            gameIcon =
-              twemoji.parse(emjName, i => i).match(/alt="([^"]*)"/)?.[1] ||
-              (
-                client.emojis.cache.get(emjId) ||
-                (!parsedEmoji.id &&
-                  (guild?.emojis.cache.find(({ name }) => name === emjName) ||
-                    guild?.emojis.cache.find(({ name }) => name.toLowerCase() === emjName.toLowerCase())))
-              )?.toString() ||
-              (client.allShardsReady &&
-                (await client.shard
-                  .broadcastEval((c: App, { d }) => c.emojis.cache.get(d)?.toString(), { context: { d: emjId } })
-                  .then(eA => eA.find(e => e))));
+            gameIcon = await client.searchEmoji(input, guild);
 
           if (input && !gameIcon) {
             return (interaction as ModalMessageModalSubmitInteraction).reply({

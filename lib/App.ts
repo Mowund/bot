@@ -23,6 +23,7 @@ import {
   Invite,
   InviteGuild,
   InviteResolvable,
+  parseEmoji,
   Routes,
   Snowflake,
   SnowflakeUtil,
@@ -38,6 +39,7 @@ import { Command } from './structures/Command.js';
 import { DatabaseManager } from './managers/DatabaseManager.js';
 import { Experiment } from './interfaces/Experiment.js';
 import { MemberSearchQuery, MemberSearch } from './structures/MemberSearch.js';
+import twemoji from '@twemoji/api';
 
 export class App extends Client<true> {
   allShardsReady: boolean;
@@ -92,6 +94,28 @@ export class App extends Client<true> {
     if (emoji.name !== name) return formatEmoji({ ...emoji, name });
     if (customName) return formatEmoji({ ...emoji, name: customName as typeof emoji.name });
     return formatEmoji(emoji);
+  }
+
+  async searchEmoji(emoji: string, guild?: Guild) {
+    const parsedEmoji = parseEmoji(emoji),
+      emjId = parsedEmoji.id || emoji.match(/\d+/g)?.[0],
+      emjName = parsedEmoji.name,
+      result =
+        twemoji.parse(emjName, i => i).match(/alt="([^"]*)"/)?.[1] ||
+        (
+          this.emojis.cache.get(emjId) ||
+          this.application.emojis.cache.get(emjId) ||
+          (!parsedEmoji.id &&
+            (emjName.startsWith('$')
+              ? this.useEmoji(emjName.slice(1))
+              : guild?.emojis.cache.find(({ name }) => name === emjName) ||
+                guild?.emojis.cache.find(({ name }) => name.toLowerCase() === emjName.toLowerCase())))
+        )?.toString() ||
+        (this.allShardsReady &&
+          (await this.shard
+            .broadcastEval((c: App, { d }) => c.emojis.cache.get(d)?.toString(), { context: { d: emjId } })
+            .then(eA => eA.find(e => e))));
+    return result;
   }
 
   get discordEmoji() {
