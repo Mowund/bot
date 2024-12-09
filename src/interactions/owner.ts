@@ -202,6 +202,9 @@ export default class Owner extends Command {
             try {
               for (const file of readdirSync(__dirname).filter(f => f.endsWith('.js'))) {
                 const command = new (await import(`./${file}`)).default() as Command;
+                if (command.options)
+                  command.options.redirectIds &&= command.options.redirectIds.map(x => client.__dl(x));
+
                 for (const dt of command.structure) {
                   client.__data(dt);
 
@@ -247,6 +250,8 @@ export default class Owner extends Command {
                     }
                   }
                 }
+
+                client.commands.set(file.match(/.+?(?=\.js)/g)?.[0], command);
               }
             } catch (err) {
               await client.reportError(err, {

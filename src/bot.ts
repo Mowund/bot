@@ -277,6 +277,7 @@ client.on('clientReady', async () => {
 
     for (const file of readdirSync(path.join(__dirname, '/interactions')).filter(f => f.endsWith('.js'))) {
       const command = new (await import(`./interactions/${file}`)).default() as Command;
+      if (command.options) command.options.redirectIds &&= command.options.redirectIds.map(x => client.__dl(x));
 
       for (const dt of command.structure as ChatInputApplicationCommandData[]) {
         client.__data(dt);
