@@ -6,7 +6,7 @@ import { ConnectionCheckOutFailedEvent, Filter } from 'mongodb';
 import chalk from 'chalk';
 import { App } from '../App.js';
 import { DataClassProperties } from '../../src/utils.js';
-import { ReminderData, ReminderDataSetOptions } from '../structures/ReminderData.js';
+import { ReminderData } from '../structures/ReminderData.js';
 import { UserData } from '../structures/UserData.js';
 import { mongoDB } from '../../src/defaults.js';
 
@@ -20,7 +20,7 @@ export class RemindersDataManager extends CachedManager<Snowflake, ReminderData,
   async set(
     reminder: RemindersDatabaseResolvable,
     userId: Snowflake,
-    data: ReminderDataSetOptions,
+    data: DataClassProperties<ReminderData>,
     { merge = true }: { merge?: boolean } = {},
   ) {
     const id = this.resolveId(reminder);

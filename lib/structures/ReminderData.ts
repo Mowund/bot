@@ -23,17 +23,11 @@ export class ReminderData extends Base {
     return this.client.database.users.cache.get(this.userId) ?? null;
   }
 
-  set(data: ReminderDataSetOptions, { merge = true } = {}) {
+  set(data: DataClassProperties<ReminderData>, { merge = true } = {}) {
     return this.user.reminders.set(this.id, data, { merge });
   }
 
   delete() {
     return this.user.reminders.delete(this.id);
   }
-}
-
-export interface ReminderDataSetOptions {
-  content?: string;
-  recursive?: boolean;
-  timestamp?: number;
 }

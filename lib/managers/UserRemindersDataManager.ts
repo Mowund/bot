@@ -1,6 +1,6 @@
 import { Collection, DataManager, Snowflake } from 'discord.js';
 import { App } from '../App.js';
-import { ReminderData, ReminderDataSetOptions } from '../structures/ReminderData.js';
+import { ReminderData } from '../structures/ReminderData.js';
 import { UserData } from '../structures/UserData.js';
 import { DataClassProperties } from '../../src/utils.js';
 import { RemindersDatabaseResolvable } from './RemindersDataManager.js';
@@ -29,7 +29,7 @@ export class UserRemindersDataManager extends DataManager<Snowflake, ReminderDat
     return this.client.database.users.cache.get(this.userId) ?? null;
   }
 
-  set(reminder: RemindersDatabaseResolvable, data: ReminderDataSetOptions, { merge = true } = {}) {
+  set(reminder: RemindersDatabaseResolvable, data: DataClassProperties<ReminderData>, { merge = true } = {}) {
     return this.client.database.reminders.set(reminder, this.userId, data, { merge });
   }
 
