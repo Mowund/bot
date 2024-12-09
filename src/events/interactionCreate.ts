@@ -143,8 +143,8 @@ export default class InteractionCreateEvent extends Event {
       .run({ __, client, command, embed, guildData, integrationTypes, isEphemeral, userData }, interaction)
       .catch(async err => {
         if (
-          err.code === RESTJSONErrorCodes.UnknownInteraction ||
-          interaction.type === InteractionType.ApplicationCommandAutocomplete
+          interaction.type === InteractionType.ApplicationCommandAutocomplete ||
+          err.code === RESTJSONErrorCodes.UnknownInteraction
         )
           return;
 
