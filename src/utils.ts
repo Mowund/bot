@@ -24,6 +24,7 @@ import {
   ALLOWED_SIZES,
   DataManager,
 } from 'discord.js';
+import { TimeUnit, timeUnitDivisor } from './defaults';
 
 export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -152,6 +153,15 @@ export const isEmpty = (obj: Record<any, any>) => {
   for (const prop in obj) if (Object.hasOwn(obj, prop)) return false;
   return true;
 };
+
+export function getEnumKeyByValue<T extends { [k: string]: any }, V extends number | string>(
+  enumObj: T,
+  value: V,
+): { [K in keyof T]: T[K] extends V ? K : never }[keyof T] | null {
+  for (const [key, val] of Object.entries(enumObj))
+    if (val === value) return key as T[keyof T] extends V ? keyof T : never;
+  return null;
+}
 
 /**
  * @returns The keys with empty values from an object
@@ -385,24 +395,48 @@ export const appInvite = (
   return invite;
 };
 
-export const msToTime = (ms: number) => {
-  const years = Math.floor(ms / 31536000000),
-    days = Math.floor((ms % 31536000000) / 86400000),
-    hours = Math.floor((ms % 86400000) / 3600000),
-    minutes = Math.floor((ms % 3600000) / 60000),
-    secs = Math.floor((ms % 60000) / 1000),
-    miliSecs = Math.floor(ms % 1000);
+export const parseMs = <E extends TimeUnit = never, I extends TimeUnit = TimeUnit>(
+  ms: number,
+  { excludeUnits, includeUnits }: { excludeUnits?: E[]; includeUnits?: I[] } = {},
+) => {
+  type FinalUnits = Exclude<I, E>;
+  const filteredUnits: FinalUnits[] = (includeUnits || Object.values(TimeUnit)).filter(
+      unit => !excludeUnits?.includes(unit as E),
+    ) as FinalUnits[],
+    unitsObject = filteredUnits.reduce(
+      (acc, unit) => {
+        const unitValue = timeUnitDivisor[unit];
+        if (unitValue) {
+          const value = Math.floor(ms / unitValue);
+          if (value) acc[unit] = value;
+          ms %= unitValue;
+        }
+        return acc;
+      },
+      {} as Partial<Record<FinalUnits, number>>,
+    );
 
-  let str = '';
-  if (years) str += `${years}y `;
-  if (days) str += `${days}d `;
-  if (hours) str += `${hours}h `;
-  if (minutes) str += `${minutes}m `;
-  if (secs) str += `${secs}s `;
-  if (miliSecs) str += `${miliSecs}ms`;
-
-  return str.trim() || '0s';
+  return {
+    ...unitsObject,
+    toLocaleString: (localizer: (phrase: string, replace?: Record<string, any>) => string) =>
+      Object.entries(unitsObject)
+        .map(([unit, value]) => localizer(`TIME.${getEnumKeyByValue(TimeUnit, unit).toUpperCase()}`, { count: value }))
+        .join(' ') || '0s',
+    toString: () =>
+      Object.entries(unitsObject)
+        .map(([unit, value]) => `${value}${unit}`)
+        .join(' ') || '0s',
+  } as Record<FinalUnits, number> & {
+    toLocaleString(localizer: (phrase: string, replace?: Record<string, any>) => string): string;
+    toString(): string;
+  };
 };
+
+export const msToTime = (ms: number) =>
+  parseMs(ms, {
+    excludeUnits:
+      ms > 1000 ? [TimeUnit.Milliseconds, TimeUnit.Weeks, TimeUnit.Months] : [TimeUnit.Weeks, TimeUnit.Months],
+  }).toString();
 
 export const search = <O extends Record<any, any>>(object: O, key: keyof typeof object) => {
   let value: (typeof object)[typeof key];

@@ -18,3 +18,25 @@ export const botOwners = process.env.OWNERS?.split(','),
     invite: 'https://discord.gg/f85rEGJ',
   },
   mongoDB = 'Mowund';
+
+export enum TimeUnit {
+  Years = 'y',
+  Months = 'mo',
+  Weeks = 'w',
+  Days = 'd',
+  Hours = 'h',
+  Minutes = 'm',
+  Seconds = 's',
+  Milliseconds = 'ms',
+}
+
+export const timeUnitDivisor = {
+  [TimeUnit.Years]: 365 * 24 * 60 * 60 * 1000,
+  [TimeUnit.Months]: 30 * 24 * 60 * 60 * 1000,
+  [TimeUnit.Weeks]: 7 * 24 * 60 * 60 * 1000,
+  [TimeUnit.Days]: 24 * 60 * 60 * 1000,
+  [TimeUnit.Hours]: 60 * 60 * 1000,
+  [TimeUnit.Minutes]: 60 * 1000,
+  [TimeUnit.Seconds]: 1000,
+  [TimeUnit.Milliseconds]: 1,
+};
