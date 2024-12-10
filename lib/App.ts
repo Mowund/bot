@@ -96,6 +96,13 @@ export class App extends Client<true> {
     return formatEmoji(emoji);
   }
 
+  useEmojiImage(name: string) {
+    const emoji = (this.application.emojis.cache.find(e => e.name === name) ||
+      this.application.emojis.cache.find(e => e.name === 'missing')) as ApplicationEmoji;
+    if (!emoji) return 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f6ab.png'; // 🚫
+    return emoji.imageURL(emoji.animated ? { extension: 'gif', size: imageOptions.size } : imageOptions);
+  }
+
   async searchEmoji(emoji: string, guild?: Guild) {
     const parsedEmoji = parseEmoji(emoji),
       emjId = parsedEmoji.id || emoji.match(/\d+/g)?.[0],
