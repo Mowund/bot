@@ -902,7 +902,7 @@ export default class Emoji extends Command {
                   )
                   .setMinValues(1)
                   .setMaxValues(25)
-                  .setCustomId(isRemove ? 'emoji_remove_roles_submit' : 'emoji_add_roles_submit')
+                  .setCustomId(`${intName}_${isRemove ? 'remove_roles_submit' : 'add_roles_submit'}`)
                   .setDisabled(isEdit || (isRemove && !emj.roles.cache.size)),
               ),
             ],
