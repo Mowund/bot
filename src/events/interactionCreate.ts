@@ -10,6 +10,8 @@ import {
   Colors,
   ComponentType,
   ContextMenuCommandInteraction,
+  DiscordAPIError,
+  DiscordjsError,
   EmbedBuilder,
   Events,
   InteractionContextType,
@@ -26,7 +28,7 @@ import {
 import { Event } from '../../lib/structures/Event.js';
 import { App, EmbedBuilderOptions } from '../../lib/App.js';
 import { debugLevel, defaultLocale, imageOptions } from '../defaults.js';
-import { beforeMatch, appInvite } from '../utils.js';
+import { appInvite, beforeMatch } from '../utils.js';
 import { Warnings } from '../../lib/structures/UserData.js';
 
 export default class InteractionCreateEvent extends Event {
@@ -45,6 +47,7 @@ export default class InteractionCreateEvent extends Event {
         options: cmdOptions,
       } = interaction as ChatInputCommandInteraction,
       { componentType, customId } = interaction as MessageComponentInteraction,
+      isChatInput = interaction.isChatInputCommand(),
       integrationTypes = Object.keys(authorizingIntegrationOwners || {}).map(k =>
         parseInt(k),
       ) as ApplicationIntegrationType[],
@@ -78,33 +81,35 @@ export default class InteractionCreateEvent extends Event {
       if (!(guild ||= await client.guilds.fetch(guildId).catch(() => null))) {
         const isManager = (memberPermissions as PermissionsBitField).has(PermissionFlagsBits.ManageGuild);
 
-        return (interaction as RepliableInteraction).reply({
-          components: isManager
-            ? [
-                new ActionRowBuilder<ButtonBuilder>().addComponents(
-                  new ButtonBuilder()
-                    .setLabel(__('READD_TO_SERVER'))
-                    .setEmoji(client.discordEmoji)
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(
-                      appInvite(client.user.id, {
-                        disableGuildSelect: true,
-                        guildId,
-                        permissions: client.application.installParams.permissions,
-                        scopes: client.application.installParams.scopes,
-                      }),
-                    ),
-                ),
-              ]
-            : [],
-          embeds: [
-            new EmbedBuilder()
-              .setColor(Colors.Red)
-              .setTitle(`❌ ${__('ERROR.NOUN')}`)
-              .setDescription(__(`ERROR.NO_BOT_SCOPE.${isManager ? 'MANAGER' : 'MEMBER'}`)),
-          ],
-          flags: MessageFlags.Ephemeral,
-        });
+        return (interaction as RepliableInteraction)
+          .reply({
+            components: isManager
+              ? [
+                  new ActionRowBuilder<ButtonBuilder>().addComponents(
+                    new ButtonBuilder()
+                      .setLabel(__('READD_TO_SERVER'))
+                      .setEmoji(client.discordEmoji)
+                      .setStyle(ButtonStyle.Link)
+                      .setURL(
+                        appInvite(client.user.id, {
+                          disableGuildSelect: true,
+                          guildId,
+                          permissions: client.application.installParams.permissions,
+                          scopes: client.application.installParams.scopes,
+                        }),
+                      ),
+                  ),
+                ]
+              : [],
+            embeds: [
+              new EmbedBuilder()
+                .setColor(Colors.Red)
+                .setTitle(`❌ ${__('ERROR.NOUN')}`)
+                .setDescription(__(`ERROR.NO_BOT_SCOPE.${isManager ? 'MANAGER' : 'MEMBER'}`)),
+            ],
+            flags: MessageFlags.Ephemeral,
+          })
+          .catch(() => {});
       }
 
       if (!guild.available) return;
@@ -124,10 +129,12 @@ export default class InteractionCreateEvent extends Event {
       await client.reportError(new Error(`${customId ?? commandName} interaction not found as ${intName}`), {
         embed: { footer: 'requested', member, user },
       });
-      return (interaction as RepliableInteraction).reply({
-        embeds: [embed({ type: 'error' }).setDescription(__('ERROR.NO_ASSOCIATED_SCRIPT'))],
-        flags: MessageFlags.Ephemeral,
-      });
+      return (interaction as RepliableInteraction)
+        .reply({
+          embeds: [embed({ type: 'error' }).setDescription(__('ERROR.NO_ASSOCIATED_SCRIPT'))],
+          flags: MessageFlags.Ephemeral,
+        })
+        .catch(() => {});
     }
 
     const guildData = guildId && (await database.guilds.fetch(guildId)),
@@ -141,7 +148,7 @@ export default class InteractionCreateEvent extends Event {
 
     return command
       .run({ __, client, command, embed, guildData, intName, integrationTypes, isEphemeral, userData }, interaction)
-      .catch(async err => {
+      .catch(async (err: DiscordAPIError & (DiscordjsError | Error)) => {
         if (
           interaction.type === InteractionType.ApplicationCommandAutocomplete ||
           err.code === RESTJSONErrorCodes.UnknownInteraction
@@ -156,7 +163,7 @@ export default class InteractionCreateEvent extends Event {
           consoleMessage: chalk.red('An error occured while running ') + chalk.yellow(`${customId || commandName}`),
           embed: { footer: 'requested', member, user },
           message: `An error occured while running ${
-            interaction.isChatInputCommand()
+            isChatInput
               ? `</${commandName}${
                   cmdOptions.getSubcommandGroup(false)
                     ? ` ${cmdOptions.getSubcommandGroup(false)} ${cmdOptions.getSubcommand(false)}`

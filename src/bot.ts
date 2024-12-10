@@ -20,6 +20,7 @@ import {
   PartialEmoji,
   resolveFile,
   ApplicationEmoji,
+  DiscordjsError,
 } from 'discord.js';
 import cs from 'console-stamp';
 import looksSame from 'looks-same';
@@ -36,6 +37,7 @@ const __filename = fileURLToPath(import.meta.url),
   __dirname = dirname(__filename),
   client = new App({
     allowedMentions: { parse: [] },
+    enforceNonce: true,
     intents: [
       GatewayIntentBits.DirectMessages,
       GatewayIntentBits.Guilds,
@@ -48,11 +50,8 @@ const __filename = fileURLToPath(import.meta.url),
     partials: [Partials.Channel, Partials.Message, Partials.Reaction],
   });
 
-process.on('uncaughtException', async (err: DiscordAPIError) => {
-  if (
-    !(['UND_ERR_CONNECT_TIMEOUT', 'ENOTFOUND'] as (number | string)[]).includes(err.code) ||
-    !(err instanceof DiscordAPIError)
-  ) {
+process.on('uncaughtException', async (err: DiscordAPIError & (DiscordjsError | Error)) => {
+  if (!(['UND_ERR_CONNECT_TIMEOUT', 'ENOTFOUND'] as (number | string)[]).includes(err.code)) {
     await client.reportError(err);
     process.exit();
   }
