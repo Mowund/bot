@@ -328,7 +328,7 @@ export class App extends Client<true> {
       case 'wip':
         return emb
           .setColor(Colors.Orange)
-          .setTitle(`🔨 ${options.title || options.localizer('WIP')}`)
+          .setTitle(`⚒️ ${options.title || options.localizer('WIP')}`)
           .setDescription(options.localizer('WIP_COMMAND'));
       default:
         return (options.title ? emb.setTitle(options.title) : emb).setColor(options.color ?? null);
