@@ -65,14 +65,25 @@ export default class InteractionCreateEvent extends Event {
     let { guild } = interaction;
 
     const __ = (phrase: string, replace?: Record<string, any>) =>
-      client.__dl(
-        {
-          locale:
-            userData.locale || (supportedLocales.includes(interaction.locale) ? interaction.locale : defaultLocale),
-          phrase,
-        },
-        replace,
-      );
+        client.__dl(
+          {
+            locale:
+              userData.locale || (supportedLocales.includes(interaction.locale) ? interaction.locale : defaultLocale),
+            phrase,
+          },
+          replace,
+        ),
+      __gl = (phrase: string, replace?: Record<string, any>) =>
+        client.__dl(
+          {
+            locale:
+              guild?.preferredLocale && supportedLocales.includes(guild?.preferredLocale)
+                ? guild.preferredLocale
+                : defaultLocale,
+            phrase,
+          },
+          replace,
+        );
 
     if (
       context === InteractionContextType.Guild &&
@@ -147,7 +158,10 @@ export default class InteractionCreateEvent extends Event {
           (userData.ignoreEphemeralRoles || (nonEphRoleIds && !nonEphRoleIds.some(r => member?.roles.cache.has(r)))));
 
     return command
-      .run({ __, client, command, embed, guildData, intName, integrationTypes, isEphemeral, userData }, interaction)
+      .run(
+        { __, __gl, client, command, embed, guildData, intName, integrationTypes, isEphemeral, userData },
+        interaction,
+      )
       .catch(async (err: DiscordAPIError & (DiscordjsError | Error)) => {
         if (
           interaction.type === InteractionType.ApplicationCommandAutocomplete ||
