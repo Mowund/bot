@@ -15,6 +15,7 @@ import {
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { botOwners } from '../defaults.js';
+import { afterMatch } from '../utils.js';
 
 export default class Clear extends Command {
   constructor() {
@@ -52,8 +53,8 @@ export default class Clear extends Command {
   }
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
-    const { __, client, embed, isEphemeral } = args,
-      { __dl: __dl } = client,
+    const { __, client, embed, intName, isEphemeral } = args,
+      { __dl } = client,
       { channel, memberPermissions, user } = interaction;
 
     // TODO: Create a confirmation menu
@@ -94,7 +95,7 @@ export default class Clear extends Command {
           .setLabel(__('YES'))
           .setEmoji('✅')
           .setStyle(ButtonStyle.Success)
-          .setCustomId('clear_delete'),
+          .setCustomId(`${intName}_delete`),
       );
 
       client.log({ msgCnt: fMsgs.size, pinCnt });
@@ -125,7 +126,8 @@ export default class Clear extends Command {
     }
 
     if (interaction.isButton()) {
-      const { customId, message } = interaction;
+      const { message } = interaction,
+        customId = afterMatch(interaction.customId, '_');
 
       if (message.interactionMetadata.user.id !== user.id) {
         return interaction.reply({
@@ -145,7 +147,7 @@ export default class Clear extends Command {
       }
 
       switch (customId) {
-        case 'clear_delete': {
+        case 'delete': {
           const embedParams = new URLSearchParams(message.embeds[0].footer.iconURL),
             delPinsP = embedParams.get('delPins'),
             msgs = await channel.messages.fetch({

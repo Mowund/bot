@@ -107,7 +107,7 @@ export default class Echo extends Command {
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     if (interaction.isChatInputCommand()) {
       const { __, client, embed, isEphemeral } = args,
-        { __dl: __dl } = client,
+        { __dl } = client,
         { member, memberPermissions, options, user } = interaction,
         contentO = options
           .getString(__dl('CMD.CONTENT'))

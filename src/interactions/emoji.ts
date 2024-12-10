@@ -25,7 +25,16 @@ import {
   InteractionContextType,
   MessageFlags,
 } from 'discord.js';
-import { collMap, toUTS, getFieldValue, decreaseSizeCDN, disableComponents, beforeMatch, arrayMap } from '../utils.js';
+import {
+  collMap,
+  toUTS,
+  getFieldValue,
+  decreaseSizeCDN,
+  disableComponents,
+  beforeMatch,
+  arrayMap,
+  afterMatch,
+} from '../utils.js';
 import { imageOptions, premiumLimits } from '../defaults.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { App } from '../../lib/App.js';
@@ -79,8 +88,8 @@ export default class Emoji extends Command {
   }
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
-    const { __, client, embed, isEphemeral } = args,
-      { __dl: __dl } = client,
+    const { __, client, embed, intName, isEphemeral } = args,
+      { __dl } = client,
       { appPermissions, guild, memberPermissions, user } = interaction,
       emojiLimit = guild
         ? (guild.features as GuildFeature | string[]).includes('MORE_EMOJI') && guild.premiumTier < 3
@@ -387,7 +396,7 @@ export default class Emoji extends Command {
             .setLabel(__('EMOJI.COMPONENT.ADD'))
             .setEmoji('➕')
             .setStyle(ButtonStyle.Success)
-            .setCustomId('emoji_edit_add')
+            .setCustomId(`${intName}_edit_add`)
             .setDisabled(addBtnVsby < 2),
         );
       }
@@ -397,7 +406,7 @@ export default class Emoji extends Command {
             .setLabel(__('EDIT'))
             .setEmoji('📝')
             .setStyle(ButtonStyle.Primary)
-            .setCustomId('emoji_edit')
+            .setCustomId(`${intName}_edit`)
             .setDisabled(editBtnVsby < 2),
         );
       }
@@ -434,7 +443,7 @@ export default class Emoji extends Command {
         emjURL = oldEmbs[0].thumbnail.url,
         emjCodePoint = getFieldValue(oldEmbs[0], __('CODEPOINT'))?.replaceAll('`', '');
 
-      let { customId } = interaction,
+      let customId = afterMatch(interaction.customId, '_'),
         emb = embed({ footer: 'interacted' }),
         emjId = new URL(emjURL).pathname.split(/[/&.]/)[2],
         emj = guild?.emojis.cache.get(emjId);
@@ -446,14 +455,14 @@ export default class Emoji extends Command {
       if (emj) {
         emjId = emj.id;
       } else if (!emjCodePoint) {
-        if (!['emoji_edit_add', 'emoji_edit_readd'].includes(customId)) customId = 'emoji_nonexistent';
+        if (!['emoji_edit_add', 'emoji_edit_readd'].includes(customId)) customId = 'nonexistent';
 
         addBtnVsby = 2;
         editBtnVsby = 1;
       }
 
       if (!memberPermissions?.has(PermissionFlagsBits.ManageEmojisAndStickers)) {
-        customId = 'emoji_noperm';
+        customId = 'noperm';
         addBtnVsby = emj ? 0 : 1;
         editBtnVsby = 1;
       }
@@ -512,12 +521,12 @@ export default class Emoji extends Command {
       }
 
       switch (customId) {
-        case 'emoji_edit_add':
-        case 'emoji_edit_readd':
-        case 'emoji_edit': {
+        case 'edit_add':
+        case 'edit_readd':
+        case 'edit': {
           const isAdd = ['emoji_edit_add', 'emoji_edit_readd'].includes(customId);
           if (isAdd) {
-            const isAddId = customId === 'emoji_edit_add';
+            const isAddId = customId === 'edit_add';
 
             await (interaction as ButtonInteraction).update({
               components: disableComponents(message.components),
@@ -620,24 +629,24 @@ export default class Emoji extends Command {
                   .setLabel(__('VIEW'))
                   .setEmoji('🔎')
                   .setStyle(ButtonStyle.Primary)
-                  .setCustomId('emoji_view'),
+                  .setCustomId(`${intName}_view`),
                 new ButtonBuilder()
                   .setLabel(__('RENAME'))
                   .setEmoji('✏️')
                   .setStyle(ButtonStyle.Secondary)
-                  .setCustomId('emoji_rename'),
+                  .setCustomId(`${intName}_rename`),
                 new ButtonBuilder()
                   .setLabel(__('ROLES.EDIT'))
                   .setEmoji('📜')
                   .setStyle(ButtonStyle.Secondary)
-                  .setCustomId('emoji_edit_roles'),
+                  .setCustomId(`${intName}_edit_roles`),
               ),
               new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
                   .setLabel(__('DELETE'))
                   .setEmoji('🗑️')
                   .setStyle(ButtonStyle.Danger)
-                  .setCustomId('emoji_edit_delete'),
+                  .setCustomId(`${intName}_edit_delete`),
               ),
             ],
             embeds: [emb],
@@ -658,16 +667,16 @@ export default class Emoji extends Command {
           }
           return;
         }
-        case 'emoji_nonexistent':
-        case 'emoji_noperm':
-        case 'emoji_view': {
+        case 'nonexistent':
+        case 'noperm':
+        case 'view': {
           if (addBtnVsby && emj?.guild?.id !== guild?.id) {
             rows[0].addComponents(
               new ButtonBuilder()
                 .setLabel(__('EMOJI.COMPONENT.ADD'))
                 .setEmoji('➕')
                 .setStyle(ButtonStyle.Success)
-                .setCustomId('emoji_edit_add')
+                .setCustomId(`${intName}_edit_add`)
                 .setDisabled(addBtnVsby < 2),
             );
           }
@@ -677,7 +686,7 @@ export default class Emoji extends Command {
                 .setLabel(__('EDIT'))
                 .setEmoji('📝')
                 .setStyle(ButtonStyle.Primary)
-                .setCustomId('emoji_edit')
+                .setCustomId(`${intName}_edit`)
                 .setDisabled(editBtnVsby < 2),
             );
           }
@@ -690,7 +699,7 @@ export default class Emoji extends Command {
             await interaction.followUp({
               embeds: [
                 embed({ type: 'warning' }).setDescription(
-                  customId === 'emoji_nonexistent'
+                  customId === 'nonexistent'
                     ? __('ERROR.EMOJI.NONEXISTENT')
                     : __('ERROR.PERM.USER.SINGLE.NO_LONGER', {
                         perm: __('PERM.MANAGE_EMOJIS_AND_STICKERS'),
@@ -702,7 +711,7 @@ export default class Emoji extends Command {
           }
           return;
         }
-        case 'emoji_edit_delete': {
+        case 'edit_delete': {
           return (interaction as ButtonInteraction).update({
             components: [
               new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -710,12 +719,12 @@ export default class Emoji extends Command {
                   .setLabel(__('BACK'))
                   .setEmoji('↩️')
                   .setStyle(ButtonStyle.Primary)
-                  .setCustomId('emoji_edit'),
+                  .setCustomId(`${intName}_edit`),
                 new ButtonBuilder()
                   .setLabel(__('YES'))
                   .setEmoji('✅')
                   .setStyle(ButtonStyle.Success)
-                  .setCustomId('emoji_edit_delete_confirm'),
+                  .setCustomId(`${intName}_edit_delete_confirm`),
               ),
             ],
             embeds: [
@@ -726,7 +735,7 @@ export default class Emoji extends Command {
             ],
           });
         }
-        case 'emoji_edit_delete_confirm': {
+        case 'edit_delete_confirm': {
           await emj?.delete(`${user.tag} | ${__('EMOJI.REASON.DELETED')}`);
 
           rows[0].addComponents(
@@ -734,7 +743,7 @@ export default class Emoji extends Command {
               .setLabel(__('EMOJI.COMPONENT.READD'))
               .setEmoji('➕')
               .setStyle(ButtonStyle.Success)
-              .setCustomId('emoji_edit_readd'),
+              .setCustomId(`${intName}_edit_readd`),
           );
 
           return (interaction as ButtonInteraction).update({
@@ -742,15 +751,15 @@ export default class Emoji extends Command {
             embeds: [emb.setTitle(`${client.useEmoji('emojiGhost')} ${__('EMOJI.DELETED')}`).setColor(Colors.Red)],
           });
         }
-        case 'emoji_rename': {
+        case 'rename': {
           return (interaction as ButtonInteraction).showModal(
             new ModalBuilder()
               .setTitle(__('EMOJI.RENAMING'))
-              .setCustomId('emoji_rename_submit')
+              .setCustomId(`${intName}_rename_submit`)
               .addComponents(
                 new ActionRowBuilder<TextInputBuilder>().addComponents(
                   new TextInputBuilder()
-                    .setCustomId('emoji_rename_input')
+                    .setCustomId(`rename_input`)
                     .setLabel(__('EMOJI.RENAMING_LABEL'))
                     .setMinLength(2)
                     .setMaxLength(32)
@@ -760,7 +769,7 @@ export default class Emoji extends Command {
               ),
           );
         }
-        case 'emoji_rename_submit': {
+        case 'rename_submit': {
           const { fields } = interaction as ModalMessageModalSubmitInteraction,
             inputF = fields.getTextInputValue('emoji_rename_input').replace(/\s/g, ''),
             alphanumI = /[^\w]/g.test(inputF) && (inputF.length < 2 || inputF.length > 32 ? 'also' : 'only'),
@@ -801,18 +810,18 @@ export default class Emoji extends Command {
             embeds: [emb.setColor(Colors.Green).setTitle(emjDisplay + __('EMOJI.RENAMED'))],
           });
         }
-        case 'emoji_add_roles':
-        case 'emoji_add_roles_submit':
-        case 'emoji_edit_roles':
-        case 'emoji_remove_roles':
-        case 'emoji_remove_roles_submit':
-        case 'emoji_reset_roles': {
+        case 'add_roles':
+        case 'add_roles_submit':
+        case 'edit_roles':
+        case 'remove_roles':
+        case 'remove_roles_submit':
+        case 'reset_roles': {
           const emjRoles = emj.roles.cache,
-            isEdit = customId === 'emoji_edit_roles',
+            isEdit = customId === 'edit_roles',
             isRemove =
-              !customId.startsWith('emoji_add_roles') &&
-              (message.components.at(-1).components.at(-1).customId === 'emoji_remove_roles_submit' ||
-                customId.startsWith('emoji_remove_roles')),
+              !customId.startsWith('add_roles') &&
+              (message.components.at(-1).components.at(-1).customId === 'remove_roles_submit' ||
+                customId.startsWith('remove_roles')),
             isSubmit = customId.endsWith('_submit');
           let title: string;
 
@@ -839,7 +848,7 @@ export default class Emoji extends Command {
               })}]`,
               value: collMap(emj.roles.cache) || '@everyone',
             });
-          } else if (customId === 'emoji_reset_roles') {
+          } else if (customId === 'reset_roles') {
             emj = await emj.roles.set([]);
             title = __('ROLES.RESET');
             emb.setColor(Colors.Red).spliceFields(5, 1, {
@@ -864,12 +873,12 @@ export default class Emoji extends Command {
                   .setLabel(__('BACK'))
                   .setEmoji('↩️')
                   .setStyle(ButtonStyle.Primary)
-                  .setCustomId('emoji_edit'),
+                  .setCustomId(`${intName}_edit`),
                 new ButtonBuilder()
                   .setLabel(__('ROLES.RESET'))
                   .setEmoji('🔄')
                   .setStyle(ButtonStyle.Primary)
-                  .setCustomId('emoji_reset_roles')
+                  .setCustomId(`${intName}_reset_roles`)
                   .setDisabled(!emj.roles.cache.size),
               ),
               new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -877,13 +886,13 @@ export default class Emoji extends Command {
                   .setLabel(__('ROLES.ADD'))
                   .setEmoji('➕')
                   .setStyle(ButtonStyle.Success)
-                  .setCustomId('emoji_add_roles')
+                  .setCustomId(`${intName}_add_roles`)
                   .setDisabled(!isEdit && !isRemove),
                 new ButtonBuilder()
                   .setLabel(__('ROLES.REMOVE'))
                   .setEmoji('➖')
                   .setStyle(ButtonStyle.Danger)
-                  .setCustomId('emoji_remove_roles')
+                  .setCustomId(`${intName}_remove_roles`)
                   .setDisabled((!isEdit && isRemove) || !emj.roles.cache.size),
               ),
               new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(

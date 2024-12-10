@@ -140,7 +140,7 @@ export default class InteractionCreateEvent extends Event {
           (userData.ignoreEphemeralRoles || (nonEphRoleIds && !nonEphRoleIds.some(r => member?.roles.cache.has(r)))));
 
     return command
-      .run({ __, client, command, embed, guildData, integrationTypes, isEphemeral, userData }, interaction)
+      .run({ __, client, command, embed, guildData, intName, integrationTypes, isEphemeral, userData }, interaction)
       .catch(async err => {
         if (
           interaction.type === InteractionType.ApplicationCommandAutocomplete ||

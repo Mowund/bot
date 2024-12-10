@@ -18,6 +18,7 @@ import {
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { imageOptions } from '../defaults.js';
+import { afterMatch } from '../utils.js';
 
 export default class TicTacToe extends Command {
   constructor() {
@@ -75,8 +76,8 @@ export default class TicTacToe extends Command {
   }
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
-    const { __, client, embed, integrationTypes, isEphemeral, userData } = args,
-      { __dl: __dl } = client,
+    const { __, client, embed, intName, integrationTypes, isEphemeral, userData } = args,
+      { __dl } = client,
       msToNotify = 120000;
 
     if (interaction.isAutocomplete()) {
@@ -259,12 +260,12 @@ export default class TicTacToe extends Command {
         components: [
           new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
-              .setCustomId('tictactoe_accept')
+              .setCustomId(`${intName}_accept`)
               .setLabel(__('ACCEPT'))
               .setEmoji(client.useEmoji('check'))
               .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
-              .setCustomId('tictactoe_decline')
+              .setCustomId(`${intName}_decline`)
               .setLabel(__('DECLINE'))
               .setEmoji(client.useEmoji('no'))
               .setStyle(ButtonStyle.Danger),
@@ -281,7 +282,8 @@ export default class TicTacToe extends Command {
     }
 
     if (interaction.isButton()) {
-      const { createdTimestamp, customId, guild, message, user } = interaction,
+      const { createdTimestamp, guild, message, user } = interaction,
+        customId = afterMatch(interaction.customId, '_'),
         shouldNotify = createdTimestamp - message.editedTimestamp > msToNotify,
         emb = new EmbedBuilder(message.embeds[0]),
         players: PlayerCell[] = emb.data.fields[0].value?.split('\n').map(line => ({
@@ -294,9 +296,9 @@ export default class TicTacToe extends Command {
         settings = Array.from(message.embeds[0].fields[1].value.matchAll(/`([^`]+)`/g), m => m[1]).map((v, i) =>
           i < 2 ? v.split('x').map(Number) : Number(v),
         ) as [[number, number], [number, number], number, number | undefined],
-        [action, row, col] = customId.split('_');
+        [action, row, col] = customId.split('-');
 
-      if (!players.some(p => p.user.id === user.id) || (!col && players[0].user.id === user.id)) {
+      if (!players.some(p => p.user.id === user.id) || (!row && players[0].user.id === user.id)) {
         return interaction.reply({
           embeds: [embed({ type: 'error' }).setDescription(__('ERROR.UNALLOWED.COMMAND'))],
           flags: MessageFlags.Ephemeral,
@@ -304,7 +306,7 @@ export default class TicTacToe extends Command {
       }
 
       switch (customId) {
-        case 'tictactoe_accept': {
+        case 'accept': {
           await updateBoard(createEmptyBoard(settings[0][0], settings[0][1]), players[0], emb.setDescription(null));
 
           if (shouldNotify) {
@@ -317,7 +319,7 @@ export default class TicTacToe extends Command {
           }
           return;
         }
-        case 'tictactoe_decline': {
+        case 'decline': {
           const opponent = guild?.members.cache.get(players[1].user.id) ?? players[1].user;
           await interaction.update({
             components: [],
@@ -482,7 +484,7 @@ export default class TicTacToe extends Command {
         }
       };
 
-      if (action === 'tictactoe' && row !== undefined && col !== undefined) {
+      if (action === 'move' && row !== undefined && col !== undefined) {
         const board = message.components.map(r =>
           r.components.map((button: ButtonComponent) =>
             button.emoji.name === 'blank' ? null : players.find(p => p.icon.includes(button.emoji.name)),
@@ -530,7 +532,7 @@ export default class TicTacToe extends Command {
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           row.map((cell, colIndex) =>
             new ButtonBuilder()
-              .setCustomId(`tictactoe_${rowIndex}_${colIndex}`)
+              .setCustomId(`${intName}_move-${rowIndex}-${colIndex}`)
               .setEmoji(cell?.icon ?? client.useEmoji('blank'))
               .setStyle(
                 cell?.matched

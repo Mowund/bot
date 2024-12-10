@@ -23,7 +23,7 @@ import {
 } from 'discord.js';
 import parseDur from 'parse-duration';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
-import { appInvite, disableComponents, getFieldValue, msToTime, toUTS, truncate } from '../utils.js';
+import { afterMatch, appInvite, disableComponents, getFieldValue, msToTime, toUTS, truncate } from '../utils.js';
 import { botOwners } from '../defaults.js';
 import { Warnings } from '../../lib/structures/UserData.js';
 
@@ -70,8 +70,8 @@ export default class Reminder extends Command {
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     let { userData } = args,
       { disabledDM = false } = userData;
-    const { __, client, embed, integrationTypes, isEphemeral } = args,
-      { __dl: __dl } = client,
+    const { __, client, embed, intName, integrationTypes, isEphemeral } = args,
+      { __dl } = client,
       { user } = interaction,
       minTime = 1000 * 60 * 3,
       maxTime = 1000 * 60 * 60 * 24 * 365.25 * 100,
@@ -219,12 +219,12 @@ export default class Reminder extends Command {
                 .setLabel(__('REMINDER.COMPONENT.LIST'))
                 .setEmoji('🗒️')
                 .setStyle(ButtonStyle.Primary)
-                .setCustomId('reminder_list'),
+                .setCustomId(`${intName}_list`),
               new ButtonBuilder()
                 .setLabel(__('EDIT'))
                 .setEmoji('📝')
                 .setStyle(ButtonStyle.Primary)
-                .setCustomId('reminder_edit'),
+                .setCustomId(`${intName}_edit`),
             ),
           );
 
@@ -239,7 +239,7 @@ export default class Reminder extends Command {
           const reminders = userData.reminders.cache,
             selectMenu = new StringSelectMenuBuilder()
               .setPlaceholder(__('REMINDER.SELECT_LIST'))
-              .setCustomId('reminder_select')
+              .setCustomId(`${intName}_select`)
               .setDisabled(disabledDM);
 
           let emb: EmbedBuilder;
@@ -299,8 +299,8 @@ export default class Reminder extends Command {
         }
       }
     } else if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
-      let { customId } = interaction,
-        isList = customId === 'reminder_list';
+      let customId = afterMatch(interaction.customId, '_'),
+        isList = customId === 'list';
       const { message } = interaction,
         urlArgs = new URLSearchParams(message.embeds.at(-1)?.footer?.iconURL);
 
@@ -330,7 +330,7 @@ export default class Reminder extends Command {
 
       if (disabledDM) {
         isList = true;
-        customId = 'reminder_list';
+        customId = 'list';
       }
 
       if (!isList) {
@@ -369,25 +369,25 @@ export default class Reminder extends Command {
                         : __('REMINDER.RECURSIVE.OFF'),
                   },
             );
-        } else if (customId === 'reminder_select') {
+        } else if (customId === 'select') {
           isList = true;
         } else {
           emb = EmbedBuilder.from(message.embeds[0])
             .setTitle(`🔕 ${__('REMINDER.INFO')}`)
             .setColor(Colors.Red);
-          customId = 'reminder_view';
+          customId = 'view';
         }
       }
 
       switch (customId) {
-        case 'reminder_list':
-        case 'reminder_select':
-        case 'reminder_view': {
+        case 'list':
+        case 'select':
+        case 'view': {
           await interaction.deferUpdate();
           if (message.webhookId) {
             await interaction.editReply({
               components: disableComponents(message.components, {
-                defaultValues: [{ customId: 'reminder_select', values: [reminderId] }],
+                defaultValues: [{ customId: `${intName}_select`, values: [reminderId] }],
               }),
             });
           }
@@ -399,12 +399,12 @@ export default class Reminder extends Command {
                   .setLabel(__('REMINDER.COMPONENT.LIST'))
                   .setEmoji('🗒️')
                   .setStyle(ButtonStyle.Primary)
-                  .setCustomId('reminder_list'),
+                  .setCustomId(`${intName}_list`),
                 new ButtonBuilder()
                   .setEmoji('📝')
                   .setLabel(__('EDIT'))
                   .setStyle(ButtonStyle.Primary)
-                  .setCustomId('reminder_edit')
+                  .setCustomId(`${intName}_edit`)
                   .setDisabled(!reminder),
               ),
             );
@@ -412,7 +412,7 @@ export default class Reminder extends Command {
             const reminders = userData.reminders.cache,
               selectMenu = new StringSelectMenuBuilder()
                 .setPlaceholder(__('REMINDER.SELECT_LIST'))
-                .setCustomId('reminder_select')
+                .setCustomId(`${intName}_select`)
                 .setDisabled(disabledDM);
 
             if (reminders?.size) {
@@ -440,7 +440,7 @@ export default class Reminder extends Command {
             }
           }
 
-          if ((!isList || customId === 'reminder_select') && !reminder) {
+          if ((!isList || customId === 'select') && !reminder) {
             await interaction.followUp({
               embeds: [embed({ type: 'error' }).setDescription(__('ERROR.REMINDER.NOT_FOUND', { reminderId }))],
               flags: MessageFlags.Ephemeral,
@@ -490,10 +490,10 @@ export default class Reminder extends Command {
 
           return;
         }
-        case 'reminder_edit':
-        case 'reminder_recursive': {
+        case 'edit':
+        case 'recursive': {
           const msTime = reminder.timestamp - idTimestamp;
-          if (customId === 'reminder_recursive') {
+          if (customId === 'recursive') {
             reminder = await userData.reminders.set(reminderId, {
               recursive: !reminder.recursive,
             });
@@ -525,12 +525,12 @@ export default class Reminder extends Command {
                 .setLabel(__('VIEW'))
                 .setEmoji('🔎')
                 .setStyle(ButtonStyle.Primary)
-                .setCustomId('reminder_view'),
+                .setCustomId(`${intName}_view`),
               new ButtonBuilder()
                 .setLabel(__(`${reminder.recursive ? 'RECURSIVE' : 'NOT_RECURSIVE'}`))
                 .setEmoji('🔁')
                 .setStyle(reminder.recursive ? ButtonStyle.Success : ButtonStyle.Secondary)
-                .setCustomId('reminder_recursive')
+                .setCustomId(`${intName}_recursive`)
                 .setDisabled(msTime < minRecursiveTime),
             ),
             new ActionRowBuilder().addComponents(
@@ -538,12 +538,12 @@ export default class Reminder extends Command {
                 .setLabel(__('CONTENT.EDIT'))
                 .setEmoji('✏️')
                 .setStyle(ButtonStyle.Secondary)
-                .setCustomId('reminder_edit_content'),
+                .setCustomId(`${intName}_edit_content`),
               new ButtonBuilder()
                 .setLabel(__('DELETE'))
                 .setEmoji('🗑️')
                 .setStyle(ButtonStyle.Danger)
-                .setCustomId('reminder_delete'),
+                .setCustomId(`${intName}_delete`),
             ),
           );
 
@@ -554,19 +554,19 @@ export default class Reminder extends Command {
             embeds: [emb],
           });
         }
-        case 'reminder_delete': {
+        case 'delete': {
           rows.push(
             new ActionRowBuilder().addComponents(
               new ButtonBuilder()
                 .setLabel(__('BACK'))
                 .setEmoji('↩️')
                 .setStyle(ButtonStyle.Primary)
-                .setCustomId('reminder_edit'),
+                .setCustomId(`${intName}_edit`),
               new ButtonBuilder()
                 .setLabel(__('YES'))
                 .setEmoji('✅')
                 .setStyle(ButtonStyle.Success)
-                .setCustomId('reminder_delete_confirm'),
+                .setCustomId(`${intName}_delete_confirm`),
             ),
           );
           const confirmText = `**${__('REMINDER.DELETING_DESCRIPTION')}**\n\n`;
@@ -580,7 +580,7 @@ export default class Reminder extends Command {
             ],
           });
         }
-        case 'reminder_delete_confirm': {
+        case 'delete_confirm': {
           await userData.reminders.delete(reminderId);
           rows.push(
             new ActionRowBuilder().addComponents(
@@ -588,7 +588,7 @@ export default class Reminder extends Command {
                 .setLabel(__('REMINDER.COMPONENT.LIST'))
                 .setEmoji('🗒️')
                 .setStyle(ButtonStyle.Primary)
-                .setCustomId('reminder_list'),
+                .setCustomId(`${intName}_list`),
             ),
           );
           return (interaction as ButtonInteraction).update({
@@ -601,15 +601,15 @@ export default class Reminder extends Command {
             ],
           });
         }
-        case 'reminder_edit_content': {
+        case 'edit_content': {
           return (interaction as ButtonInteraction).showModal(
             new ModalBuilder()
               .setTitle(__('CONTENT.EDITING'))
-              .setCustomId('reminder_edit_content_submit')
+              .setCustomId(`${intName}_edit_content_submit`)
               .addComponents(
                 new ActionRowBuilder<TextInputBuilder>().addComponents(
                   new TextInputBuilder()
-                    .setCustomId('reminder_edit_content_input')
+                    .setCustomId(`edit_content_input`)
                     .setLabel(__('CONTENT.EDITING_LABEL'))
                     .setMinLength(1)
                     .setMaxLength(4000)
@@ -619,10 +619,10 @@ export default class Reminder extends Command {
               ),
           );
         }
-        case 'reminder_edit_content_submit': {
+        case 'edit_content_submit': {
           const { fields } = interaction as ModalMessageModalSubmitInteraction,
             inputF = fields
-              .getTextInputValue('reminder_edit_content_input')
+              .getTextInputValue('edit_content_input')
               ?.replace(/((\\n|\n)(\s*)?)+/g, '\n')
               .trim();
 

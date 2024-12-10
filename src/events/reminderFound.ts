@@ -20,7 +20,7 @@ export default class ReminderFoundEvent extends Event {
   }
 
   async run(client: App, reminder: ReminderData): Promise<any> {
-    const { users } = client,
+    const { __dl, users } = client,
       { content, id, recursive, timestamp, user: userData } = reminder,
       user = await users.fetch(userData.id);
 
@@ -38,7 +38,7 @@ export default class ReminderFoundEvent extends Event {
           .setLabel(__('REMINDER.COMPONENT.LIST'))
           .setEmoji('🗒️')
           .setStyle(ButtonStyle.Primary)
-          .setCustomId('reminder_list'),
+          .setCustomId(`${__dl('CMD.REMINDER')}_list`),
       ),
       fields: APIEmbedField[] = [
         {
@@ -77,7 +77,7 @@ export default class ReminderFoundEvent extends Event {
           .setLabel(__('EDIT'))
           .setEmoji('📝')
           .setStyle(ButtonStyle.Secondary)
-          .setCustomId('reminder_edit'),
+          .setCustomId(`${__dl('CMD.REMINDER')}_edit`),
       );
     }
 

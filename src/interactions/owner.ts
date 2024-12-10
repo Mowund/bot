@@ -127,7 +127,7 @@ export default class Owner extends Command {
     if (!interaction.isChatInputCommand()) return;
 
     const { __, client, embed, isEphemeral } = args,
-      { __dl: __dl, chalk } = client,
+      { __dl, chalk } = client,
       { member, options, user } = interaction,
       idO = options.getString(__dl('CMD.ID')),
       guildO = options.getString(__dl('CMD.GUILD')),

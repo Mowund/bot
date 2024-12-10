@@ -36,6 +36,7 @@ export interface CommandArgs {
    * @param options.type The type of the embed
    */
   embed(options?: Omit<EmbedBuilderOptions, 'member' | 'user'>): EmbedBuilder;
+  intName: string;
   integrationTypes: ApplicationIntegrationType[];
   isEphemeral: boolean;
   guildData: GuildData | undefined;

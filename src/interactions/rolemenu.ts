@@ -14,7 +14,7 @@ import {
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { botOwners } from '../defaults.js';
-import { collMap } from '../utils.js';
+import { afterMatch, collMap } from '../utils.js';
 
 export default class RoleMenu extends Command {
   constructor() {
@@ -65,8 +65,8 @@ export default class RoleMenu extends Command {
   }
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
-    const { client, embed, isEphemeral } = args,
-      { __dl: __dl } = client,
+    const { client, embed, intName, isEphemeral } = args,
+      { __dl } = client,
       { guild, user } = interaction;
 
     if (interaction.isChatInputCommand()) {
@@ -92,7 +92,7 @@ export default class RoleMenu extends Command {
           const menuRows = [
             new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
               new StringSelectMenuBuilder()
-                .setCustomId('rolemenu_giverole')
+                .setCustomId(`${intName}_giverole`)
                 .setPlaceholder('Escolha um cargo')
                 .setMinValues(0)
                 .setMaxValues(2)
@@ -124,10 +124,11 @@ export default class RoleMenu extends Command {
         }
       }
     } else if (interaction.isStringSelectMenu()) {
-      const { customId, values } = interaction;
+      const { values } = interaction,
+        customId = afterMatch(interaction.customId, '_');
 
       switch (customId) {
-        case 'rolemenu_giverole': {
+        case 'giverole': {
           await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
           let roles = new Collection<string, Role>();

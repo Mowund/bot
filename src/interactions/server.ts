@@ -19,7 +19,7 @@ import {
 } from 'discord.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 import { GuildData } from '../../lib/structures/GuildData.js';
-import { arrayMap } from '../utils.js';
+import { afterMatch, arrayMap } from '../utils.js';
 
 export default class Server extends Command {
   constructor() {
@@ -43,10 +43,10 @@ export default class Server extends Command {
 
   async run(args: CommandArgs, interaction: BaseInteraction<'cached'>): Promise<any> {
     let { guildData } = args;
-    const { embed, isEphemeral } = args,
+    const { embed, intName, isEphemeral } = args,
       { guildId, memberPermissions, user } = interaction,
       { __, client } = args,
-      { __dl: __dl, database } = client,
+      { __dl, database } = client,
       settingsComponents = () => [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
@@ -54,7 +54,7 @@ export default class Server extends Command {
             .setEmoji('📝')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(!memberPermissions.has(PermissionFlagsBits.ManageGuild))
-            .setCustomId('server_settings_ephemeral_edit'),
+            .setCustomId(`${intName}_settings_ephemeral_edit`),
         ),
       ],
       settingsFields = (data: GuildData) => {
@@ -92,7 +92,8 @@ export default class Server extends Command {
     }
 
     if (interaction.isButton() || interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu()) {
-      const { customId, message } = interaction;
+      const { message } = interaction,
+        customId = afterMatch(interaction.customId, '_');
 
       if (message.interactionMetadata.user.id !== user.id) {
         return interaction.reply({
@@ -121,7 +122,7 @@ export default class Server extends Command {
       }
 
       switch (customId) {
-        case 'server_settings': {
+        case 'settings': {
           return interaction.update({
             components: settingsComponents(),
             embeds: [
@@ -131,16 +132,16 @@ export default class Server extends Command {
             ],
           });
         }
-        case 'server_settings_ephemeral_edit':
-        case 'server_settings_ephemeral_add':
-        case 'server_settings_ephemeral_remove':
-        case 'server_settings_ephemeral_channels_add_submit':
-        case 'server_settings_ephemeral_channels_remove_submit':
-        case 'server_settings_ephemeral_channels_reset':
-        case 'server_settings_ephemeral_roles_add_submit':
-        case 'server_settings_ephemeral_roles_remove_submit':
-        case 'server_settings_ephemeral_roles_reset': {
-          const isEdit = customId === 'server_settings_ephemeral_edit',
+        case 'settings_ephemeral_edit':
+        case 'settings_ephemeral_add':
+        case 'settings_ephemeral_remove':
+        case 'settings_ephemeral_channels_add_submit':
+        case 'settings_ephemeral_channels_remove_submit':
+        case 'settings_ephemeral_channels_reset':
+        case 'settings_ephemeral_roles_add_submit':
+        case 'settings_ephemeral_roles_remove_submit':
+        case 'settings_ephemeral_roles_reset': {
+          const isEdit = customId === 'settings_ephemeral_edit',
             isRemove =
               !customId.includes('add') &&
               (message.components.at(-1).components.at(-1).customId.endsWith('remove_submit') ||
@@ -248,20 +249,20 @@ export default class Server extends Command {
                   .setLabel(__('BACK'))
                   .setEmoji('↩️')
                   .setStyle(ButtonStyle.Primary)
-                  .setCustomId('server_settings'),
+                  .setCustomId(`${intName}_settings`),
               ),
               new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
                   .setLabel(__('CHANNELS.RESET'))
                   .setEmoji('🔄')
                   .setStyle(ButtonStyle.Primary)
-                  .setCustomId('server_settings_ephemeral_channels_reset')
+                  .setCustomId(`${intName}_settings_ephemeral_channels_reset`)
                   .setDisabled(!channelIds.length),
                 new ButtonBuilder()
                   .setLabel(__('ROLES.RESET'))
                   .setEmoji('🔄')
                   .setStyle(ButtonStyle.Primary)
-                  .setCustomId('server_settings_ephemeral_roles_reset')
+                  .setCustomId(`${intName}_settings_ephemeral_roles_reset`)
                   .setDisabled(!roleIds.length),
               ),
               new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -269,13 +270,13 @@ export default class Server extends Command {
                   .setLabel(__('ADD'))
                   .setEmoji('➕')
                   .setStyle(ButtonStyle.Success)
-                  .setCustomId('server_settings_ephemeral_add')
+                  .setCustomId(`${intName}_settings_ephemeral_add`)
                   .setDisabled(!isEdit && !isRemove),
                 new ButtonBuilder()
                   .setLabel(__('REMOVE'))
                   .setEmoji('➖')
                   .setStyle(ButtonStyle.Danger)
-                  .setCustomId('server_settings_ephemeral_remove')
+                  .setCustomId(`${intName}_settings_ephemeral_remove`)
                   .setDisabled((!isEdit && isRemove) || (!channelIds.length && !roleIds.length)),
               ),
               new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
