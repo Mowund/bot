@@ -13,7 +13,7 @@ import {
   InteractionContextType,
   MessageFlags,
 } from 'discord.js';
-import { imageOptions, supportServer } from '../defaults.js';
+import { imageOptions, isDev, supportServer } from '../defaults.js';
 import { toUTS, appInvite, msToTime } from '../utils.js';
 import { Command, CommandArgs } from '../../lib/structures/Command.js';
 
@@ -55,7 +55,7 @@ export default class Bot extends Command {
             embs = [
               embed({
                 color: botMember?.displayColor || Colors.Blurple,
-                title: `${client.useEmoji('info')} ${__('BOT.INFO.TITLE')}`,
+                title: `${isDev ? client.useEmoji('settingsInfo', 'infoDev') : client.useEmoji('info')} ${__('BOT.INFO.TITLE')}`,
               })
                 .setAuthor({ iconURL: client.user.displayAvatarURL(imageOptions), name: client.user.displayName })
                 .addFields(
