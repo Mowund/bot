@@ -589,7 +589,7 @@ export default class User extends Command {
 
           for (const iP of installPerms
             .toArray()
-            .filter(iP2 => iP2 !== 'ManageEmojisAndStickers')
+            .filter(iP2 => iP2 !== PermissionFlagsBits.ManageGuildExpressions.toString())
             .sort((a, b) => a.localeCompare(b))) {
             const text = `${
                 integratedPerms || overwrittenPerms
@@ -957,7 +957,7 @@ export default class User extends Command {
                   : new PermissionsBitField(BigInt(memberO.permissions as unknown as number))
                 )
                   .toArray()
-                  .filter(p => p !== 'ManageEmojisAndStickers')
+                  .filter(p => p !== PermissionFlagsBits.ManageGuildExpressions.toString())
                   .map(p => `\`${__(`PERM.${toUpperSnakeCase(p)}`)}\``)
                   .sort((a, b) => a.localeCompare(b))
                   .join(', ') || `**${__('NONE')}**`,

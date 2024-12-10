@@ -365,7 +365,7 @@ export default class Emoji extends Command {
         addBtnVsby = 2;
         editBtnVsby = 0;
       }
-      if (!memberPermissions?.has(PermissionFlagsBits.ManageEmojisAndStickers)) addBtnVsby = editBtnVsby = 0;
+      if (!memberPermissions?.has(PermissionFlagsBits.ManageGuildExpressions)) addBtnVsby = editBtnVsby = 0;
 
       const rows = [new ActionRowBuilder<ButtonBuilder>()];
       let row = rows[0];
@@ -461,7 +461,7 @@ export default class Emoji extends Command {
         editBtnVsby = 1;
       }
 
-      if (!memberPermissions?.has(PermissionFlagsBits.ManageEmojisAndStickers)) {
+      if (!memberPermissions?.has(PermissionFlagsBits.ManageGuildExpressions)) {
         customId = 'noperm';
         addBtnVsby = emj ? 0 : 1;
         editBtnVsby = 1;
